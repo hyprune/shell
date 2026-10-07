@@ -4,7 +4,11 @@ Read RFC-0001/0003/0004/0005/0006/0008 and the local IPC/world schemas. M0 began
 against schema `96dad32178b14d0c50f64413430d054133d40425` (IPC/world 0.1), with
 SDK preview `3ab86cb`. The M1 IPC 0.2 amendment landed during development and then
 added stable warp IDs, world loading and output identity to transition samples.
-The vendored 0.2 source/digest is recorded in `protocol/v0.2/SOURCE.json`.
+The tested amended schema is `c07a923f1f44f48c00daad1662fb19b05047b735`;
+docs origin/main is `114387dbd13a1a779ffda9e81293814adc94fc85`. The core M1
+handoff was read. Vendored digests are in `protocol/v0.2/SOURCE.json`.
+These notes describe the verified 0.2 delivery; concurrent 0.3 integration belongs
+to the integration agent and has not been assessed here.
 
 These notes distinguish the initial omissions from the current amendment. The
 shell does not widen a negotiated schema or patch upstream repositories.
@@ -22,7 +26,9 @@ Dismissal uses native `ui.close`; 0.1 falls back to `shell.overlay(false)`.
 **Still blocked in real core:** M1 explicitly rejects `exclusiveInput:true` until
 a trusted launcher verifies the shell's Wayland-client association. The bridge
 and UI are separate processes; a connection token alone does not prove that
-association. Interactive preview uses the SDK mock's accepted lease/overlay path.
+association. Interactive preview uses an explicit development association emulator around the
+SDK mock; the faithful SDK also rejects exclusive input. The emulator checks the
+authenticated shell, connection-owned lease and supervised Quickshell child.
 No local production hold timer or binding is implemented. Core's emergency escape
 must work independently of the shell, including while warp is passive.
 
@@ -52,8 +58,8 @@ guess those properties. Ordinary pose samples still lack monotonic timestamps.
 M0 interpolates heading/player position with a bounded 70 ms arrival-time buffer.
 Projected samples are supplied only by an explicit dev camera fixture, buffered
 separately and removed when its world is no longer current. Reduced motion
-bypasses interpolation. Vehicle readouts and the objective checklist are also
-presentation fixtures, not claimed gameplay state.
+bypasses interpolation. Vehicle readouts are explicit presentation fixtures. The objective checklist is
+shell-owned onboarding guidance, not claimed world quest state.
 
 Needed: per-output projection or normalized projected-marker samples, monotonic
 time, coordinate/clip conventions, camera generation and visibility/occlusion,
@@ -80,8 +86,8 @@ permitted SVG features; forbid scripts and remote resources.
 IPC 0.1 lacks waypoint/travel/workspace activation. M1 resolves point/zone waypoint,
 route and timed travel (`travel.start`, `travel.cancel`); targets are positions or
 zone IDs. Native Map double click uses `travel.start`, with zero duration for
-reduced motion. Preview uses SDK `waypoint.set` and `camera.set`; the latter remains
-a mock placement convenience. Strict 0.1 keeps unsupported controls unavailable.
+reduced motion. The SDK preview uses these same native 0.2 methods and Target shapes. Strict 0.1
+keeps unsupported controls unavailable.
 
 **Still absent:** workspace enumeration/activation and workspace-to-location
 mapping. A `kind: workspace` surface is a future adapter, and `surface.focus` can
@@ -118,25 +124,48 @@ The matching revisioned `location.transition` state persists terminal results.
 Core flushes loading events while world activation is pending; lock/Esc/F12 have
 priority. Activation/arrival is atomic; failure retains the old world.
 
-M0's native adapter uses the committed state baseline and verifies event session
-identity, rather than applying hints across revision gaps. It filters by leased
+M0 verifies event session identity and keeps the revisioned state baseline intact.
+Validated loading hints can present before a coalesced state delta arrives,
+including while a world-load RPC is pending. Revision gaps clear hints until resync. It filters by leased
 output, resumes mid-jump snapshots, does not replay terminal reconnect state, and
 waits for the destination world/committed revision before arrival. No UI timer
 invented progress is used. Reduced motion is a static destination card; optional
 sound is off by default. The warp has no pointer region or keyboard focus.
 
-The SDK checkout still implements 0.1 / 0.1-mock.1. For the recorded demo,
-[dev/warp-scenario.json](dev/warp-scenario.json) decorates its actual MockDaemon's
-world/focus methods. It delays activation and emits schema-valid `runtime.notice`
-frames with dev-only code `dev.location.transition` and a validated local JSON
-message. Strict production 0.1 displays those as ordinary notices. The adapter
-abandons uncommitted activation when its requesting peer disappears. SDK files
-are unchanged. This temporary scenario is **not a new IPC 0.1 event**.
+The SDK checkout now implements real 0.2 (`86c04ab`). The recorded demo uses its
+actual MockDaemon and native world-load delay, stable IDs and loading events.
+There are no mock-only wire additions or notice-carried transitions. Two explicit
+test adapters remain: verified-child association emulation and mock workspace
+focus mapped to native `world.load`. They use pinned SDK private `execute` / `lease`
+hooks and may need adjustment after SDK changes; provenance is in
+`dev/SDK-SOURCE.json`. `./dev/run strict` disables them. SDK files are unchanged.
 
-Remaining review: demonstrate the native lifecycle against real core and the
-verified UI association; decide shell sound/preferences ownership and whether
-core supplies destination labels/art. The native contract currently resolves
-world names from trusted launcher manifests, zone names from location state.
+`./dev/run core-check` also exercises the actual plugin and `hypruned`: native
+travel/warp/arrival, pending loading, Tab hold timing, exclusive refusal and F12
+while warping pass. This does not prove exclusive seat routing, which remains
+unsupported. Sound/preferences ownership and authoritative destination labels/art
+still need a contract; current labels come from trusted manifests/location state.
+
+## Coordinate semantics
+
+Core M1 uses manifest spawn positions as capsule feet and Target/camera positions
+as eyes. Its spawn activation adds 1.7 m (`Plugin.cpp`); the shell uses that offset
+for manifest-derived waypoint/travel targets. RFC/schema do not explicitly expose
+this conversion. Needed: a resolved spawn Target or agreed coordinate semantics
+and player dimensions, avoiding a shell-maintained physical constant.
+
+## Core startup interoperability found by the native check
+
+At tested core `4d53c2d`, socket bind under `umask(0077)` creates mode 0700, while
+RFC-0003 requires 0600. The production bridge correctly refuses it. The isolated
+core harness verifies the owned nested socket and changes only that test socket
+to 0600. Core should create/chmod it to the specified mode itself.
+
+The public socket also appears before the plugin's full method advertisement.
+An early hello can consume a one-use token with an incomplete method profile.
+The test harness waits 300 ms before authenticating. Needed: publish the socket
+only when the interactive method profile is ready, or an explicit readiness and
+re-authentication contract. Production continues honoring the returned profile.
 
 ## Trusted startup, tokens and reconnect
 
@@ -164,6 +193,6 @@ theme/motion preferences and advertised method availability; it does not launch
 executable extensions or invent an approval RPC. Labels are plain text.
 
 The mock checks client state/lease behavior, not compositor input arbitration.
-Before claiming full RFC-0008 conformance, test real core lock/escape, exclusive
-seat routing, multi-monitor hotplug, and failure recovery with the trusted UI
-association in place. See [VERIFICATION.md](VERIFICATION.md) for tested limits.
+Real-core emergency escape is tested. Before claiming full RFC-0008 conformance,
+test real lock handling, exclusive seat routing, multi-monitor hotplug and failure
+recovery with the trusted UI association in place. See [VERIFICATION.md](VERIFICATION.md) for tested limits.

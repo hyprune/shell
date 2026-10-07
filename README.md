@@ -1,184 +1,199 @@
 # Hyprune shell
 
-An original Quickshell HUD and Director for a world-driven desktop. M0 brings the
-prototype's compass, map, projected-marker, objective, notice, vehicle and orbital
-navigation ideas into small components. Original Canvas graphics replace game
-iconography; no prototype code or external game assets are shipped.
+An original Quickshell HUD and Director for a world-driven desktop. The compass,
+map, objective, notice, vehicle and orbital-navigation ideas draw on the owner's
+prototype; code, component structure and Canvas graphics are original.
 
-The shell negotiates **exact IPC `0.1` by default**. It consumes atomic snapshots
-and replacement deltas, claims one explicitly mapped world output, and maps the
-interactive Director only after core accepts `shell.overlay`. HUD and warp layers
-have empty pointer regions and no keyboard focus. Core retains input authority.
+**IPC 0.2 is the default.** The shell uses canonical `ui.opened` / `ui.closed`,
+`waypoint.set` / `travel.start`, seven-key revisioned state, and native
+`location.transition` loading/travel events. Exact 0.1 is an explicit compatibility
+option. No `0.1-mock.1`, `world.metadata` channel or notice-carried warp remains.
 
-M0 is a working shell/client and visual preview, **not a claim of complete
-RFC-0008 conformance with today's core**. Production `--protocol 0.2` opts into
-the new native `ui.opened`/`ui.closed`, waypoint/travel and revisioned location
-transition contract. Core M1 still refuses exclusive input until a verified
-Wayland-client association exists. Output mapping, projection and map/catalog
-delivery also remain gaps. The independently pinned SDK `0.1-mock.1` preview
-demonstrates the complete interactive UI; it is the protocol used in the video.
-See [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md) for the exact boundary.
+Core M1 still refuses exclusive input without a verified Wayland-client
+association. The shell respects that refusal and leaves its Director unmapped.
+The visual dev loop explicitly emulates this missing association for its
+supervised QML child; it does not enable a production bypass. Real-core passive
+HUD/warp, hold timing, loading and emergency escape have separate integration
+checks. See [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md).
 
-## Run the development loop
+## Development loop
 
-Requires Python 3.11+, `jsonschema` 4.x, Quickshell, Hyprland 0.56 with its Lua
-configuration API, Node 22.12+, `flock`, `hyprctl`, `grim`, and `wtype`. Recording also
-uses `wf-recorder`, `ffmpeg` and `ffprobe`. Build the independently checked out SDK:
+Requires Python 3.11+, jsonschema 4.x, Node 22.12+, Quickshell, Hyprland 0.56 with
+Lua configuration, `flock`, `hyprctl`, `grim` and `wtype`. Recording uses
+`wf-recorder`, `ffmpeg` and `ffprobe`. Build the sibling SDK 0.2 checkout first:
 
 ```sh
-# Once, in ../sdk:
+# Once in ../sdk:
 npm ci
 npm run build
 
-# In this repository (use a virtualenv if jsonschema is not installed):
+# In this repository:
 python3 -m pip install -r requirements.txt
-./dev/run preview
+./dev/run
 ```
 
-`./dev/run` starts strict `0.1`; `preview` opts into `0.1-mock.1`. Both start the
-SDK's actual `MockDaemon` with [dev/scenario.json](dev/scenario.json) and this shell
-in a visible nested Wayland window. The Director opens once through the diagnostic
-launcher trigger. `tour` walks the six tabs then jumps to the garden. Ctrl+C stops
-the whole nested run. Override the sibling SDK checkout with `HYPRUNE_SDK_DIR`.
-
-Every run is wrapped for its **entire lifetime** in
-`flock /tmp/worldshell-nested.lock`. The harness reads the child compositor's own
-startup environment, rejects the outer signature/display, and gives every
-`hyprctl` call the explicit child signature and every `qs ipc` call the exact child
-PID. It never queries, changes, or sends commands to the owner's compositor.
-The headless 1920×1080 `HYPRUNE-PREVIEW` output is used only for captures/checks;
-interactive runs show the world UI on the visible nested output instead.
+This launches the SDK's actual IPC 0.2 `MockDaemon` with
+[dev/scenario.json](dev/scenario.json), plus this shell in a visible nested Wayland
+window. `preview` is an alias. The SDK owns the 350 ms hold timer; a supervisor
+trigger feeds its `hold` API and the shell receives `ui.opened`. Ctrl+C stops the
+run. `HYPRUNE_SDK_DIR` selects another checkout; the tested pin and adapter hooks
+are recorded in `dev/SDK-SOURCE.json`.
 
 ```sh
+./dev/run tour          # six views, then a native world load
+./dev/run strict        # faithful SDK behavior; exclusive Director unsupported
+./dev/run check         # IPC 0.2 + 1080p visual smoke check
+./dev/run check-window  # visible 1280x720 composition check
+./dev/run capture       # screenshots, 20–40 s video and recovery checks
+HYPRUNE_SKIP_RECORD=1 ./dev/run capture
 python3 -m unittest discover -s tests -v
-./dev/run check                     # strict wire + 1080p Director smoke check
-./dev/run check-window              # visible nested-output layout check
-./dev/run capture                   # screenshots, 32 s video and recovery checks
-HYPRUNE_SKIP_RECORD=1 ./dev/run capture  # screenshot/recovery iteration
 ```
 
-Capture artifacts default to
-`~/hyprune-gallery/screenshots/hyprune-shell-m0/`
-and `.../videos/hyprune-shell-m0.mp4` with its `.json` metadata.
-`HYPRUNE_GALLERY_DIR` overrides that gallery root. Transient logs and recording
-intermediates stay in ignored `dev/.run/`. No file polling drives shell state.
+Every nested lifetime is wrapped in `flock /tmp/worldshell-nested.lock`. The
+harness reads the child compositor's startup environment, rejects the outer
+signature/display, gives every `hyprctl` call an explicit child signature and
+`qs ipc` its exact child PID. It never controls the owner's session. Interactive
+runs use the visible nested output; deterministic captures use the distinct
+1920×1080 `HYPRUNE-PREVIEW` output.
 
-## Director and warp
+The SDK intentionally mirrors core's unsupported exclusive-input error. The
+**development association emulator** intercepts only accepted `shell.overlay`
+intent for the authenticated shell, verifies the supervised Quickshell child is
+alive, checks connection-owned leases, and commits the schema-valid overlay.
+A second test adapter maps mock workspace focus to native `world.load` using
+[dev/workspace-locations.json](dev/workspace-locations.json). Neither adds wire
+methods/events or modifies SDK files. Both remain excluded from production.
+`strict` disables these adapters.
 
-- **Map:** original schematic generated around launcher-supplied RFC-0004 spawn
-  positions, hover cards, waypoint click and travel double click when advertised.
-  Native `0.2` calls `travel.start`; mock preview uses `camera.set`. Strict `0.1`
-  disables these intents and offers `world.load` at spawn.
-- **Places:** orbital destination seals, selection and world loading through IPC.
-- **Surfaces / Workspaces:** live state descriptors and explicit keyboard-focus
-  requests. Unsupported/hidden-workspace operations remain core decisions.
-- **Help:** input routing, desktop escape, movement mode, light/dark presentation,
-  reduced motion and optional warp sound.
-- **What's new:** the M0 changes and the preview's limitations.
+## Real-core check
 
-Tab moves focus, Left/Right changes view, and Esc unmaps the Director and releases
-exclusivity. A visible, keyboard-accessible **Return to desktop** button invokes
-`runtime.exit`; it does not terminate the compositor. Core's independent emergency
-binding must remain available even when no shell or daemon is alive.
+Build core and generate its fixtures per `../core/README.md`, then:
 
-[dev/warp-scenario.json](dev/warp-scenario.json) stages departing, transit, approach
-and arrival over 5.8 seconds. A mock-daemon decorator delays activation and emits
-schema-valid `runtime.notice` frames with the dev-only code
-`dev.location.transition`. The preview bridge validates the JSON message against
-its local presentation schema. This is an explicit development adapter, **not an
-additional IPC `0.1` event**. Only a new negotiated protocol can introduce the
-proposed production `location.transition` event.
+```sh
+./dev/run core-check
+```
 
-Mock world travel and workspace focus that maps to another world use the same jump
-scenario. The warp closes the Director, shows accelerating star streaks with
-layered soft/chromatic edges, destination text and authoritative progress, then
-waits for the destination in the state stream before declaring arrival. Disconnect,
-revocation, exit and failure clear it. Reduced motion uses a static destination
-card with progress. Sound is off by default: optionally set `HYPRUNE_WARP_SOUND`
-to an original local audio file and enable it in Help (`pw-play` is the hook).
+This starts another isolated nested compositor and the actual built plugin /
+`hypruned`, with memory-only launch grants. Its controller checks PID/start time,
+config, lock identity and child Wayland display before every control command.
+It verifies native 0.2 hold timing, exclusive refusal, timed travel, passive warp,
+arrival, pending world loading and F12 during a jump. No association emulator or
+presentation fixture is supplied to this shell.
 
-Native `0.2` reads `location.transition` from committed snapshots/deltas and treats
-transient events as hints tied to session/revision. It uses core's stable operation
-ID and matching output, shows indeterminate loading without a percentage, and
-handles world destinations, point/zone travel, cancellation and failure. A join
-mid-jump resumes its presentation; terminal reconnect snapshots do not replay it.
-Arrival waits for the matching committed revision and destination world. Zone
-banners use authoritative pose against supplied zone bounds. Native 0.2 is covered
-by schema-backed wire tests; real-core interactive integration is still pending.
+Two current core startup issues require documented test setup: its bind creates
+an owned 0700 socket, which this verified harness changes to the RFC's 0600, and
+method advertisement arrives shortly after the socket becomes visible. The
+harness allows startup to settle before consuming a launch token. The production
+bridge continues requiring 0600 and honoring the actual hello profile.
+`HYPRUNE_CORE_DIR` selects another core checkout. Results/logs stay in ignored
+`dev/.run/core/`.
+
+## Director and HUD
+
+The HUD shows a compass, shared schematic minimap, zone-entered titles, notices,
+and core-owned input hints on the leased world monitor only. Pose/heading and
+explicit projected samples use separate bounded 70 ms interpolation buffers.
+Reduced motion bypasses interpolation. Projection, vehicle and backdrop are
+explicit dev fixtures; the onboarding checklist is shell-owned guidance, not a
+world quest API.
+
+- **Map:** trusted launcher manifest spawns, hover cards, click to set a waypoint,
+  double click to `travel.start`, and an explicit arrive/reload at spawn action.
+  M1 Target coordinates are eye positions; manifest spawns place capsule feet,
+  so spawn targets use M1's documented-in-core 1.7 m eye offset. A future contract
+  should provide a resolved spawn Target rather than requiring that convention.
+- **Places:** orbital seals, destinations and native world loading.
+- **Surfaces / Workspaces:** state descriptors and explicit `surface.focus` intent.
+  Unsupported/hidden-workspace operations remain core decisions. Workspace travel
+  mapping exists only in the named development adapter.
+- **Help:** input routing, desktop escape, movement mode, theme, reduced motion,
+  and optional warp sound.
+- **What's new:** the original interface and current milestone.
+
+Tab moves focus, Left/Right changes view, Esc dismisses via `ui.close`, and the
+keyboard-accessible **Return to desktop** button invokes `runtime.exit`.
+Core's independent F12 escape remains available even without shell or daemon.
+The Director maps only after accepted `shell.overlay` exclusivity. HUD and warp
+layers have empty pointer regions and no keyboard focus.
+
+## Warp
+
+Core and SDK native transition IDs, leased output, phase, progress, destination
+and session/revision drive the overlay. Valid loading hints can present while a
+world-load RPC is pending without modifying the state baseline. Arrival waits
+for the matching committed state revision and destination world. Revision gaps
+suppress hints until resync; reconnect resumes in-flight state and never replays
+terminal snapshots.
+
+World loading shows an indeterminate card, accelerating streaks and **LOADING**.
+Point/zone travel shows actual core progress with eased presentation and an
+approach deceleration. Failure, cancellation, exit, lease loss or disconnect clear
+the overlay. Reduced motion uses a static card; point travel requests zero duration.
+Sound is off by default. Optionally set `HYPRUNE_WARP_SOUND` to an original local
+audio file and enable it in Help; `pw-play` plays once on the world output.
+
+The scenario gives mock worlds a 5.8 s native load delay. The shell invents no
+loading percentage or readiness. No file polling drives presentation.
 
 ## IPC bridge and trusted launch
 
-`bridge/launch.py` starts Quickshell and a private 0600 presentation socket in a
-0700 directory beneath `XDG_RUNTIME_DIR`. QML uses `Quickshell.Io.Socket` with
-newline JSON; the Python bridge owns the separate binary core connection.
-Quickshell's socket API reads/writes strings, so a helper keeps the four-byte
-big-endian prefix, UTF-8 byte lengths, partial reads, malformed transport checks,
-SO_PEERCRED and offline schema validation out of QML's UI loop. The SDK's Node
-client cannot be imported into QML; no second core daemon is created.
+`bridge/launch.py` supervises Quickshell and a private 0600 newline-JSON socket in
+a 0700 runtime directory. QML uses `Quickshell.Io.Socket`; the Python helper owns
+the separate binary core connection. A helper handles four-byte big-endian
+framing, UTF-8 byte lengths, partial reads, bounded transport, SO_PEERCRED and
+pinned offline schemas outside the UI loop. Node SDK modules cannot be imported
+into QML. This helper is shell transport, not another core daemon.
 
-`HYPRUNE_SOCKET` / `--socket` can select the public socket; otherwise it defaults to
-`$XDG_RUNTIME_DIR/hyprune/$HYPRLAND_INSTANCE_SIGNATURE/control.sock`.
-Unsafe/unset instance names are refused. There is no `/tmp` fallback. A trusted
-supervisor launches the bridge with a fresh one-shot token on `HYPRUNE_TOKEN_FD`
-(or `--token-fd`), never token text in argv, QML, logs or a file. Labels and package
-hints are supplied explicitly, for example:
+A trusted supervisor provides a new one-use token on `HYPRUNE_TOKEN_FD`, never
+credential text in argv, QML, logs or files. Ratified `HYPRUNE_SOCKET`,
+`HYPRUNE_PROTOCOL` and `HYPRUNE_CLIENT_ID` are supported, with explicit overrides:
 
 ```sh
-# The supervisor provides the token FD and the actual world output identity.
 python3 bridge/launch.py \
-  --protocol 0.2 \
+  --protocol 0.2 --client-id com.hyprune.shell \
   --output opaque-core-output=DP-1 \
   --world-package /approved/package/world.json
 ```
 
-`HYPRUNE_PROTOCOL` can also choose the exact production version; no automatic
-upgrade occurs. The bridge requests the six shell grants and honors the returned subset and
-methods/events. Reconnect uses a new token, a fresh subscription/snapshot and new
-leases. Mutations are never replayed. Delta gaps suspend application until an
-atomic snapshot response resets the baseline. Responses match both request IDs
-and their method result schema, including replies that precede coalesced state.
+The default socket is
+`$XDG_RUNTIME_DIR/hyprune/$HYPRLAND_INSTANCE_SIGNATURE/control.sock`.
+Unset/unsafe instance names are refused; there is no `/tmp` fallback. Output
+bindings are trusted hints intersected with runtime membership and actual screens.
+The shell requests the six shell grants, honors returned methods/capabilities,
+and does not request `data.publish`. Integration state remains revisioned.
 
-The local development supervisor wraps the SDK's mock API and renews one token
-per connection over duplex FD 3 (`renew\n` -> token line). This private launcher
-convention is not ratified by the RFC. The SDK CLI's single-use FD also works for
-the first connection; authenticated reconnect requires a renewing supervisor.
-The `--mock-preview` flag requires an explicit `--presentation` fixture; it is
-never silently negotiated with production core. Native `ui.close` dismisses 0.2
-panels; mapping still requires accepted `shell.overlay` exclusivity.
+Reconnect obtains a new token, snapshot/subscription and leases; mutations are
+never replayed. Responses match request IDs and method-specific result schemas.
+Delta gaps suspend replacement application and request an atomic snapshot.
+Transient events with old sessions/revisions are discarded. UI request generations
+prevent coalesced open/close events or late replies from reopening a dismissed UI.
+
+The local mock supervisor renews tokens over duplex FD 3 (`renew\n` -> token line).
+This reissue convention remains development-only; a one-shot FD supports initial
+authentication, while production renewal needs a supervisor contract.
 
 ## Fork the presentation
 
 | Path | Responsibility |
 | --- | --- |
-| `bridge/protocol.py` | Pinned offline schemas and byte framing |
-| `bridge/client.py` | Session, capabilities, revision state and leases |
-| `bridge/launch.py` | Token FD, supervised UI and local presentation channel |
-| `qml/ShellState.qml` | Presentation store and 70 ms interpolation buffers |
-| `qml/theme/Tokens.qml` | Colors, typefaces, spacing, motion and sound preference |
-| `qml/components/Director*.qml` | One component for each Director view |
-| `qml/components/MapView.qml` | Shared chart/minimap and marker interactions |
-| `qml/components/Hud.qml` | HUD composition; objective, vehicle, notice and prompt presentation |
-| `qml/components/Warp.qml` | Full-screen transition presentation, without input authority |
-| `qml/components/Seal.qml`, `Constellation.qml`, `Reveal.qml` | Original graphics and reveal motion |
-| `dev/` | Isolated compositor, SDK supervisor, scenarios and capture loop |
+| `bridge/protocol.py` | Pinned 0.1 / 0.2 offline validation and framing |
+| `bridge/client.py` | Session, grants, state revisions, leases and native presentation |
+| `bridge/launch.py` | Token FD, supervised UI and private presentation socket |
+| `qml/ShellState.qml` | Presentation store, interpolation and arrival gating |
+| `qml/theme/Tokens.qml` | Colors, fonts, spacing, motion and sound preference |
+| `qml/components/Director*.qml` | One component per Director view |
+| `qml/components/MapView.qml` | Shared schematic/minimap and interactions |
+| `qml/components/Hud.qml` | HUD, onboarding, notices, prompts and dev vehicle |
+| `qml/components/Warp.qml` | Passive transition graphics |
+| `Seal.qml`, `Constellation.qml`, `Reveal.qml` | Original graphics and reveal motion |
+| `dev/` | Locked SDK/core harnesses, scenarios and review capture |
 
-Alternative shells can reuse the protocol behavior without importing this
-presentation. Change tokens or replace components rather than placing UI in
-world packages. The development backdrop, projected marker samples, vehicle
-readout and preview quest checklist are fixtures; they do not pretend to be
-camera, vehicle or gameplay state from production core. Local manifest metadata
-is a trusted launcher hint, not a filesystem discovery or polling mechanism.
+Alternative shells can reuse protocol behavior without importing this look.
+Manifest hints are approved reads once, not filesystem discovery. M0 preferences
+are session-local. No executable extension, world art/physics, compositor hook,
+or invented approval API is shipped here.
 
-M0 settings are session-local. Extension approval is deliberately absent: no
-public approval RPC exists and no third-party executable extension is launched.
-World art, physics, window pixels and compositor hooks stay outside this repository.
-
-## Validation and license
-
-See [VERIFICATION.md](VERIFICATION.md) for tested versions, screenshots, codec
-checks and remaining limits. Schema provenance is pinned in `protocol/SOURCE.json`
-and `protocol/MOCK-SOURCE.json`, with 0.2 provenance in `protocol/v0.2/SOURCE.json`;
-vendored schema files retain their MIT license.
-
-MIT; see [LICENSE](LICENSE). All shell iconography and procedural graphics are
-original. The prototype was used for design lessons and visual ideas only.
+See [VERIFICATION.md](VERIFICATION.md) for results and gallery paths,
+[NOTES-rfc-gaps.md](NOTES-rfc-gaps.md) for deferred contracts and core interop issues.
+Schema provenance is in `protocol/SOURCE.json` and `protocol/v0.2/SOURCE.json`.
+MIT; vendored schemas retain their license. All shell graphics are original.
