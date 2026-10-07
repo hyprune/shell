@@ -14,7 +14,7 @@ import signal
 import stat
 import tempfile
 from client import Client
-from protocol import decode, WORLD_VALIDATOR
+from protocol import decode, WORLD_VALIDATOR, WORLD_V2_VALIDATOR
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +41,7 @@ def catalog(paths):
     for path in paths:
         manifest = Path(path)
         obj = decode(manifest.read_bytes())
-        WORLD_VALIDATOR.validate(obj)
+        (WORLD_V2_VALIDATOR if obj.get('formatVersion') == '0.2' else WORLD_VALIDATOR).validate(obj)
         result.append(obj)
     return result
 
@@ -81,8 +81,9 @@ async def main(args):
             elif not writer.is_closing(): writer.write(line)
 
     bindings = dict(pair.split('=', 1) for pair in args.output)
-    client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.mock_preview)
+    client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.mock_preview, args.protocol)
     worlds = catalog(args.world_package)
+    client.worlds = worlds
     emit({'type': 'catalog', 'worlds': worlds})
     fixture = json.loads(Path(args.presentation).read_text()) if args.presentation else None
     if fixture: emit({'type': 'presentation', **fixture})
@@ -102,7 +103,8 @@ async def main(args):
                 await client.overlay(False)
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
-                if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] + (['waypoint.set', 'camera.set'] if args.mock_preview else [])):
+                if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
+                        (['waypoint.set', 'camera.set'] if args.mock_preview else ['waypoint.set', 'travel.start', 'travel.cancel'] if args.protocol == '0.2' else [])):
                     raise ValueError('Unknown shell action')
                 result = await client.call(cmd['method'], cmd['params'])
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
@@ -203,7 +205,8 @@ async def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--socket')
+    parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
+    parser.add_argument('--protocol', choices=['0.1', '0.2'], default=os.environ.get('HYPRUNE_PROTOCOL', '0.1'), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')
@@ -212,5 +215,6 @@ if __name__ == '__main__':
     parser.add_argument('--tour', action='store_true')
     args = parser.parse_args()
     if args.mock_preview and not args.presentation: parser.error('--mock-preview requires --presentation')
+    if args.mock_preview and args.protocol != '0.1': parser.error('Mock preview and production 0.2 are separate contracts')
     try: asyncio.run(main(args))
     except KeyboardInterrupt: pass

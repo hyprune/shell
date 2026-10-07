@@ -10,15 +10,17 @@ from referencing import Registry, Resource
 LIMIT = 1_048_576
 ROOT = Path(__file__).resolve().parents[1] / 'protocol'
 registry = Registry()
-for path in ROOT.glob('*.schema.json'):
+for path in ROOT.rglob('*.schema.json'):
     schema = json.loads(path.read_text())
     registry = registry.with_resource(schema['$id'], Resource.from_contents(schema))
 SCHEMA = json.loads((ROOT / 'ipc.schema.json').read_text())
 VALIDATOR = Draft202012Validator(SCHEMA, registry=registry)
 MOCK_SCHEMA = json.loads((ROOT / 'mock-preview.schema.json').read_text())
 MOCK_VALIDATOR = Draft202012Validator(MOCK_SCHEMA, registry=registry)
+V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/ipc.schema.json').read_text()), registry=registry)
 TRANSITION_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'presentation-transition.schema.json').read_text()))
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
+WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
 
 def unique(pairs):

@@ -2,13 +2,14 @@
 import asyncio
 import contextlib
 import itertools
+import json
 import random
 import os
 from pathlib import Path
 import socket
 import stat
 import struct
-from protocol import frame, read_frame, validate_response, VALIDATOR, MOCK_VALIDATOR
+from protocol import frame, read_frame, validate_response, VALIDATOR, MOCK_VALIDATOR, V2_VALIDATOR
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
@@ -16,11 +17,15 @@ REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot'
 
 
 class Client:
-    def __init__(self, path, emit, token_source=None, bindings=None, mock_preview=False):
+    def __init__(self, path, emit, token_source=None, bindings=None, mock_preview=False, protocol='0.1'):
         self.path, self.emit, self.token_source = path, emit, token_source
         self.bindings = bindings or {}
-        self.protocol = '0.1-mock.1' if mock_preview else '0.1'
-        self.validator = MOCK_VALIDATOR if mock_preview else VALIDATOR
+        if protocol not in ['0.1', '0.2']: raise ValueError('Unsupported core protocol')
+        self.protocol = '0.1-mock.1' if mock_preview else protocol
+        self.validator = MOCK_VALIDATOR if mock_preview else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
+        self.worlds = []
+        self.native_transition = None
+        self.transition_signature = None
         self.metadata = None
         self.screens = []
         self.pending = {}
@@ -34,6 +39,7 @@ class Client:
         self.resyncing = False
         self.director = False
         self.overlay_revision = -1
+        self.ui_epoch = 0
         self.ready = False
         self.stopping = False
         self.write_lock = asyncio.Lock()
@@ -68,6 +74,49 @@ class Client:
         self.emit({'type': 'state', 'state': self.state, 'revision': self.revision,
                    'lease': self.lease, 'output': self.output,
                    'screen': self.bindings.get(self.output), 'director': self.director})
+        self.present_location()
+
+    def present_location(self):
+        # 0.2 transient events are hints. The revisioned snapshot/delta is the
+        # baseline, including a join mid-jump; never replay a terminal snapshot.
+        if self.protocol != '0.2': return
+        transition = self.state.get('location', {}).get('transition') if self.state else None
+        eligible = self.ready and self.lease and self.state and self.state['runtime']['active']
+        if not eligible or not transition or transition['outputId'] != self.output:
+            if self.native_transition: self.emit({'type': 'transition.clear'})
+            self.native_transition = self.transition_signature = None
+            return
+        signature = json.dumps(transition, sort_keys=True)
+        if signature == self.transition_signature: return
+        self.transition_signature = signature
+        phase = transition['phase']
+        new = not self.native_transition or self.native_transition['id'] != transition['id']
+        if new and phase in ['arrived', 'cancelled', 'failed']: return
+        target = transition['to']
+        if new:
+            name = 'Selected coordinate'
+            world_id = target.get('worldId') or self.state['world']['id']
+            world = next((w for w in self.worlds if w['id'] == world_id), None)
+            if 'worldId' in target:
+                name = world['name'] if world else world_id
+            elif 'zoneId' in target:
+                zone = next((z for z in self.state['location']['zones'] if z['id'] == target['zoneId']), None)
+                name = zone['name'] if zone else target['zoneId']
+            else:
+                spawn = next((s for s in world['spawns'] if s['pose']['position'] == target['position']), None) if world else None
+                if spawn: name = spawn['id'].replace('-', ' ').title()
+            self.native_transition = {'id': transition['id'],
+                                      'to': {'id': world_id, 'name': name, 'subtitle': 'LOCATION / CORE TRAVEL'}}
+            self.emit({'type': 'transition', 'id': transition['id'], 'phase': 'departing',
+                       'progress': transition['progress'] or 0, 'to': self.native_transition['to'],
+                       'revision': self.revision, 'indeterminate': transition['progress'] is None})
+            if self.director: self.spawn(self.overlay(False))
+        mapped = {'loading': 'loading', 'departing': 'departing', 'travelling': 'transit',
+                  'arrived': 'arrived', 'cancelled': 'failed', 'failed': 'failed'}[phase]
+        if phase != 'departing' or not new:
+            self.emit({'type': 'transition', 'id': transition['id'], 'phase': mapped,
+                       'progress': transition['progress'] or 0, 'to': self.native_transition['to'],
+                       'revision': self.revision, 'indeterminate': transition['progress'] is None})
 
     def snapshot(self, snapshot):
         if snapshot['sessionId'] != self.session:
@@ -107,6 +156,8 @@ class Client:
             if msg['method'] not in self.hello.get('events', []):
                 raise ValueError('unadvertised event')
             p = msg['params']
+            if self.protocol == '0.2' and msg['method'] in ['location.transition', 'ui.opened', 'ui.closed', 'data.updated'] and p['sessionId'] != self.session:
+                raise ValueError('presentation event identity mismatch')
             if msg['method'] == 'session.revoked':
                 raise RuntimeError('Session revoked: ' + p['reason'])
             if msg['method'] == 'runtime.notice':
@@ -123,8 +174,18 @@ class Client:
                 self.metadata = p
                 self.emit({'type': 'metadata', **p})
             elif msg['method'] == 'ui.opened':
-                if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] == 'director':
+                if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] in ['director', 'overview'] and (self.protocol != '0.2' or p['revision'] >= self.overlay_revision):
                     self.spawn(self.overlay(True))
+            elif msg['method'] == 'ui.closed':
+                if p['leaseId'] == self.lease and p['outputId'] == self.output and p['revision'] >= self.overlay_revision:
+                    self.ui_epoch += 1
+                    self.overlay_revision = p['revision']
+                    self.director = False
+                    self.emit({'type': 'director', 'open': False})
+            elif msg['method'] == 'location.transition':
+                # publish() consumes the matching committed location key. Do
+                # not show uncommitted/future event progress across a delta gap.
+                if not self.resyncing and p['revision'] <= self.revision: self.present_location()
             elif msg['method'] == 'state.delta':
                 if p['subscriptionId'] != self.subscription or p['sessionId'] != self.session:
                     raise ValueError('delta identity mismatch')
@@ -198,20 +259,27 @@ class Client:
             if not self.lease or not self.ready:
                 raise RuntimeError('Director unavailable: no authenticated output lease')
             if not visible:
+                self.ui_epoch += 1
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
+            epoch = self.ui_epoch
             try:
-                result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
-                                                           'visible': visible, 'exclusiveInput': visible})
+                if not visible and self.protocol == '0.2' and 'ui.close' in self.hello['methods']:
+                    result = await self.call('ui.close', {'leaseId': self.lease, 'outputId': self.output})
+                else:
+                    result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                               'visible': visible, 'exclusiveInput': visible})
             except Exception:
                 # Closing a failed grab must clear authority even if its RPC fails.
                 if not visible and self.writer: self.writer.close()
                 raise
             # State may lag a committed reply; only a later authoritative delta can revoke.
-            if visible and self.lease and self.state['runtime']['active']:
+            if visible and epoch == self.ui_epoch and self.lease and self.state['runtime']['active']:
                 self.overlay_revision = result['revision']
                 self.director = True
                 self.emit({'type': 'director', 'open': True, 'revision': result['revision']})
+            elif visible and epoch != self.ui_epoch:
+                self.spawn(self.overlay(False))
 
     async def run(self):
         backoff = .25
