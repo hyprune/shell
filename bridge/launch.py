@@ -78,7 +78,7 @@ async def main(args):
             if writer.transport.get_write_buffer_size() > 4 * 1024 * 1024:
                 writer.close()
                 peers.discard(writer)
-            else: writer.write(line)
+            elif not writer.is_closing(): writer.write(line)
 
     bindings = dict(pair.split('=', 1) for pair in args.output)
     client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.mock_preview)
@@ -93,6 +93,28 @@ async def main(args):
         else:
             await client.overlay(True)
 
+    async def perform(cmd):
+        try:
+            if cmd['type'] == 'screens':
+                client.screens = cmd['names']
+                await client.reconcile()
+            elif cmd['type'] == 'close':
+                await client.overlay(False)
+            elif cmd['type'] == 'action':
+                # QML can request only the published intent methods.
+                if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] + (['waypoint.set', 'camera.set'] if args.mock_preview else [])):
+                    raise ValueError('Unknown shell action')
+                result = await client.call(cmd['method'], cmd['params'])
+                emit({'type': 'action', 'method': cmd['method'], 'result': result})
+            elif cmd['type'] == 'dev.warp' and args.mock_preview:
+                await client.call('world.load', {'worldId': cmd['worldId']})
+            elif cmd['type'] == 'dev.open' and fixture:
+                await open_preview()
+            else:
+                raise ValueError('Unknown presentation command')
+        except Exception as error:
+            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': str(error)})
+
     async def peer(reader, writer):
         creds = writer.get_extra_info('socket').getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
         import struct
@@ -100,32 +122,22 @@ async def main(args):
             writer.close()
             return
         peers.add(writer)
+        commands = set()
         for event in cache.values(): writer.write((json.dumps(event) + '\n').encode())
         try:
             while line := await reader.readline():
                 cmd = decode(line)
-                try:
-                    if cmd['type'] == 'screens':
-                        client.screens = cmd['names']
-                        await client.reconcile()
-                    elif cmd['type'] == 'close':
-                        await client.overlay(False)
-                    elif cmd['type'] == 'action':
-                        # QML can request only the published intent methods.
-                        if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] + (['waypoint.set', 'camera.set'] if args.mock_preview else [])):
-                            raise ValueError('Unknown shell action')
-                        result = await client.call(cmd['method'], cmd['params'])
-                        emit({'type': 'action', 'method': cmd['method'], 'result': result})
-                    elif cmd['type'] == 'dev.warp' and args.mock_preview:
-                        await client.call('world.load', {'worldId': cmd['worldId']})
-                    elif cmd['type'] == 'dev.open' and fixture:
-                        await open_preview()
-                    else:
-                        raise ValueError('Unknown presentation command')
-                except Exception as error:
-                    emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': str(error)})
+                if len(commands) >= 64:
+                    raise ConnectionError('Presentation command queue overflow')
+                task = asyncio.create_task(perform(cmd))
+                commands.add(task)
+                task.add_done_callback(commands.discard)
                 await writer.drain()
+        except (ConnectionError, asyncio.IncompleteReadError):
+            pass
         finally:
+            for task in tuple(commands): task.cancel()
+            await asyncio.gather(*commands, return_exceptions=True)
             peers.discard(writer)
             writer.close()
             with contextlib.suppress(Exception): await client.overlay(False)
@@ -149,6 +161,7 @@ async def main(args):
             emit({'type': 'dev.tab', 'index': index})
             await asyncio.sleep(4)
         await client.overlay(False)
+        if args.mock_preview: await client.call('world.load', {'worldId': 'com.hyprune.garden'})
 
     async def projection_preview():
         # Synthetic projection samples supplied by a dev camera fixture, never
@@ -159,7 +172,7 @@ async def main(args):
                 emit({'type': 'projection', 'markers': [
                     {**m, 'x': m['x'] + .016 * math.sin(elapsed / 2.8),
                      'y': m['y'] + .007 * math.cos(elapsed / 3)}
-                    for m in fixture.get('markers', [])]})
+                    for m in (fixture.get('markers', []) if not fixture.get('worldId') or client.state['world']['id']==fixture['worldId'] else [])]})
             await asyncio.sleep(.1)
 
     projecting = asyncio.create_task(projection_preview())
@@ -180,6 +193,7 @@ async def main(args):
         await asyncio.gather(task, touring, projecting, return_exceptions=True)
         if renewal_fd is not None: os.close(renewal_fd)
         server.close()
+        for writer in tuple(peers): writer.close()
         await server.wait_closed()
         if child.returncode is None:
             child.terminate()

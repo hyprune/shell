@@ -40,6 +40,7 @@ class Client:
         self.ui_lock = asyncio.Lock()
         self.lease_seen = False
         self.claim_blocked = False
+        self.tasks = set()
 
     async def call(self, method, params, bootstrap=False):
         if not self.writer or (not bootstrap and method not in self.hello.get('methods', [])):
@@ -239,7 +240,10 @@ class Client:
                 self.subscription = result['subscriptionId']
                 self.ready = True
                 self.emit({'type': 'connection', 'status': 'live'})
-                await self.reconcile()
+                try:
+                    await self.reconcile()
+                except RuntimeError as error:
+                    self.emit({'type':'notice','level':'warning','code':'shell.lease','message':str(error)})
                 backoff = .25
                 heartbeat = asyncio.create_task(self.heartbeat())
                 done, _ = await asyncio.wait([reader_task, heartbeat], return_when=asyncio.FIRST_COMPLETED)

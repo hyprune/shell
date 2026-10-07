@@ -17,7 +17,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=self.tmp.name+'/core.sock'
         self.events=[];self.calls=[];self.peers=[];self.state=copy.deepcopy(STATE);self.revision=0
-        self.connections=0;self.tokens=0;self.revoked=False;self.hold_overlay_delta=False;self.snapshot_requests=0
+        self.connections=0;self.tokens=0;self.revoked=False;self.hold_overlay_delta=False;self.snapshot_requests=0;self.reverse_responses=False;self.held=None;self.claim_conflict=False
         async def token():self.tokens+=1;return format(self.tokens,'064x')
         self.client=Client(self.path,self.events.append,token,{'world':'TEST'})
         self.client.screens=['TEST']
@@ -48,6 +48,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                     self.snapshot_requests+=1
                     result={'snapshot':{'sessionId':'session','revision':self.revision,'state':self.state}}
                 elif method=='shell.claim':
+                    if self.claim_conflict:
+                        writer.write(frame({'jsonrpc':'2.0','id':msg['id'],'error':{'code':-32004,'message':'Output already claimed'}}));await writer.drain();continue
                     self.assertEqual(p['outputs'],['world'])
                     self.state['shell']={'leases':[{'id':'lease-'+str(self.connections),'outputs':['world'],'overlays':[]}]}
                     result={'leaseId':'lease-'+str(self.connections),'revision':revision+1};self.revision+=1
@@ -66,6 +68,9 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                     data+=frame(self.delta(revision,self.revision,{'movement':self.state['movement']}))
                 elif method in ['shell.claim','shell.overlay','shell.release'] and not (method=='shell.overlay' and self.hold_overlay_delta):
                     data+=frame(self.delta(revision,self.revision,{'shell':self.state['shell']}))
+                if self.reverse_responses and method in ['session.ping','movement.set']:
+                    if self.held is None:self.held=data;continue
+                    data+=self.held;self.held=None;self.reverse_responses=False
                 writer.write(data);await writer.drain()
         except (asyncio.IncompleteReadError,ConnectionError):pass
         finally:writer.close()
@@ -86,6 +91,27 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.peers[-1].write(frame(self.delta(self.client.revision,self.revision,{'shell':self.state['shell']})))
         await self.until(lambda:self.client.revision==self.revision)
         self.assertTrue(self.client.director)
+    async def test_response_order_is_independent_of_call_order(self):
+        self.reverse_responses=True
+        ping=asyncio.create_task(self.client.call('session.ping',{}))
+        movement=asyncio.create_task(self.client.call('movement.set',{'modeId':'com.hyprune.fly'}))
+        self.assertEqual(await ping,{'monotonicMs':10})
+        self.assertIn('revision',await movement)
+    async def test_second_shell_conflict_does_not_retry_or_evict(self):
+        owner=self.client.lease
+        self.claim_conflict=True
+        second=Client(self.path,self.events.append,bindings={'world':'TEST'})
+        second.screens=['TEST']
+        task=asyncio.create_task(second.run())
+        try:
+            await self.until(lambda:second.claim_blocked)
+            count=sum(m=='shell.claim' for m,p in self.calls)
+            await asyncio.sleep(.3)
+            self.assertEqual(sum(m=='shell.claim' for m,p in self.calls),count)
+            self.assertIsNone(second.lease)
+            self.assertEqual(self.client.lease,owner)
+        finally:
+            task.cancel();await asyncio.gather(task,return_exceptions=True)
     async def test_gap_resync_drops_stale_delta(self):
         p=self.peers[-1]
         new={**self.state['movement'],'position':[4,2,-3]}
