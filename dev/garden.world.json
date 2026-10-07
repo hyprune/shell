@@ -1,0 +1,35 @@
+{
+  "formatVersion": "0.1",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scene": "scene.gltf",
+  "attribution": [
+    {
+      "path": ".",
+      "author": "Hyprune shell contributors",
+      "license": "MIT"
+    }
+  ],
+  "defaultSpawn": "arrival",
+  "id": "com.hyprune.garden",
+  "name": "The quiet garden",
+  "description": "A slower orbit. Leave a little space between your ideas.",
+  "spawns": [
+    {
+      "id": "arrival",
+      "pose": {
+        "position": [
+          0,
+          1.7,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    }
+  ]
+}

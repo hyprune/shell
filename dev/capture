@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=$(cd -- "$(dirname -- "$0")/.." && pwd)
+: "${HYPRUNE_SHELL_PID:?Use dev/run capture, under the nested-session lock}"
+: "${HYPRLAND_INSTANCE_SIGNATURE:?Missing isolated instance}"
+: "${WAYLAND_DISPLAY:?Missing isolated display}"
+GALLERY=${HYPRUNE_GALLERY_DIR:-$HOME/hyprune-gallery}
+SHOTS="$GALLERY/screenshots/hyprune-shell-m0"
+mkdir -p "$SHOTS" "$GALLERY/videos"
+ipc() { qs ipc --pid "$HYPRUNE_SHELL_PID" call preview "$@"; }
+shot() { grim -o HYPRUNE-PREVIEW "$SHOTS/$1.png"; }
+record_pid=''
+cleanup() { if [[ -n "$record_pid" ]]; then kill -INT "$record_pid" 2>/dev/null || true; wait "$record_pid" || true; fi; }
+trap cleanup EXIT
+for ((i=0;i<50;i++)); do status=$(ipc status 2>/dev/null || true); [[ "$status" == *'"status":"live"'* && "$status" == *'"lease":"'* && "$status" != *'"lease":""'* ]] && break; sleep .1; done
+[[ "$status" == *'"status":"live"'* ]] || { cat "$ROOT/dev/.run/shell.log"; exit 1; }
+# All calls below explicitly target the new nested signature or exact child PID.
+hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" eval 'hl.dispatch(hl.dsp.cursor.move({x=3180,y=1040}))' >/dev/null
+sleep 1
+if [[ ${HYPRUNE_SKIP_RECORD:-0} != 1 ]]; then
+    wf-recorder -y -o HYPRUNE-PREVIEW -D -r 30 -c libx264 -x yuv420p -p crf=20 -f "$ROOT/dev/.run/raw.mp4" > "$ROOT/dev/.run/recorder.log" 2>&1 &
+    record_pid=$!
+fi
+ipc zone
+sleep 1
+shot hud
+sleep 3
+ipc open
+sleep 1
+status=$(ipc status)
+[[ "$status" == *'"director":true'* ]] || { echo "Director did not open: $status" >&2; exit 1; }
+shot map
+ipc select 1
+sleep 1
+shot map-waypoint
+ipc travel 1
+sleep 2
+for pair in '1 places' '2 surfaces' '3 workspaces' '4 help' '5 whats-new'; do
+    read -r index name <<< "$pair"
+    ipc tab "$index"
+    sleep 1
+    shot "$name"
+    sleep 2
+done
+ipc warp
+sleep 1
+shot warp-departure
+sleep 1
+shot warp-transit
+sleep 2
+shot warp-approach
+sleep 2.1
+shot warp-arrival
+sleep 2
+if [[ -n "$record_pid" ]]; then
+    kill -INT "$record_pid"
+    wait "$record_pid"
+    record_pid=''
+    ffmpeg -y -loglevel warning -i "$ROOT/dev/.run/raw.mp4" -vf 'scale=1920:1080:in_range=pc:out_range=tv,fps=30' -c:v libx264 -crf 21 -preset medium -pix_fmt yuv420p -color_range tv -movflags +faststart -an "$GALLERY/videos/hyprune-shell-m0.mp4"
+    cat > "$GALLERY/videos/hyprune-shell-m0.json" <<'JSON'
+{"title":"Hyprune shell M0","tag":"shell","notes":"Original Quickshell Director and HUD in isolated nested Hyprland at 1080p. Actual SDK hyprune-mock with opt-in 0.1-mock.1: daemon ui.opened, accepted exclusive overlay, waypoint.set and camera.set preview travel. Production defaults to exact IPC 0.1; native 0.2 UI and location/loading support is separately schema-tested. Projected samples, vehicle, objective checklist and backdrop are explicit development fixtures. All six Director views, original orbital iconography, and a full-screen world warp driven by schema-valid dev.location.transition notices from a mock scenario decorator. Arrival waits for confirmed world state; reduced motion and workspace jump are also available. Real-core exclusive input requires trusted Wayland-client association. No prototype code/assets or owner-session control commands."}
+JSON
+    ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt,width,height -show_entries format=duration,size -of json "$GALLERY/videos/hyprune-shell-m0.mp4" > "$ROOT/dev/.run/video-info.json"
+    python3 - "$ROOT/dev/.run/video-info.json" <<'PY'
+import json,sys
+x=json.load(open(sys.argv[1]));s=x['streams'][0];f=x['format']
+assert (s['codec_name'],s['pix_fmt'],s['width'],s['height'])==('h264','yuv420p',1920,1080)
+assert 20 <= float(f['duration']) <= 40
+assert int(f['size']) < 30_000_000
+print(json.dumps(x,indent=2))
+PY
+fi
+# Workspace-to-location mapping takes the same daemon-driven jump path.
+ipc workspaceWarp
+sleep 2
+shot warp-workspace
+sleep 6
+ipc open
+ipc tab 0
+ipc theme true
+sleep 1
+shot map-light
+ipc theme false
+# Keyboard routes through the nested seat; validate view navigation and Esc.
+wtype -k Right
+sleep .2
+status=$(ipc status)
+[[ "$status" == *'"tab":1'* ]] || { echo "Keyboard view navigation failed: $status"; exit 1; }
+wtype -k Escape
+sleep .3
+status=$(ipc status)
+[[ "$status" == *'"director":false'* ]] || { echo "Escape did not close the Director: $status"; exit 1; }
+ipc motion true
+ipc warp
+sleep 2
+shot warp-reduced-motion
+sleep 6
+ipc motion false
+kill -USR1 "$(cat "$ROOT/dev/.run/mock.pid")"
+sleep .1
+shot reconnect
+sleep 2
+ipc status > "$ROOT/dev/.run/reconnect-status.json"
+python3 - "$ROOT/dev/.run/reconnect-status.json" <<'PY'
+import json,sys
+s=json.load(open(sys.argv[1]));assert s['status']=='live' and s['lease'] and not s['director'];print('SDK disconnect -> fresh authenticated lease: PASS')
+PY
+ipc open
+sleep .3
+kill -USR2 "$(cat "$ROOT/dev/.run/mock.pid")"
+sleep 2
+ipc status > "$ROOT/dev/.run/revoke-status.json"
+python3 - "$ROOT/dev/.run/revoke-status.json" <<'PY'
+import json,sys
+s=json.load(open(sys.argv[1]));assert s['status']=='live' and s['lease'] and not s['director'];print('SDK revoke -> unmap, reauthenticate: PASS')
+PY
+if rg -n 'ERROR|Error|Traceback|failed|ReferenceError|TypeError' "$ROOT/dev/.run/shell.log" "$ROOT/dev/.run/background.log"; then exit 1; fi
+echo "Screenshots: $SHOTS"

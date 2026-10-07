@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=$(cd -- "$(dirname -- "$0")/.." && pwd)
+if [[ ${1:-} != --locked ]]; then
+    exec flock /tmp/worldshell-nested.lock "$0" --locked "$@"
+fi
+shift
+mode=${1:-live}
+export HYPRUNE_SHELL_ROOT="$ROOT"
+SDK=${HYPRUNE_SDK_DIR:-../sdk}
+[[ -f "$SDK/dist/src/mock-cli.js" ]] || { echo 'Build the SDK first: npm ci && npm run build in the SDK checkout' >&2; exit 1; }
+[[ -n ${XDG_RUNTIME_DIR:-} && -n ${WAYLAND_DISPLAY:-} ]] || { echo 'A parent Wayland display is required' >&2; exit 1; }
+outer_signature=${HYPRLAND_INSTANCE_SIGNATURE:-}
+outer_display=$WAYLAND_DISPLAY
+mkdir -p "$ROOT/dev/.run"
+rm -f "$ROOT/dev/.run/session.json"
+children=()
+cleanup() {
+    trap - EXIT INT TERM
+    for ((i=${#children[@]}-1;i>=0;i--)); do
+        kill "${children[i]}" 2>/dev/null || true
+        wait "${children[i]}" 2>/dev/null || true
+    done
+}
+trap cleanup EXIT INT TERM
+# Only connect the compositor window to the parent. Never run control commands there.
+env -u HYPRLAND_INSTANCE_SIGNATURE AQ_BACKEND=wayland Hyprland -c "$ROOT/dev/hyprland.lua" > "$ROOT/dev/.run/hyprland.log" 2>&1 &
+children+=("$!")
+for ((i=0;i<100;i++)); do [[ -s "$ROOT/dev/.run/session.json" ]] && break; sleep .1; done
+[[ -s "$ROOT/dev/.run/session.json" ]] || { cat "$ROOT/dev/.run/hyprland.log" >&2; exit 1; }
+readarray -t session < <(python3 - "$ROOT/dev/.run/session.json" <<'PY'
+import json,sys
+x=json.load(open(sys.argv[1]));print(x['HYPRLAND_INSTANCE_SIGNATURE']);print(x['WAYLAND_DISPLAY'])
+PY
+)
+export HYPRLAND_INSTANCE_SIGNATURE=${session[0]}
+export WAYLAND_DISPLAY=${session[1]}
+[[ "$HYPRLAND_INSTANCE_SIGNATURE" != "$outer_signature" && "$WAYLAND_DISPLAY" != "$outer_display" && -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] || { echo 'Refusing unsafe session target' >&2; exit 1; }
+hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" output create headless HYPRUNE-PREVIEW > "$ROOT/dev/.run/output.log"
+target_output=HYPRUNE-PREVIEW
+if [[ "$mode" != check && "$mode" != capture ]]; then
+    target_output=$(hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" monitors -j | python3 -c 'import json,sys; print(next(m["name"] for m in json.load(sys.stdin) if m["name"]!="HYPRUNE-PREVIEW"))')
+fi
+[[ "$target_output" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
+hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" eval "hl.dispatch(hl.dsp.focus({ monitor = \"$target_output\" }))" >/dev/null
+hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" dismissnotify -1 >/dev/null
+qs -p "$ROOT/dev/background.qml" --no-color > "$ROOT/dev/.run/background.log" 2>&1 &
+children+=("$!")
+launch=(python3 "$ROOT/bridge/launch.py" --output "output-main=$target_output" --world-package "$ROOT/dev/observatory.world.json" --world-package "$ROOT/dev/garden.world.json" --presentation "$ROOT/dev/presentation.json")
+if [[ "$mode" == preview || "$mode" == capture || "$mode" == tour ]]; then
+    export HYPRUNE_MOCK_PREVIEW=1
+    launch+=(--mock-preview)
+fi
+[[ "$mode" == tour ]] && launch+=(--tour)
+node "$ROOT/dev/mock-supervisor.mjs" "$ROOT/dev/scenario.json" "${launch[@]}" > "$ROOT/dev/.run/shell.log" 2>&1 &
+mock_pid=$!
+children+=("$mock_pid")
+echo "$mock_pid" > "$ROOT/dev/.run/mock.pid"
+# Process IDs and Wayland display are always scoped to this nested run.
+for ((i=0;i<100;i++)); do
+    bridge_pid=$(pgrep -P "$mock_pid" -f 'bridge/launch.py' || true)
+    [[ -n "$bridge_pid" ]] && shell_pid=$(pgrep -P "$bridge_pid" -x quickshell || pgrep -P "$bridge_pid" -x qs || true)
+    [[ -n ${shell_pid:-} ]] && break
+    sleep .1
+done
+[[ -n ${shell_pid:-} ]] || { cat "$ROOT/dev/.run/shell.log" >&2; exit 1; }
+export HYPRUNE_SHELL_PID=$shell_pid
+printf '%s\n' "$shell_pid" > "$ROOT/dev/.run/shell.pid"
+echo "Nested display: $WAYLAND_DISPLAY, shell PID: $shell_pid"
+if [[ "$mode" == capture ]]; then
+    "$ROOT/dev/capture"
+elif [[ "$mode" == check || "$mode" == check-window ]]; then
+    sleep 3
+    qs ipc --pid "$shell_pid" call preview status
+    qs ipc --pid "$shell_pid" call preview open
+    sleep 1
+    grim -o "$target_output" "$ROOT/dev/.run/first.png"
+    cat "$ROOT/dev/.run/shell.log"
+else
+    sleep 2
+    if [[ "$mode" != tour ]]; then qs ipc --pid "$shell_pid" call preview open; fi
+    wait "$mock_pid"
+fi

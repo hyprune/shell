@@ -1,0 +1,26 @@
+{
+  "dev": true,
+  "markers": [
+    {
+      "id": "atrium",
+      "name": "Arrival garden",
+      "x": 0.43,
+      "y": 0.46,
+      "distance": 24
+    },
+    {
+      "id": "archive",
+      "name": "The archive",
+      "x": 0.72,
+      "y": 0.37,
+      "distance": 46
+    }
+  ],
+  "vehicle": {
+    "active": true,
+    "name": "Kestrel",
+    "speed": 22,
+    "charge": 0.76
+  },
+  "worldId": "com.hyprune.observatory"
+}
