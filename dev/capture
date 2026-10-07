@@ -8,12 +8,13 @@ GALLERY=${HYPRUNE_GALLERY_DIR:-$HOME/hyprune-gallery}
 SHOTS="$GALLERY/screenshots/hyprune-shell-m0"
 mkdir -p "$SHOTS" "$GALLERY/videos"
 ipc() { qs ipc --pid "$HYPRUNE_SHELL_PID" call preview "$@"; }
+open() { kill -WINCH "$(cat "$ROOT/dev/.run/mock.pid")"; sleep .55; }
 shot() { grim -o HYPRUNE-PREVIEW "$SHOTS/$1.png"; }
 record_pid=''
 cleanup() { if [[ -n "$record_pid" ]]; then kill -INT "$record_pid" 2>/dev/null || true; wait "$record_pid" || true; fi; }
 trap cleanup EXIT
 for ((i=0;i<50;i++)); do status=$(ipc status 2>/dev/null || true); [[ "$status" == *'"status":"live"'* && "$status" == *'"lease":"'* && "$status" != *'"lease":""'* ]] && break; sleep .1; done
-[[ "$status" == *'"status":"live"'* ]] || { cat "$ROOT/dev/.run/shell.log"; exit 1; }
+[[ "$status" == *'"status":"live"'* && "$status" == *'"protocol":"0.2"'* ]] || { cat "$ROOT/dev/.run/shell.log"; exit 1; }
 # All calls below explicitly target the new nested signature or exact child PID.
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" eval 'hl.dispatch(hl.dsp.cursor.move({x=3180,y=1040}))' >/dev/null
 sleep 1
@@ -25,7 +26,7 @@ ipc zone
 sleep 1
 shot hud
 sleep 3
-ipc open
+open
 sleep 1
 status=$(ipc status)
 [[ "$status" == *'"director":true'* ]] || { echo "Director did not open: $status" >&2; exit 1; }
@@ -33,8 +34,6 @@ shot map
 ipc select 1
 sleep 1
 shot map-waypoint
-ipc travel 1
-sleep 2
 for pair in '1 places' '2 surfaces' '3 workspaces' '4 help' '5 whats-new'; do
     read -r index name <<< "$pair"
     ipc tab "$index"
@@ -58,7 +57,7 @@ if [[ -n "$record_pid" ]]; then
     record_pid=''
     ffmpeg -y -loglevel warning -i "$ROOT/dev/.run/raw.mp4" -vf 'scale=1920:1080:in_range=pc:out_range=tv,fps=30' -c:v libx264 -crf 21 -preset medium -pix_fmt yuv420p -color_range tv -movflags +faststart -an "$GALLERY/videos/hyprune-shell-m0.mp4"
     cat > "$GALLERY/videos/hyprune-shell-m0.json" <<'JSON'
-{"title":"Hyprune shell M0","tag":"shell","notes":"Original Quickshell Director and HUD in isolated nested Hyprland at 1080p. Actual SDK hyprune-mock with opt-in 0.1-mock.1: daemon ui.opened, accepted exclusive overlay, waypoint.set and camera.set preview travel. Production defaults to exact IPC 0.1; native 0.2 UI and location/loading support is separately schema-tested. Projected samples, vehicle, objective checklist and backdrop are explicit development fixtures. All six Director views, original orbital iconography, and a full-screen world warp driven by schema-valid dev.location.transition notices from a mock scenario decorator. Arrival waits for confirmed world state; reduced motion and workspace jump are also available. Real-core exclusive input requires trusted Wayland-client association. No prototype code/assets or owner-session control commands."}
+{"title":"Hyprune shell M0","tag":"shell","notes":"Original Quickshell Director and HUD in isolated nested Hyprland at 1080p, running the actual SDK hyprune-mock on real IPC 0.2. SDK owns the 350 ms hold timer and emits canonical ui.opened/ui.closed and location.transition; waypoint.set uses Target and point travel uses travel.start. World loading uses native indeterminate progress, stable operation IDs and confirmed arrival. The visual dev harness explicitly emulates verified Wayland association for its supervised QML child because M1 core and the faithful mock reject exclusive input; mock workspace-location mapping is also a documented test adapter. No mock-only wire fields or notice-carried transitions remain. Projection/backdrop/vehicle are explicit presentation fixtures. Real-core checks separately pass native warp, loading, hold timing, exclusive refusal and F12 during warp. No owner-session control commands or prototype assets."}
 JSON
     ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt,width,height -show_entries format=duration,size -of json "$GALLERY/videos/hyprune-shell-m0.mp4" > "$ROOT/dev/.run/video-info.json"
     python3 - "$ROOT/dev/.run/video-info.json" <<'PY'
@@ -70,12 +69,18 @@ assert int(f['size']) < 30_000_000
 print(json.dumps(x,indent=2))
 PY
 fi
+# Native point travel uses travel.start and canonical location state.
+open
+ipc travel 0
+sleep 2
+shot warp-point-travel
+sleep 6
 # Workspace-to-location mapping takes the same daemon-driven jump path.
 ipc workspaceWarp
 sleep 2
 shot warp-workspace
 sleep 6
-ipc open
+open
 ipc tab 0
 ipc theme true
 sleep 1
@@ -105,7 +110,7 @@ python3 - "$ROOT/dev/.run/reconnect-status.json" <<'PY'
 import json,sys
 s=json.load(open(sys.argv[1]));assert s['status']=='live' and s['lease'] and not s['director'];print('SDK disconnect -> fresh authenticated lease: PASS')
 PY
-ipc open
+open
 sleep .3
 kill -USR2 "$(cat "$ROOT/dev/.run/mock.pid")"
 sleep 2

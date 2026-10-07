@@ -178,11 +178,13 @@ class ClientV2Tests(ClientTests):
         self.peers[-1].write(frame(self.delta(base,self.revision,{'location':self.state['location']}),self.validator))
         self.notify('location.transition',value)
 
-    async def test_native_warp_uses_committed_location_and_not_future_hint(self):
+    async def test_loading_hint_presents_without_patching_baseline(self):
         self.peers[-1].write(frame({'jsonrpc':'2.0','method':'location.transition','params':{
-            'id':'jump-1','outputId':'world','monotonicMs':100,'phase':'departing','progress':0,'to':{'position':[4,1,-3]},'sessionId':'session','revision':self.revision+20}},self.validator))
+            'id':'jump-1','outputId':'world','monotonicMs':100,'phase':'departing','progress':0,'to':{'position':[4,1,-3]},'sessionId':'session','revision':self.revision+1}},self.validator))
         await asyncio.sleep(.03)
-        self.assertFalse(any(e['type']=='transition' for e in self.events))
+        self.assertTrue(any(e['type']=='transition' for e in self.events))
+        self.assertIsNone(self.client.state['location']['transition'])
+        self.assertLess(self.client.revision,self.client.native_hint['revision'])
         self.location('departing',0)
         await self.until(lambda:any(e['type']=='transition' for e in self.events))
         first=next(e for e in self.events if e['type']=='transition')
@@ -234,10 +236,27 @@ class ClientV2Tests(ClientTests):
         await self.until(lambda:any(e.get('phase')=='failed' for e in self.events))
         self.assertEqual(self.client.state['world']['id'],'com.hyprune.observatory')
 
-    async def test_native_events_reject_other_session(self):
+    async def test_native_events_discard_other_session(self):
         self.peers[-1].write(frame({'jsonrpc':'2.0','method':'ui.opened','params':{
             'leaseId':self.client.lease,'outputId':'world','panel':'overview','sessionId':'stale','revision':self.revision}},self.validator))
-        await self.until(lambda:any(e.get('status')=='disconnected' for e in self.events))
+        await asyncio.sleep(.03)
+        self.assertTrue(self.client.ready)
         self.assertFalse(self.client.director)
+
+    async def test_coalesced_open_close_does_not_reopen(self):
+        self.notify('ui.opened',{'leaseId':self.client.lease,'outputId':'world','panel':'overview'})
+        self.notify('ui.closed',{'leaseId':self.client.lease,'outputId':'world'})
+        await asyncio.sleep(.05)
+        self.assertFalse(self.client.director)
+        self.assertFalse(any(m=='shell.overlay' and p['visible'] for m,p in self.calls))
+
+    async def test_daemon_revision_reset_accepts_fresh_ui_request(self):
+        self.revision=1000
+        await self.client.overlay(True)
+        await self.until(lambda:self.client.revision==self.revision)
+        self.peers[-1].close();self.state['shell']={'leases':[]};self.revision=0
+        await self.until(lambda:self.connections>=2 and self.client.ready and self.client.lease)
+        self.notify('ui.opened',{'leaseId':self.client.lease,'outputId':'world','panel':'overview'})
+        await self.until(lambda:self.client.director)
 
 if __name__=='__main__':unittest.main()

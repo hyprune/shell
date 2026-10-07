@@ -5,7 +5,7 @@ import struct
 import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bridge'))
-from protocol import decode, frame, read_frame, validate_response, TRANSITION_VALIDATOR
+from protocol import decode, frame, read_frame, validate_response, V2_VALIDATOR
 
 PING = {'jsonrpc':'2.0','id':'a','method':'session.ping','params':{}}
 
@@ -33,12 +33,14 @@ class CodecTests(unittest.IsolatedAsyncioTestCase):
     def test_no_batches_unknown_fields(self):
         for obj in [[PING],{**PING,'surprise':True},{**PING,'id':1}]:
             with self.assertRaises(Exception): frame(obj)
-    def test_transition_fixture_is_not_a_new_ipc_event(self):
-        obj={'id':'jump-1','phase':'transit','progress':.4,'to':{'id':'com.hyprune.garden','name':'Garden','subtitle':'Sector 02'}}
-        TRANSITION_VALIDATOR.validate(obj)
-        with self.assertRaises(Exception):frame({'jsonrpc':'2.0','method':'location.transition','params':obj})
-        for bad in [{**obj,'progress':1.5},{**obj,'phase':'ready'},{**obj,'extra':'unknown'}]:
-            with self.assertRaises(Exception):TRANSITION_VALIDATOR.validate(bad)
+    def test_native_transition_is_exact_02_only(self):
+        params={'id':'jump-1','outputId':'world','phase':'loading','progress':None,
+                'to':{'worldId':'com.hyprune.garden'},'monotonicMs':10,'sessionId':'session','revision':2}
+        message={'jsonrpc':'2.0','method':'location.transition','params':params}
+        frame(message,V2_VALIDATOR)
+        with self.assertRaises(Exception):frame(message)
+        for bad in [{**params,'progress':1.5},{**params,'phase':'ready'},{**params,'extra':'unknown'}]:
+            with self.assertRaises(Exception):frame({**message,'params':bad},V2_VALIDATOR)
     def test_method_matched_response(self):
         obj={'jsonrpc':'2.0','id':'a','result':{'revision':1}}
         frame(obj)

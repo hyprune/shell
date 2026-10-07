@@ -7,6 +7,9 @@ fi
 shift
 mode=${1:-live}
 export HYPRUNE_SHELL_ROOT="$ROOT"
+if [[ "$mode" == core-check ]]; then
+    exec python3 "$ROOT/dev/core-check.py"
+fi
 SDK=${HYPRUNE_SDK_DIR:-../sdk}
 [[ -f "$SDK/dist/src/mock-cli.js" ]] || { echo 'Build the SDK first: npm ci && npm run build in the SDK checkout' >&2; exit 1; }
 [[ -n ${XDG_RUNTIME_DIR:-} && -n ${WAYLAND_DISPLAY:-} ]] || { echo 'A parent Wayland display is required' >&2; exit 1; }
@@ -47,10 +50,10 @@ hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" dismissnotify -1 >/dev/null
 qs -p "$ROOT/dev/background.qml" --no-color > "$ROOT/dev/.run/background.log" 2>&1 &
 children+=("$!")
 launch=(python3 "$ROOT/bridge/launch.py" --output "output-main=$target_output" --world-package "$ROOT/dev/observatory.world.json" --world-package "$ROOT/dev/garden.world.json" --presentation "$ROOT/dev/presentation.json")
-if [[ "$mode" == preview || "$mode" == capture || "$mode" == tour ]]; then
-    export HYPRUNE_MOCK_PREVIEW=1
-    launch+=(--mock-preview)
-fi
+# The SDK intentionally rejects exclusive input like M1 core. The visual dev
+# loop explicitly emulates trusted UI association; strict leaves it unsupported.
+if [[ "$mode" != strict ]]; then export HYPRUNE_MOCK_UI_ASSOCIATION=1; fi
+launch+=(--protocol 0.2 --client-id com.hyprune.shell)
 [[ "$mode" == tour ]] && launch+=(--tour)
 node "$ROOT/dev/mock-supervisor.mjs" "$ROOT/dev/scenario.json" "${launch[@]}" > "$ROOT/dev/.run/shell.log" 2>&1 &
 mock_pid=$!
@@ -78,6 +81,6 @@ elif [[ "$mode" == check || "$mode" == check-window ]]; then
     cat "$ROOT/dev/.run/shell.log"
 else
     sleep 2
-    if [[ "$mode" != tour ]]; then qs ipc --pid "$shell_pid" call preview open; fi
+    if [[ "$mode" != tour && "$mode" != strict ]]; then kill -WINCH "$mock_pid"; fi
     wait "$mock_pid"
 fi

@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/hyprune/sdk",
+  "commit": "86c04abd661f684ab30084c94483607f993be80b",
+  "protocol": "0.2",
+  "mockSourceSha256": "09d45c5f0b3482cf589a640b987e4c3497bb3eb223cad9b46351f672b73b37a3",
+  "privateTestHooks": [
+    "execute",
+    "lease"
+  ],
+  "notes": "Actual SDK MockDaemon; explicit development-only verified-child association emulator and workspace-to-world mapping. No mock-only wire protocol."
+}

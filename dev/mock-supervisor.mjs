@@ -1,69 +1,64 @@
 #!/usr/bin/env node
-// Development supervisor around the SDK's actual MockDaemon. No protocol fork.
-// Node inherited stdio pipes are duplex socketpairs on Linux. FD 3 supplies a
-// new one-shot launch token only when the bridge asks for one; never a token file.
+// Actual SDK IPC 0.2 MockDaemon. Test-only adapters emulate the still-missing
+// Wayland association and workspace mapping; no protocol fields/events are added.
 import {spawn} from 'node:child_process';
-import {randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 const sdk=process.env.HYPRUNE_SDK_DIR || '../sdk';
-const {validateWire}=await import(pathToFileURL(sdk+'/dist/src/validation.js'));
 const {MockDaemon,GRANTS}=await import(pathToFileURL(sdk+'/dist/src/mock.js'));
 const [scenarioPath,...launch]=process.argv.slice(2);
-const daemon=new MockDaemon({protocol:process.env.HYPRUNE_MOCK_PREVIEW==='1'?'0.1-mock.1':'0.1',scenario:JSON.parse(readFileSync(scenarioPath,'utf8'))});
-// A local scenario decorator delays mock world activation and emits loading
-// notices from the daemon side. The frames remain schema-valid SDK protocol.
-// `dev.location.transition` is NEVER interpreted in production IPC 0.1.
-const warp=JSON.parse(readFileSync(new URL('./warp-scenario.json',import.meta.url),'utf8'));
-let warping=false;
-const originalHandle=daemon.handle.bind(daemon);
-async function jump(peer,message,to,workspace=false) {
-    if(warping) { daemon.error(peer,message.id,-32004,'A location jump is already in progress');return; }
-    warping=true;
-    const id=randomUUID(),details=warp.destinations[to] || {name:to,subtitle:'WORLD DESTINATION'};
-    const publish=(phase,progress)=>daemon.broadcast('runtime.notice',{level:'info',code:'dev.location.transition',message:JSON.stringify({id,phase,progress,to:{id:to,...details}})});
-    const started=Date.now();
+const scenario=JSON.parse(readFileSync(scenarioPath,'utf8'));
+const daemon=new MockDaemon({protocol:'0.2',scenario});
+const preview=process.env.HYPRUNE_MOCK_UI_ASSOCIATION==='1';
+const workspaceLocations=JSON.parse(readFileSync(new URL('./workspace-locations.json',import.meta.url),'utf8'));
+let child;
+function associated(peer) {
+    if(!preview || peer.clientId!=='com.hyprune.shell' || !child || child.exitCode!==null) return false;
     try {
-        for(const sample of warp.samples) {
-            await new Promise(r=>setTimeout(r,Math.max(0,started+sample.at-Date.now())));
-            if(peer.socket.destroyed || peer.closing){publish('failed',sample.progress);return;}
-            publish(sample.phase,sample.progress);
-        }
-        await new Promise(r=>setTimeout(r,Math.max(0,started+warp.durationMs-Date.now())));
-        if(peer.socket.destroyed || peer.closing){publish('failed',.94);return;}
-        if(workspace) daemon.commit({world:{id:to,spawnId:'arrival'}});
-        originalHandle(peer,message); // normal SDK validation, grant check, mutation and reply
-        publish(daemon.state.world?.id===to?'arrived':'failed',1);
-    } finally {warping=false;}
+        return readFileSync(`/proc/${child.pid}/task/${child.pid}/children`,'utf8').trim().split(/\s+/).some(pid=> {
+            const name=readFileSync(`/proc/${pid}/comm`,'utf8').trim();
+            const command=readFileSync(`/proc/${pid}/cmdline`,'utf8').split('\0');
+            return ['qs','quickshell'].includes(name) && command.includes(process.env.HYPRUNE_SHELL_ROOT+'/qml');
+        });
+    } catch {return false;}
 }
-if(process.env.HYPRUNE_MOCK_PREVIEW==='1') {
-    daemon.handle=(peer,message)=>{
-        try{validateWire(message,daemon.protocol);}catch{return originalHandle(peer,message)}
-        if(peer.ids.has(message.id))return originalHandle(peer,message);
-        const validLoad=message?.method==='world.load' && peer.methods.includes('world.load') && daemon.scenario.worlds.some(w=>w.id===message.params?.worldId && (!message.params.spawnId || w.spawns.includes(message.params.spawnId)));
-        const workspace=message?.method==='surface.focus' && message.params?.intent==='keyboard' && peer.methods.includes('surface.focus') && warp.workspaceLocations[message.params.surfaceId];
-        const to=validLoad?message.params.worldId:workspace;
-        if(to && to!==daemon.state.world?.id) void jump(peer,message,to,!!workspace);
-        else originalHandle(peer,message);
-    };
-}
+// The SDK handles framing, IDs, grants, schema checks and RPC responses first.
+// This narrow execute hook models an accepted association only for our supervised
+// QML child. Core never receives it; production keeps the real unsupported error.
+const execute=daemon.execute.bind(daemon);
+daemon.execute=(peer,method,params)=> {
+    if(method==='shell.overlay' && params.exclusiveInput && associated(peer)) {
+        const lease=daemon.lease(peer,params.leaseId);
+        if(!lease.outputs.includes(params.outputId)) return execute(peer,method,params);
+        daemon.commit({shell:{leases:daemon.state.shell.leases.map(l=>l.id===lease.id?{...l,overlays:l.overlays.map(o=>o.outputId===params.outputId?{...o,visible:params.visible,exclusiveInput:true}:o)}:l)}});
+        return {revision:daemon.revision};
+    }
+    const to=workspaceLocations[params.surfaceId];
+    if(method==='surface.focus' && params.intent==='keyboard' && associated(peer) && peer.methods.includes('world.load') &&
+       to && to!==daemon.state.world?.id && daemon.state.surfaces.some(s=>s.id===params.surfaceId)) {
+        return Promise.resolve(execute(peer,'world.load',{worldId:to})).then(()=>execute(peer,method,params));
+    }
+    return execute(peer,method,params);
+};
 await daemon.start();
-console.error('hyprune-mock (SDK API): '+daemon.protocol+' listening at '+daemon.path);
-const child=spawn(launch[0],launch.slice(1),{stdio:['inherit','inherit','inherit','pipe'],env:{...process.env,HYPRUNE_TOKEN_FD:'3',HYPRUNE_TOKEN_REFRESH:'1'}});
+console.error(`hyprune-mock (SDK API): ${daemon.protocol}; association emulator ${preview?'on':'off'}; ${daemon.path}`);
+child=spawn(launch[0],launch.slice(1),{stdio:['inherit','inherit','inherit','pipe'],env:{...process.env,HYPRUNE_TOKEN_FD:'3',HYPRUNE_TOKEN_REFRESH:'1'}});
 let input='';
-child.stdio[3].on('data',data=>{
+child.stdio[3].on('data',data=> {
     input+=data.toString();
     while(input.includes('\n')) {
         const end=input.indexOf('\n'),request=input.slice(0,end);input=input.slice(end+1);
-        if(request==='renew') child.stdio[3].write(daemon.issueToken('com.hyprune.shell',GRANTS)+'\n');
+        if(request==='renew') child.stdio[3].write(daemon.issueToken('com.hyprune.shell',GRANTS.filter(g=>g!=='data.publish'))+'\n');
     }
 });
 child.stdio[3].on('error',()=>{});
 let stopping=false;
-async function stop() {if(stopping)return;stopping=true;child.kill('SIGTERM');await daemon.stop();}
+async function stop(){if(stopping)return;stopping=true;child.kill('SIGTERM');await daemon.stop();}
 process.once('SIGTERM',()=>void stop());process.once('SIGINT',()=>void stop());
-child.once('exit',code=>{process.exitCode=stopping?0:(code || 0);void stop()});
-child.once('error',e=>{console.error(e.message);process.exitCode=1;void stop()});
-// Test-only faults, delivered to this supervisor PID by the locked capture harness.
+child.once('exit',code=>{process.exitCode=stopping?0:(code || 0);void stop();});
+child.once('error',error=>{console.error(error.message);process.exitCode=1;void stop();});
 process.on('SIGUSR1',()=>daemon.disconnectClients());
 process.on('SIGUSR2',()=>daemon.revokeClients());
+// A diagnostic supervisor trigger feeds the SDK's core-owned hold timer. The
+// shell has no hold timer; it receives canonical ui.opened after 350 ms.
+process.on('SIGWINCH',()=>{daemon.hold(true);setTimeout(()=>daemon.hold(false),450);});

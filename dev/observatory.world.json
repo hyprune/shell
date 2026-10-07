@@ -1,5 +1,5 @@
 {
-  "formatVersion": "0.1",
+  "formatVersion": "0.2",
   "version": "0.1.0",
   "license": "MIT",
   "scene": "scene.gltf",
@@ -20,7 +20,7 @@
       "pose": {
         "position": [
           0,
-          1.7,
+          0,
           0
         ],
         "rotation": [
@@ -36,7 +36,7 @@
       "pose": {
         "position": [
           14,
-          1.7,
+          0,
           -18
         ],
         "rotation": [
@@ -52,7 +52,7 @@
       "pose": {
         "position": [
           -17,
-          1.7,
+          0,
           -13
         ],
         "rotation": [
@@ -68,7 +68,7 @@
       "pose": {
         "position": [
           18,
-          1.7,
+          0,
           16
         ],
         "rotation": [

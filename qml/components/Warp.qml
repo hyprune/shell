@@ -12,7 +12,7 @@ Item {
     property real shownProgress: ShellState.transition.progress
     readonly property string phase: ShellState.transition.phase
     readonly property bool moving: !Tokens.reducedMotion && ShellState.warpActive && phase !== 'arrived'
-    readonly property real speed: phase === 'loading' ? 0.1 : phase === 'departing' ? 0.18 : phase === 'approach' ? 0.7 : 1
+    readonly property real speed: phase === 'loading' ? 0.8 : phase === 'departing' ? 0.18 : phase === 'approach' ? 0.7 : 1
 
     opacity: ShellState.warpActive ? 1 : 0
     clip: true
@@ -234,7 +234,7 @@ Item {
     }
 
     HudLabel {
-        text: ShellState.dev ? 'MOCK-AUTHORITATIVE TRANSITION' : ''
+        text: ShellState.dev ? 'SDK MOCK / IPC 0.2' : ''
         font.pixelSize: 9
         font.letterSpacing: 2
         color: "#afbed1"
