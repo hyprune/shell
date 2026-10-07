@@ -34,7 +34,7 @@ RowLayout {
         }
 
         HudLabel {
-            text: '01    ORBITAL SURVEY'
+            text: '01    WORLD MAP'
             font.family: Tokens.mono
             font.pixelSize: 11
             color: Tokens.accent
@@ -74,7 +74,7 @@ RowLayout {
         }
 
         HudLabel {
-            text: 'A quiet coordinate in your desktop universe. Choose a spawn on the chart to inspect its position.'
+            text: 'Choose a station on the package blueprint. Set a waypoint, follow a route, or travel to its walking approach.'
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
             color: Tokens.muted
@@ -98,7 +98,7 @@ RowLayout {
         }
 
         HudLabel {
-            text: 'SPAWN  /  ' + (root.selected ? root.selected.id : '—')
+            text: 'PLACE  /  ' + (root.selected ? root.selected.id : '—')
             font.family: Tokens.mono
             font.pixelSize: 11
             color: Tokens.muted
@@ -110,7 +110,7 @@ RowLayout {
         }
 
         HudLabel {
-            text: ShellState.available('travel.start') ? 'Click · set waypoint\nDouble click · jump to location' : ShellState.available('camera.set') ? 'Click · set waypoint\nDouble click · travel preview' : 'Select · inspect location\nDouble click · travel unavailable'
+            text: ShellState.available('travel.start') ? 'Click · set waypoint\nDouble click · jump to location' : 'Select · inspect location\nDouble click · travel unavailable'
             color: Tokens.muted
             font.pixelSize: 12
             lineHeight: 1.7
@@ -126,14 +126,18 @@ RowLayout {
         }
 
         ActionButton {
-            text: 'Arrive at spawn ↗'
+            text: 'Auto-drive to waypoint →'
+            Layout.fillWidth: true
+            enabled: root.selected !== null && ShellState.available('route.set') && ShellState.available('autodrive.start')
+            onClicked: ShellState.send({type:'drive',position:root.selected.position})
+        }
+
+        ActionButton {
+            text: 'Travel to location ↗'
             primary: true
             Layout.fillWidth: true
-            enabled: root.selected !== null && ShellState.world !== null && ShellState.available('world.load')
-            onClicked: ShellState.action('world.load', {
-                "worldId": ShellState.world.id,
-                "spawnId": root.selected.id
-            })
+            enabled: root.selected !== null && ShellState.available('travel.start')
+            onClicked: ShellState.travel(root.selected)
         }
 
     }

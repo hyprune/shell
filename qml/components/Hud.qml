@@ -110,7 +110,7 @@ Item {
             spacing: 9
 
             HudLabel {
-                text: 'NAVIGATION'
+                text: ShellState.surfaces.some((s) => s.focused) ? 'APPLICATION INPUT' : 'NAVIGATION'
                 font.pixelSize: 15
                 font.letterSpacing: 4
                 horizontalAlignment: Text.AlignRight
@@ -118,7 +118,7 @@ Item {
             }
 
             HudLabel {
-                text: 'WORLD RECEIVES INPUT'
+                text: ShellState.surfaces.some((s) => s.focused) ? 'ESC · RETURN TO EXPLORATION' : 'WORLD RECEIVES INPUT'
                 font.pixelSize: 10
                 font.letterSpacing: 2
                 color: Tokens.muted
@@ -141,7 +141,7 @@ Item {
         y: 306
         width: 430
         height: 160
-        shown: ShellState.active
+        shown: ShellState.active && ShellState.protocol !== '0.3'
 
         MissionPanel {
         }
@@ -156,11 +156,15 @@ Item {
 
             required property var modelData
 
-            x: parent.width * modelData.x - 120
+            x: Math.max(4, Math.min(parent.width - 244, parent.width * modelData.x - 120))
             y: parent.height * modelData.y
             width: 240
             height: 80
 
+            Rectangle {
+                x: 45; y: 46; width: 150; height: 45
+                color: '#ca0a111d'; radius: 2
+            }
             Seal {
                 width: 34
                 height: 34
@@ -189,7 +193,7 @@ Item {
                 anchors.top: parent.top
                 anchors.topMargin: 71
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: marker.modelData.distance + ' m'
+                text: Math.round(marker.modelData.distance) + ' m'
                 font.pixelSize: 10
                 color: Tokens.muted
                 font.letterSpacing: 1.2
@@ -207,6 +211,7 @@ Item {
         shown: ShellState.zone !== ''
         travel: 24
 
+        Rectangle { x: -18; y: -16; width: 550; height: 150; color: '#ce0a111d'; radius: 3 }
         Column {
             spacing: 17
 
@@ -235,6 +240,10 @@ Item {
 
     }
 
+    Rectangle {
+        x: 60; y: parent.height - 118; width: 610; height: 72
+        color: '#cf0a111d'; radius: 3; visible: ShellState.active
+    }
     Row {
         spacing: 20
 
@@ -265,7 +274,7 @@ Item {
             }
 
             HudLabel {
-                text: 'DIRECTOR  ·  CONFIGURED HOLD BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
+                text: ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  DIRECTOR     /     F12  ·  RETURN TO DESKTOP' : 'DIRECTOR  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
                 font.pixelSize: 10
                 color: Tokens.muted
                 font.letterSpacing: 1
@@ -337,7 +346,7 @@ Item {
     }
 
     HudLabel {
-        text: ShellState.dev ? 'HYPRUNE  /  M0 PREVIEW' : ''
+        text: ShellState.presentation.dev ? 'HYPRUNE  /  M0 PREVIEW' : 'HYPRUNE  /  LIVE SESSION'
         font.pixelSize: 9
         font.letterSpacing: 3
         color: Tokens.muted

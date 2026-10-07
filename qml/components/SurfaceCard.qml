@@ -55,7 +55,7 @@ Rectangle {
         }
 
         HudLabel {
-            text: root.surface.logicalSize.join(' × ') + '  /  logical pixels'
+            text: root.surface.kind === 'workspace' ? root.surface.worldId : root.surface.logicalSize.join(' × ') + '  /  logical pixels'
             font.family: Tokens.mono
             font.pixelSize: 11
             color: Tokens.muted
@@ -66,10 +66,10 @@ Rectangle {
         }
 
         ActionButton {
-            text: 'Request keyboard focus ↗'
+            text: root.surface.kind === 'workspace' ? 'Enter location ↗' : 'Request keyboard focus ↗'
             Layout.fillWidth: true
-            enabled: ShellState.available('surface.focus')
-            onClicked: ShellState.action('surface.focus', {
+            enabled: ShellState.available(root.surface.kind === 'workspace' ? 'workspace.activate' : 'surface.focus')
+            onClicked: root.surface.kind === 'workspace' ? ShellState.action('workspace.activate',{id:root.surface.id}) : ShellState.action('surface.focus', {
                 "surfaceId": root.surface.id,
                 "intent": 'keyboard'
             })

@@ -21,7 +21,7 @@ Flickable {
         }
 
         HudLabel {
-            text: 'Workspace surfaces advertised by core. Activation can be refused when safe focus is unavailable.'
+            text: 'Core-owned workspace locations. Switching workspace opens its world through the same warp lifecycle.'
             color: Tokens.muted
             font.pixelSize: 14
         }

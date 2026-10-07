@@ -1,4 +1,4 @@
-"""Offline IPC 0.1 validation and byte framing. No QML text/binary ambiguity."""
+"""Offline versioned IPC validation and byte framing. No QML text/binary ambiguity."""
 import asyncio
 import json
 import math
@@ -15,10 +15,8 @@ for path in ROOT.rglob('*.schema.json'):
     registry = registry.with_resource(schema['$id'], Resource.from_contents(schema))
 SCHEMA = json.loads((ROOT / 'ipc.schema.json').read_text())
 VALIDATOR = Draft202012Validator(SCHEMA, registry=registry)
-MOCK_SCHEMA = json.loads((ROOT / 'mock-preview.schema.json').read_text())
-MOCK_VALIDATOR = Draft202012Validator(MOCK_SCHEMA, registry=registry)
 V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/ipc.schema.json').read_text()), registry=registry)
-TRANSITION_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'presentation-transition.schema.json').read_text()))
+V3_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.3/ipc.schema.json").read_text()), registry=registry)
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 

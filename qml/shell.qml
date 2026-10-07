@@ -172,12 +172,16 @@ ShellRoot {
                 type: 'zone', name: 'The arrival garden', subtitle: 'OBSERVATORY / SECTOR 01'
             });
         }
+        function workspace(id: int): void { if (ShellState.dev) ShellState.action('workspace.activate',{id:id}); }
+        function drive(index: int): void { if (ShellState.dev && ShellState.places[index]) ShellState.send({type:'drive',position:ShellState.places[index].position}); }
         function status(): string {
             return JSON.stringify({
-                status: ShellState.status, screen: ShellState.screenName,
+                status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
                 lease: ShellState.lease, director: ShellState.director,
                 revision: ShellState.revision, tab: ShellState.tab,
-                warp: ShellState.warpActive, phase: ShellState.transition.phase
+                warp: ShellState.warpActive, phase: ShellState.transition.phase,
+                world: ShellState.state && ShellState.state.world ? ShellState.state.world.id : null,
+                map: ShellState.mapData !== null, places: ShellState.places, markers: ShellState.markers.length
             });
         }
     }

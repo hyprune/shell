@@ -14,16 +14,33 @@ Item {
     signal selectedPoint(var point)
     signal travelRequested(var point)
 
+    readonly property var map: ShellState.mapData
+    readonly property real mapRatio: blueprint.implicitWidth > 0 ? blueprint.implicitWidth / blueprint.implicitHeight : 0.9
+    readonly property real mapWidth: Math.min(width, height * mapRatio)
+    readonly property real mapHeight: mapWidth / mapRatio
+    function mapped(position) {
+        var t = map.worldToMap;
+        return [t[0]*position[0]+t[2]*position[2]+t[4], t[1]*position[0]+t[3]*position[2]+t[5]];
+    }
+    Image {
+        id: blueprint
+        anchors.fill: parent
+        visible: root.map !== null
+        source: root.map ? 'data:image/svg+xml,' + encodeURIComponent(root.map.svg) : ''
+        fillMode: Image.PreserveAspectFit
+        asynchronous: false
+    }
     function px(position) {
-        return width / 2 + position[0] * unit;
+        return map ? (width-mapWidth)/2 + mapped(position)[0]*mapWidth : width / 2 + position[0] * unit;
     }
 
     function py(position) {
-        return height / 2 + position[2] * unit;
+        return map ? (height-mapHeight)/2 + mapped(position)[1]*mapHeight : height / 2 + position[2] * unit;
     }
 
     Canvas {
         id: chart
+        visible: root.map === null
 
         anchors.fill: parent
         onPaint: {
@@ -150,7 +167,7 @@ Item {
             }
 
             HudLabel {
-                visible: !root.compact
+                visible: !root.compact && !root.map
                 anchors.top: parent.bottom
                 anchors.topMargin: 9
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -206,7 +223,7 @@ Item {
     }
 
     HudLabel {
-        text: 'N ↑'
+        text: root.map ? 'WORLD MAP' : 'N ↑'
         font.family: Tokens.mono
         font.pixelSize: 12
         color: Tokens.accent
@@ -221,7 +238,7 @@ Item {
 
     HudLabel {
         visible: !root.compact
-        text: 'LOCAL SCHEMATIC   /   METERS'
+        text: root.map ? 'PACKAGE BLUEPRINT   /   METERS' : 'LOCAL SCHEMATIC   /   METERS'
         font.family: Tokens.mono
         font.pixelSize: 11
         font.letterSpacing: 1.2

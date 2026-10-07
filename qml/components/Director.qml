@@ -186,7 +186,7 @@ Item {
             Layout.fillWidth: true
 
             HudLabel {
-                text: ShellState.dev ? 'MOCK SESSION  /  ' + ShellState.protocol + '  /  PRESENTATION PREVIEW' : 'WORLD SESSION'
+                text: ShellState.presentation.dev ? 'MOCK SESSION  /  ' + ShellState.protocol + '  /  PRESENTATION PREVIEW' : 'WORLD SESSION'
                 font.family: Tokens.mono
                 font.pixelSize: 10
                 color: Tokens.muted

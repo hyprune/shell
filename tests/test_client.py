@@ -231,7 +231,7 @@ class ClientV2Tests(ClientTests):
         await self.until(lambda:any(e.get('phase')=='loading' for e in self.events))
         loading=next(e for e in self.events if e.get('phase')=='loading')
         self.assertTrue(loading['indeterminate'])
-        self.assertEqual(loading['to'],{'id':'com.hyprune.garden','name':'Quiet garden','subtitle':'LOCATION / CORE TRAVEL'})
+        self.assertEqual(loading['to'],{'id':'com.hyprune.garden','name':'Quiet garden','subtitle':'WORLD TRANSIT'})
         self.location('failed',None,{'worldId':'com.hyprune.garden'})
         await self.until(lambda:any(e.get('phase')=='failed' for e in self.events))
         self.assertEqual(self.client.state['world']['id'],'com.hyprune.observatory')

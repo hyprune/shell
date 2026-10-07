@@ -47,3 +47,12 @@ class CodecTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(Exception): validate_response(obj,'session.ping')
 
 if __name__=='__main__': unittest.main()
+
+class SessionContractTests(unittest.TestCase):
+    def test_03_methods_do_not_widen_02(self):
+        from protocol import V3_VALIDATOR, V2_VALIDATOR
+        for method, params in [('shell.bind', {'leaseId':'lease','pid':123}), ('workspace.activate',{'id':11})]:
+            message={'jsonrpc':'2.0','id':'first','method':method,'params':params}
+            V3_VALIDATOR.validate(message)
+            with self.assertRaises(Exception): V2_VALIDATOR.validate(message)
+            with self.assertRaises(Exception): V3_VALIDATOR.validate({**message,'params':{**params,'_pid':123}})

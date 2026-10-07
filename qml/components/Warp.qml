@@ -234,7 +234,7 @@ Item {
     }
 
     HudLabel {
-        text: ShellState.dev ? 'SDK MOCK / IPC 0.2' : ''
+        text: ShellState.presentation.dev ? 'SDK MOCK / IPC 0.2' : ''
         font.pixelSize: 9
         font.letterSpacing: 2
         color: "#afbed1"

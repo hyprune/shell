@@ -1,3 +1,15 @@
+# First-session integration update
+
+IPC 0.3 closes verified shell-child association/exclusive input, selected-output
+delivery, package Map delivery and core marker projection, plus trusted
+workspace-location mapping/activation. The real nested smoke verifies the shell
+against core, including live station app typing and workspace warps. See
+core/docs/FIRST-SESSION.md in the sibling repository and RFC-0003/0004/0008's
+first-session amendments. Production renewal, persistent user bindings, arbitrary
+transformed outputs and the remaining extension hosts are still follow-up work.
+The notes below preserve the earlier review; their real-session blockers are
+superseded by that explicitly negotiated 0.3 contract.
+
 # Shell M0: RFC gaps and disposition
 
 Read RFC-0001/0003/0004/0005/0006/0008 and the local IPC/world schemas. M0 began

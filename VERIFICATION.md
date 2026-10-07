@@ -1,3 +1,32 @@
+# First real session verification — 2026-10-07
+
+Shell 0.2.0 runs with real core 0.2.0 in the locked nested harness over IPC 0.3.
+The authoritative world map, seven places, output binding and screen projections
+come from core; no presentation fixture or association/workspace emulator is used.
+`../core/dev/hyprune-dev smoke` passes load/HUD output isolation, real walking,
+core-owned Tab hold, credential-verified exclusive Director, Tab/Escape,
+waypoint/route/autodrive, travel/warp, live station-anchored terminal/btop/Chromium,
+actual pointer focus and typing, workspace warp out/back, rapid switching and exit
+without a crash or QML runtime errors. The ordinary-window association forgery,
+unassociated exclusivity and private PID spoof are rejected.
+
+`python3 -m unittest discover -s tests -v`: **36/36 pass**, including IPC 0.3
+method/version isolation. Core/schema/SDK suites and captured real wire traffic
+are also green; see `../core/docs/FIRST-SESSION.md` and its evidence JSON.
+
+Reviewed video: `videos/hyprune-first-session.mp4` in the gallery, **61.433333 s,
+22,226,000 bytes**, H.264/yuv420p 1920×1080/30 fps with fast start, plus adjacent
+metadata JSON. Full-resolution Map and extracted video frames were inspected;
+btop displays live metrics and the Map waypoint is selected with a real pointer.
+Every nested lifetime holds `flock /tmp/worldshell-nested.lock`; all control is
+scoped to the verified child compositor. Cursor lifecycle stays unchanged.
+Production supervisor renewal and dedicated DRM/hardware-cursor, full hotplug
+and lock acceptance remain future work.
+
+The historical M0/IPC 0.2 results below are preserved for that older profile.
+
+---
+
 # M0 verification — 2026-10-07
 
 ## Environment and contract pins

@@ -1,26 +1,27 @@
 # Hyprune shell
 
-An original Quickshell HUD and Director for a world-driven desktop. The compass,
-map, objective, notice, vehicle and orbital-navigation ideas draw on the owner's
-prototype; code, component structure and Canvas graphics are original.
+Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
+IPC 0.1, 0.2 and **0.3**. The first real session runs against core through the
+locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
+world metadata, safe SVG map, places, output descriptor, projected markers and
+workspace locations. No launcher package paths are needed for that session.
 
-**IPC 0.2 is the default.** The shell uses canonical `ui.opened` / `ui.closed`,
-`waypoint.set` / `travel.start`, seven-key revisioned state, and native
-`location.transition` loading/travel events. Exact 0.1 is an explicit compatibility
-option. No `0.1-mock.1`, `world.metadata` channel or notice-carried warp remains.
+Hold Tab in exploration to open the Director; core owns the 350 ms hold. The
+bridge binds its direct Quickshell child, core verifies the actual Wayland HUD
+credentials, and the Director maps only after exclusive overlay acceptance.
+Escape closes it; F12 returns to the desktop. HUD/warp remain passive and only
+on the world monitor. Map supports waypoint, travel and collision-checked
+autodrive. Workspaces opens the mapped location using core's loading lifecycle.
 
-Core M1 still refuses exclusive input without a verified Wayland-client
-association. The shell respects that refusal and leaves its Director unmapped.
-The visual dev loop explicitly emulates this missing association for its
-supervised QML child; it does not enable a production bypass. Real-core passive
-HUD/warp, hold timing, loading and emergency escape have separate integration
-checks. See [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md).
+Older protocols and the development mock retain their explicit limits below.
+The real showcase and verification are documented in
+[VERIFICATION.md](VERIFICATION.md).
 
 ## Development loop
 
 Requires Python 3.11+, jsonschema 4.x, Node 22.12+, Quickshell, Hyprland 0.56 with
 Lua configuration, `flock`, `hyprctl`, `grim` and `wtype`. Recording uses
-`wf-recorder`, `ffmpeg` and `ffprobe`. Build the sibling SDK 0.2 checkout first:
+`wf-recorder`, `ffmpeg` and `ffprobe`. Build the sibling SDK checkout first:
 
 ```sh
 # Once in ../sdk:
@@ -80,15 +81,15 @@ It verifies native 0.2 hold timing, exclusive refusal, timed travel, passive war
 arrival, pending world loading and F12 during a jump. No association emulator or
 presentation fixture is supplied to this shell.
 
-Two current core startup issues require documented test setup: its bind creates
+Historical M1 core startup issues required documented test setup: its bind creates
 an owned 0700 socket, which this verified harness changes to the RFC's 0600, and
 method advertisement arrives shortly after the socket becomes visible. The
-harness allows startup to settle before consuming a launch token. The production
+harness allows startup to settle before consuming a launch token. The integrated core now creates a 0600 socket itself. The production
 bridge continues requiring 0600 and honoring the actual hello profile.
 `HYPRUNE_CORE_DIR` selects another core checkout. Results/logs stay in ignored
 `dev/.run/core/`.
 
-## Director and HUD
+## Director and HUD (legacy development loop)
 
 The HUD shows a compass, shared schematic minimap, zone-entered titles, notices,
 and core-owned input hints on the leased world monitor only. Pose/heading and
@@ -176,7 +177,7 @@ authentication, while production renewal needs a supervisor contract.
 
 | Path | Responsibility |
 | --- | --- |
-| `bridge/protocol.py` | Pinned 0.1 / 0.2 offline validation and framing |
+| `bridge/protocol.py` | Pinned 0.1 / 0.2 / 0.3 offline validation and framing |
 | `bridge/client.py` | Session, grants, state revisions, leases and native presentation |
 | `bridge/launch.py` | Token FD, supervised UI and private presentation socket |
 | `qml/ShellState.qml` | Presentation store, interpolation and arrival gating |

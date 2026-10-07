@@ -33,9 +33,7 @@ QtObject {
     property real heading: 0
     property real clockMs: Date.now()
     property string selectedPlace: ''
-    property var metadata: ({
-    })
-    property string protocol: '0.1'
+    property string protocol: '0.2'
     property var transition: ({
         "id": '',
         "phase": 'idle',
@@ -51,22 +49,26 @@ QtObject {
     property Timer arrivalHold
     readonly property bool live: status === 'live' && state !== null
     readonly property bool active: live && state.runtime.active && lease !== ''
-    readonly property bool dev: presentation.dev === true
-    readonly property var waypointState: state && state.location ? state.location.waypoint : (state && state.world && metadata.worldId === state.world.id ? metadata.waypoint : null)
+    readonly property bool dev: presentation.dev === true || Quickshell.env('HYPRUNE_DEV_AUTOMATION') === '1'
+    readonly property var waypointState: state && state.location ? state.location.waypoint : null
     readonly property var world: state && state.world ? worlds.find((w) => {
         return w.id === state.world.id;
     }) || null : null
-    readonly property string worldName: world ? world.name : (state && state.world ? state.world.id : 'No world')
-    readonly property var places: world ? world.spawns.map((p, i) => {
+    readonly property var spatial: state && state.spatial ? state.spatial : null
+    property var mapData: null
+    property var corePlaces: []
+    readonly property string worldName: spatial && spatial.world ? spatial.world.name : world ? world.name : (state && state.world ? state.world.id : 'No world')
+    readonly property var places: spatial && spatial.world ? corePlaces : world ? world.spawns.map((p, i) => {
         return ({
             "id": p.id,
             "name": p.id.replace(/-/g, ' '),
-            "position": p.pose.position,
+            // Core M1 spawns place the capsule feet; Target uses eye position.
+            "position": [p.pose.position[0], p.pose.position[1] + 1.7, p.pose.position[2]],
             "index": i
         });
     }) : []
     readonly property var surfaces: state ? state.surfaces : []
-    readonly property var workspaces: surfaces.filter((s) => {
+    readonly property var workspaces: state && state.workspaces ? state.workspaces.locations.map((w) => ({id: w.id, title: w.label, kind: 'workspace', worldId: w.worldId})) : surfaces.filter((s) => {
         return s.kind === 'workspace';
     })
     property Socket socket
@@ -133,23 +135,18 @@ QtObject {
         if (available('waypoint.set'))
             action('waypoint.set', {
             "id": point.id,
-            "position": point.position,
+            "target": {"position": point.position},
             "label": point.name
         });
 
     }
 
     function travel(point) {
-        if (protocol === '0.2' && available('travel.start'))
+        if ((protocol === '0.2' || protocol === '0.3') && available('travel.start'))
             action('travel.start', {
                 "to": {"position": point.position},
                 "durationMs": Tokens.reducedMotion ? 0 : 5800
             });
-        else if (protocol === '0.1-mock.1' && available('camera.set'))
-            action('camera.set', {
-            "position": point.position,
-            "orientation": [0, 0, 0, 1]
-        });
         else
             notice('Travel is unavailable. Arrive at spawn reloads the world here.', 'warning');
     }
@@ -224,6 +221,7 @@ QtObject {
             if (!state) {
                 director = false;
                 samples = [];
+                mapData = null; corePlaces = [];
                 break;
             }
             if (!state.runtime.active || !lease) {
@@ -231,6 +229,14 @@ QtObject {
                 pendingArrival = null;
                 arrivalHold.stop();
             }
+            var nextMap = spatial ? spatial.map : null;
+            if ((!mapData && nextMap) || (mapData && (!nextMap || mapData.sha256 !== nextMap.sha256))) mapData = nextMap;
+            var nextPlaces = spatial && spatial.world ? spatial.world.places : [];
+            if (JSON.stringify(corePlaces) !== JSON.stringify(nextPlaces)) corePlaces = nextPlaces;
+            if (spatial && spatial.projection && spatial.projection.outputId === output && state.world && spatial.projection.worldId === state.world.id) {
+                var projected = spatial.projection.markers.filter((m) => !m.occluded).map((m) => ({id:m.id,name:m.label,distance:m.distance,x:m.x,y:m.y}));
+                projectionSamples = projectionSamples.concat([{at:Date.now(),markers:projected}]).slice(-12);
+            } else if (protocol === '0.3') { projectionSamples = []; markers = []; }
             var zones = state.location ? state.location.zones : (world ? world.zones : []);
             var position = state.movement.position;
             var entered = (zones || []).find((z) => position.every((v, i) => v >= z.bounds.min[i] && v <= z.bounds.max[i]));
@@ -265,9 +271,6 @@ QtObject {
                 zoneTimer.restart();
             }
             break;
-        case 'metadata':
-            metadata = msg;
-            break;
         case 'projection':
             if (dev)
                 projectionSamples = projectionSamples.concat([{
@@ -301,6 +304,7 @@ QtObject {
         notices = notices.filter((n) => {
             return clockMs - n.at < 7000;
         });
+        if (projectionSamples.length && clockMs - projectionSamples[projectionSamples.length - 1].at > 500) { projectionSamples = []; markers = []; }
         if (projectionSamples.length) {
             var ptarget = clockMs - (Tokens.reducedMotion ? 0 : 70);
             var pa = projectionSamples[0], pb = projectionSamples[projectionSamples.length - 1];
