@@ -198,3 +198,10 @@ See [VERIFICATION.md](VERIFICATION.md) for results and gallery paths,
 [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md) for deferred contracts and core interop issues.
 Schema provenance is in `protocol/SOURCE.json` and `protocol/v0.2/SOURCE.json`.
 MIT; vendored schemas retain their license. All shell graphics are original.
+
+Core M2 additionally negotiates IPC 0.4. The reference Director shows bound
+workspace homes through `workspaces.locations`, and offers Pull out, Place at
+home, Return and Recall all windows when those methods are advertised. Mount
+ownership and restored placement state are authoritative in `mounts`; these
+actions are unavailable on older negotiated protocols. The pinned 0.4 schemas
+are in `protocol/v0.4/`. Core owns focus, collision recovery and persistence.

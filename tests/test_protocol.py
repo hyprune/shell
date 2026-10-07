@@ -56,3 +56,11 @@ class SessionContractTests(unittest.TestCase):
             V3_VALIDATOR.validate(message)
             with self.assertRaises(Exception): V2_VALIDATOR.validate(message)
             with self.assertRaises(Exception): V3_VALIDATOR.validate({**message,'params':{**params,'_pid':123}})
+
+    def test_04_mount_methods_do_not_widen_older_protocols(self):
+        from protocol import V4_VALIDATOR, V3_VALIDATOR
+        for method, params in [('surfaces.recall', {}), ('surface.pull', {'surfaceId':'terminal'}), ('workspace.bind', {'id':10,'worldId':'com.hyprune.lumen-reach','areaId':'sun-court'}), ('camera.fov', {'degrees':72})]:
+            request={'jsonrpc':'2.0','id':'m2','method':method,'params':params}
+            V4_VALIDATOR.validate(request)
+            with self.assertRaises(Exception): V3_VALIDATOR.validate(request)
+            with self.assertRaises(Exception): V4_VALIDATOR.validate({**request,'params':{**params,'unexpected':True}})

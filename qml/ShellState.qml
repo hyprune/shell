@@ -142,7 +142,7 @@ QtObject {
     }
 
     function travel(point) {
-        if ((protocol === '0.2' || protocol === '0.3') && available('travel.start'))
+        if ((protocol === '0.2' || (protocol === '0.3' || protocol === '0.4')) && available('travel.start'))
             action('travel.start', {
                 "to": {"position": point.position},
                 "durationMs": Tokens.reducedMotion ? 0 : 5800
@@ -236,7 +236,7 @@ QtObject {
             if (spatial && spatial.projection && spatial.projection.outputId === output && state.world && spatial.projection.worldId === state.world.id) {
                 var projected = spatial.projection.markers.filter((m) => !m.occluded).map((m) => ({id:m.id,name:m.label,distance:m.distance,x:m.x,y:m.y}));
                 projectionSamples = projectionSamples.concat([{at:Date.now(),markers:projected}]).slice(-12);
-            } else if (protocol === '0.3') { projectionSamples = []; markers = []; }
+            } else if ((protocol === '0.3' || protocol === '0.4')) { projectionSamples = []; markers = []; }
             var zones = state.location ? state.location.zones : (world ? world.zones : []);
             var position = state.movement.position;
             var entered = (zones || []).find((z) => position.every((v, i) => v >= z.bounds.min[i] && v <= z.bounds.max[i]));

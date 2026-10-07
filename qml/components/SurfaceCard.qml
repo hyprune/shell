@@ -8,7 +8,7 @@ Rectangle {
 
     property var surface
 
-    implicitHeight: 220
+    implicitHeight: ShellState.available("surface.pull") ? 310 : 220
     radius: 3
     color: Tokens.panel
     border.color: hover.containsMouse || surface.focused ? Tokens.accent : Tokens.line
@@ -63,6 +63,23 @@ Rectangle {
 
         Item {
             Layout.fillHeight: true
+        }
+
+        RowLayout {
+            visible: root.surface.kind === 'window' && ShellState.available('surface.pull')
+            Layout.fillWidth: true
+            ActionButton {
+                text: 'Pull out'
+                onClicked: ShellState.action('surface.pull', {surfaceId:root.surface.id})
+            }
+            ActionButton {
+                text: 'Place at home'
+                onClicked: ShellState.action('surface.place', {surfaceId:root.surface.id})
+            }
+            ActionButton {
+                text: 'Return'
+                onClicked: ShellState.action('surface.return', {surfaceId:root.surface.id})
+            }
         }
 
         ActionButton {

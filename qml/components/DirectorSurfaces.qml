@@ -26,6 +26,12 @@ Flickable {
             font.pixelSize: 14
         }
 
+        ActionButton {
+            text: 'Recall all windows ↗'
+            enabled: ShellState.available('surfaces.recall')
+            onClicked: ShellState.action('surfaces.recall', {})
+        }
+
         GridLayout {
             width: parent.width
             columns: 3
