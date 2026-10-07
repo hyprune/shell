@@ -28,7 +28,7 @@ RowLayout {
         }
 
         Repeater {
-            model: [['DIRECTOR', 'Core owns the hold-to-open binding and timing.'], ['ESCAPE', 'Return to desktop restores ordinary input through core.'], ['MAP', 'Select a spawn to inspect it. Arrive reloads at that spawn.'], ['SURFACES', 'Focus is a request. Hidden-workspace focus may be refused.'], ['KEYBOARD', 'Tab moves focus. Left / Right change view. Esc closes.']]
+            model: [['OVERVIEW', 'Core owns the hold-to-open binding and timing.'], ['ESCAPE', 'Return to desktop restores ordinary input through core.'], ['MAP', 'Select a spawn to inspect it. Arrive reloads at that spawn.'], ['SURFACES', 'Focus is a request. Hidden-workspace focus may be refused.'], ['KEYBOARD', 'Tab moves focus. Left / Right change view. Esc closes.']]
 
             delegate: RowLayout {
                 required property var modelData

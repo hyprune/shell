@@ -31,7 +31,7 @@ Item {
                 spacing: 10
 
                 HudLabel {
-                    text: 'H Y P R U N E   /   D I R E C T O R'
+                    text: 'H Y P R U N E   /   O V E R V I E W'
                     color: Tokens.accent
                     font.pixelSize: 12
                     font.letterSpacing: 1.8

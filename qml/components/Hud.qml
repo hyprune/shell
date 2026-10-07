@@ -274,7 +274,7 @@ Item {
             }
 
             HudLabel {
-                text: ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  DIRECTOR     /     F12  ·  RETURN TO DESKTOP' : 'DIRECTOR  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
+                text: ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  OVERVIEW     /     F12  ·  RETURN TO DESKTOP' : 'OVERVIEW  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
                 font.pixelSize: 10
                 color: Tokens.muted
                 font.letterSpacing: 1

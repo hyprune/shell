@@ -63,7 +63,7 @@ RowLayout {
         spacing: 30
 
         Repeater {
-            model: [['01', 'A continuous signal', 'Framed IPC, atomic snapshots, revision-safe deltas and a fresh connection after failure.'], ['02', 'Your monitor, your input', 'Connection-owned output leases. Pointer input belongs to the world until the Director is accepted by core.'], ['03', 'An open design language', 'A compass, a local chart and quiet notices. Shared tokens and small components make another look possible.'], ['04', 'A jump to somewhere new', 'A destination card, star streaks and confirmed arrival. Preview runs against the mock; native travel uses the new 0.2 contract.']]
+            model: [['01', 'A continuous signal', 'Framed IPC, atomic snapshots, revision-safe deltas and a fresh connection after failure.'], ['02', 'Your monitor, your input', 'Connection-owned output leases. Pointer input belongs to the world until the overview is accepted by core.'], ['03', 'An open design language', 'A compass, a local chart and quiet notices. Shared tokens and small components make another look possible.'], ['04', 'A jump to somewhere new', 'A destination card, star streaks and confirmed arrival. Preview runs against the mock; native travel uses the new 0.2 contract.']]
 
             delegate: RowLayout {
                 required property var modelData

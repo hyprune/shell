@@ -268,7 +268,7 @@ class Client:
             if expected_epoch is not None and expected_epoch != self.ui_epoch:
                 return
             if not self.lease or not self.ready:
-                raise RuntimeError('Director unavailable: no authenticated output lease')
+                raise RuntimeError('Overview unavailable: no authenticated output lease')
             if not visible:
                 self.ui_epoch += 1
                 self.director = False
