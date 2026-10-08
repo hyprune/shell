@@ -5,6 +5,7 @@ import json
 import os
 import re
 import xml.etree.ElementTree as ET
+ET.register_namespace('', 'http://www.w3.org/2000/svg')
 from jsonschema import Draft202012Validator
 ROOT=Path(__file__).resolve().parents[1]/'protocol/extensions'
 STYLE=Draft202012Validator(json.loads((ROOT/'hud-style.schema.json').read_text()))
@@ -31,13 +32,13 @@ def read_asset(root, relative, limit):
     finally:os.close(fd)
 
 def svg(data):
-    if len(data)>65536 or re.search(br'<!|<\?',data): raise ValueError('SVG declarations/entities are forbidden')
+    if len(data)>16384 or re.search(br'<!|<\?',data): raise ValueError('SVG declarations/entities are forbidden')
     node=ET.fromstring(data)
     ids=set();refs=[];count=0
     for element in node.iter():
         count+=1
         tag=element.tag.removeprefix('{http://www.w3.org/2000/svg}')
-        if tag not in TAGS or count>256: raise ValueError('Unsupported SVG element/complexity')
+        if tag not in TAGS or count>128: raise ValueError('Unsupported SVG element/complexity')
         if element.text and element.text.strip(): raise ValueError('SVG text is not an icon path')
         for key,value in element.attrib.items():
             if key not in ATTRS or len(value)>16384: raise ValueError('Unsupported SVG attribute')
@@ -80,10 +81,19 @@ def load(package, cache):
             with open(dest,'xb') as out:out.write(data)
             dest.chmod(0o400)
         return dest.as_uri()
-    for key,path in value.get('icons',{}).items():value['icons'][key]=saved(svg(read_asset(package.parent,path,65536)),'.svg')
+    warnings=[]
+    icons={}
+    for key,path in value.get('icons',{}).items():
+        try:icons[key]=saved(svg(read_asset(package.parent,path,16384)),'.svg')
+        except (ValueError,OSError,ET.ParseError):warnings.append('icon '+key)
+    value['icons']=icons
     if 'font' in value:
-        data=read_asset(package.parent,value['font'],4*1024*1024)
-        if data[:4] not in [b'OTTO',b'\x00\x01\x00\x00']:raise ValueError('Unsupported font container')
-        value['font']=saved(data,'.otf' if data[:4]==b'OTTO' else '.ttf')
+        path=value.pop('font')
+        try:
+            data=read_asset(package.parent,path,1024*1024)
+            if data[:4] not in [b'OTTO',b'\x00\x01\x00\x00']:raise ValueError('Unsupported font container')
+            value['font']=saved(data,'.otf' if data[:4]==b'OTTO' else '.ttf')
+        except (ValueError,OSError):warnings.append('font')
+    if warnings:value['warning']='Unavailable package assets: '+', '.join(warnings)
     value['worldId']=manifest['id']
     return value

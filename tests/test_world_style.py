@@ -16,4 +16,4 @@ class WorldStyleTests(unittest.TestCase):
             value=load(manifest,root/'cache');self.assertGreaterEqual(contrast(value['colors']['foreground'],value['colors']['outline']),4.5)
             self.assertTrue(value['icons']['window'].startswith((root/'cache').as_uri()))
             icon.unlink();icon.symlink_to('/etc/passwd')
-            with self.assertRaises(OSError):load(manifest,root/'cache')
+            rejected=load(manifest,root/'cache');self.assertNotIn('window',rejected['icons']);self.assertIn('icon window',rejected['warning'])
