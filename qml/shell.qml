@@ -162,7 +162,7 @@ ShellRoot {
             if (ShellState.dev) ShellState.close();
         }
         function tab(index: int): void {
-            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(6, index));
+            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(7, index));
         }
         function select(index: int): void {
             if (ShellState.dev && ShellState.places[index]) {
@@ -173,8 +173,12 @@ ShellRoot {
         function travel(index: int): void {
             if (ShellState.dev && ShellState.places[index]) ShellState.travel(ShellState.places[index]);
         }
+        function worldStyles(enabled: bool): void { if (ShellState.dev) ShellState.preference({worldStyles:enabled}); }
+        function cycleHud(): void { if (ShellState.dev) ShellState.cycleHud(); }
+        function concept(name: string): void { if (ShellState.dev) ShellState.setConcept(name); }
+        function resource(name: string): void { if (ShellState.dev) ShellState.preference({resource:name}); }
         function curvature(amount: real): void {
-            if (ShellState.dev) { Tokens.hudCurved = amount > 0; Tokens.hudCurvature = amount; }
+            if (ShellState.dev) { ShellState.preference({curved:amount > 0,curvature:amount}); }
         }
         function motion(reduced: bool): void {
             if (ShellState.dev) Tokens.reducedMotion = reduced;
@@ -214,6 +218,8 @@ ShellRoot {
         }
         function status(): string {
             return JSON.stringify({
+                worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,
+                concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
                 graphics: ShellState.graphics,
                 menuHold: ShellState.menuHold,
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,

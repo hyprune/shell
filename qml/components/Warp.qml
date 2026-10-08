@@ -85,7 +85,7 @@ Item {
             if (Tokens.reducedMotion)
                 return ;
 
-            for (var i = 0; i < 150; i++) {
+            for (var i = 0; i < (Tokens.hudWarp === 'soft' ? 48 : 150); i++) {
                 var a = ((i * 359 + 17) % 997) / 997 * Math.PI * 2;
                 var life = ((root.flight * (0.55 + (i % 11) * 0.028) + ((i * 137) % 1009) / 1009) % 1);
                 var radius = Math.pow(life, 2.3) * spread * 0.8 + 12;
@@ -97,8 +97,8 @@ Item {
                     continue;
 
                 c.globalAlpha = alpha * 0.1;
-                c.strokeStyle = '#adc8ee';
-                c.lineWidth = 7 + life * 5;
+                c.strokeStyle = Tokens.hudAccent;
+                c.lineWidth = Tokens.hudWarp === 'ribbons' ? 16 + life*14 : 7 + life * 5;
                 c.beginPath();
                 c.moveTo(tx, ty);
                 c.lineTo(x, y);
@@ -116,7 +116,7 @@ Item {
                 c.lineTo(x + 1.4, y);
                 c.stroke();
                 c.globalAlpha = alpha;
-                c.strokeStyle = '#deedff';
+                c.strokeStyle = Tokens.hudWhite;
                 c.lineWidth = 0.7 + life * 0.9;
                 c.beginPath();
                 c.moveTo(tx, ty);

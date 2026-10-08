@@ -1,1 +1,2 @@
 singleton ShellState 1.0 ShellState.qml
+singleton HudData 1.0 HudData.qml

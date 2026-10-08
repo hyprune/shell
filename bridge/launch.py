@@ -14,6 +14,9 @@ import signal
 import stat
 import tempfile
 from client import Client
+from preferences import Preferences
+from world_style import load as load_world_style
+from protocol import SUPPORTED_PROTOCOLS, at_least
 from jsonschema.exceptions import ValidationError
 from protocol import decode, WORLD_VALIDATOR, WORLD_V2_VALIDATOR
 
@@ -63,6 +66,9 @@ async def main(args):
     local = directory / 'presentation.sock'
     peers = set()
     cache = {}
+    preferences = Preferences()
+    style_catalog = {}
+    style_world = None
     tokens = None
     renewal_fd = None
     if args.token_fd is not None:
@@ -82,8 +88,17 @@ async def main(args):
         return token
 
     def emit(event):
+        nonlocal style_world
+        if event['type'] == 'state':
+            state = event.get('state')
+            world_id = state['world']['id'] if state and state.get('world') and state['runtime']['active'] else None
+            if world_id != style_world:
+                style_world = world_id
+                style = style_catalog.get(world_id,{})
+                emit({'type':'world.style','value':style})
+                if style.get('warning'): emit({'type':'notice','level':'warning','message':style['warning'],'code':'style.asset'})
         if event["type"] in ["connection", "notice"]: print(json.dumps(event), flush=True)
-        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata']:
+        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata', 'preferences', 'world.style']:
             cache[event['type']] = event
         line = (json.dumps(event, ensure_ascii=False, allow_nan=False) + '\n').encode()
         for writer in tuple(peers):
@@ -92,16 +107,24 @@ async def main(args):
                 peers.discard(writer)
             elif not writer.is_closing(): writer.write(line)
 
+    emit({'type':'preferences', 'value':preferences.value})
     bindings = dict(pair.split('=', 1) for pair in args.output)
     client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.protocol, args.client_id)
     worlds = catalog(args.world_package)
+    for manifest in args.world_package:
+        try:
+            style = load_world_style(manifest,directory/'assets')
+            if style: style_catalog[style['worldId']] = style
+        except (ValueError, OSError, ValidationError) as error:
+            emit({'type':'notice','level':'warning','message':'World HUD style unavailable; using your concept style.','code':'style.invalid'})
+    emit({'type':'world.style','value':{}})
     client.worlds = worlds
     emit({'type': 'catalog', 'worlds': worlds})
     fixture = json.loads(Path(args.presentation).read_text()) if args.presentation else None
     if fixture: emit({'type': 'presentation', **fixture})
 
     async def open_preview():
-        if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']:
+        if at_least(args.protocol, 2):
             await client.call('ui.open', {'leaseId':client.lease,'outputId':client.output,'panel':'overview'})
         else:
             await client.overlay(True)
@@ -111,24 +134,26 @@ async def main(args):
             if cmd['type'] == 'screens':
                 client.screens = cmd['names']
                 await client.reconcile()
+            elif cmd['type'] == 'preferences':
+                emit({'type':'preferences', 'value':preferences.update(cmd['patch'])})
             elif cmd['type'] == 'close':
                 await client.overlay(False)
-            elif cmd['type'] == 'drive' and args.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7', '0.8']:
+            elif cmd['type'] == 'drive' and at_least(args.protocol, 3):
                 await client.call('route.set', {'points':[{'position':cmd['position']}]})
                 await client.call('autodrive.start', {})
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
                 if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
-                        (['graphics.get','graphics.set'] if args.protocol in ['0.7', '0.8'] else []) +
-                        (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if args.protocol in ['0.6', '0.7', '0.8'] else []) +
-                        (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if args.protocol in ['0.4','0.5','0.6', '0.7', '0.8'] else []) +
-                        (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'] else [])):
+                        (['graphics.get','graphics.set'] if at_least(args.protocol, 7) else []) +
+                        (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if at_least(args.protocol, 6) else []) +
+                        (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if at_least(args.protocol, 4) else []) +
+                        (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if at_least(args.protocol, 2) else [])):
                     raise ValueError('Unknown shell action')
                 params=cmd['params']
                 if cmd['method']=='overlay.style':params={**params,'leaseId':client.lease}
                 result = await client.call(cmd['method'], params)
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
-            elif cmd['type'] == 'dev.warp' and fixture and args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']:
+            elif cmd['type'] == 'dev.warp' and fixture and at_least(args.protocol, 2):
                 await client.call('world.load', {'worldId': cmd['worldId']})
             elif cmd['type'] == 'dev.open' and fixture:
                 await open_preview()
@@ -199,7 +224,7 @@ async def main(args):
             emit({'type': 'dev.tab', 'index': index})
             await asyncio.sleep(4)
         await client.overlay(False)
-        if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']: await client.call('world.load', {'worldId': 'com.hyprune.garden'})
+        if at_least(args.protocol, 2): await client.call('world.load', {'worldId': 'com.hyprune.garden'})
 
     async def projection_preview():
         # Synthetic projection samples supplied by a dev camera fixture, never
@@ -250,7 +275,7 @@ async def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
-    parser.add_argument('--protocol', choices=['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'], default=os.environ.get('HYPRUNE_PROTOCOL', '0.2'), help='Exact production protocol; never auto-upgrade')
+    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.2'), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')

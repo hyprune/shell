@@ -3,7 +3,28 @@ pragma Singleton
 
 QtObject {
     property bool hudCurved: true
-    property real hudCurvature: 0.6
+    property real hudCurvature: 0.8
+    property string hudConcept: "Vanguard"
+    property string hudResource: "gpu"
+    property bool worldStyles: true
+    property var worldStyle: ({})
+    readonly property var skin: worldStyles ? worldStyle : ({})
+    function skinColor(key,fallback) { return skin.colors && skin.colors[key] ? skin.colors[key] : fallback; }
+    property color hudAccent: skinColor('accent',hudConcept === 'Instrument' ? '#8be0df' : hudConcept === 'Minimal' ? '#ecede4' : '#dfbd68')
+    property color hudTile: skinColor('tile',hudConcept === 'Instrument' ? '#207e91' : hudConcept === 'Minimal' ? '#506773' : '#177e88')
+    property color hudWhite: skinColor('foreground','#f6f5ea')
+    property color hudMuted: skinColor('muted','#c5d2d2')
+    readonly property color hudOutline: skinColor('outline','#081118')
+    readonly property color hudScrim: skinColor('scrim','#101820')
+    readonly property string hudCorners: skin.corners || 'square'
+    readonly property string hudWarp: skin.warp || 'default'
+    readonly property string hudFont: skin.font && skinFont.status === FontLoader.Ready ? skinFont.name : sans
+    property FontLoader skinFont: FontLoader {}
+    onSkinChanged: { if (skin.font) skinFont.source=skin.font; }
+    Behavior on hudAccent { ColorAnimation { duration: Tokens.reducedMotion ? 0 : 420 } }
+    Behavior on hudTile { ColorAnimation { duration: Tokens.reducedMotion ? 0 : 420 } }
+    Behavior on hudWhite { ColorAnimation { duration: Tokens.reducedMotion ? 0 : 420 } }
+    Behavior on hudMuted { ColorAnimation { duration: Tokens.reducedMotion ? 0 : 420 } }
     property bool light: false
     property bool reducedMotion: false
     property bool warpSoundEnabled: false

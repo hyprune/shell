@@ -13,13 +13,24 @@ QtObject {
     property var missing: []
     property var capabilities: []
     property var state: null
+    property var hudFrame: null
+    property var hudPose: null
+    property var hudTool: null
+    property string banner: ''
+    property Timer bannerTimer: Timer { interval: 2200; onTriggered: root.banner = '' }
+    function showBanner(text) { banner = text; if (!warpActive) bannerTimer.restart(); }
+    onWarpActiveChanged: { if (warpActive) bannerTimer.stop(); else if (banner) bannerTimer.restart(); }
+    function preference(patch) { send({type:'preferences',patch:patch}); }
+    function setConcept(name) { if (['Vanguard','Instrument','Minimal'].indexOf(name) < 0) return; Tokens.hudConcept=name; preference({concept:name}); showBanner(name.toUpperCase()); }
+    function cycleHud() { var names = ['Vanguard','Instrument','Minimal']; setConcept(names[(names.indexOf(Tokens.hudConcept)+1)%3]); }
+    property Timer graphicsPoll: Timer { interval: 1000; running: root.active && root.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: root.action('graphics.get',{}) }
     property var graphics: null
     property var menuHold: null
     property double revision: 0
     property string output: ''
     property string screenName: ''
     property string lease: ''
-    onLeaseChanged: { if (lease) Qt.callLater(applyCoreStyle); }
+    onLeaseChanged: { if (lease && !available('hud.subscribe')) Qt.callLater(applyCoreStyle); }
     function applyCoreStyle() {
         action('overlay.style', {style:{fontFamily:Tokens.mono,waypointColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],routeColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],labelColor:[Tokens.text.r,Tokens.text.g,Tokens.text.b],promptColor:[Tokens.gold.r,Tokens.gold.g,Tokens.gold.b]}});
     }
@@ -201,6 +212,28 @@ QtObject {
 
     function receive(msg) {
         switch (msg.type) {
+        case 'world.style': Tokens.worldStyle=msg.value; break;
+        case 'hud.bound': applyCoreStyle(); break;
+        case 'hud.cycle': cycleHud(); break;
+        case 'hud.frame': hudFrame = msg.value; break;
+        case 'hud.pose':
+            hudPose = msg.value;
+            hudTool = {slot:msg.value.tool,subtype:msg.value.subtype};
+            samples = samples.concat([{at:Date.now(),position:msg.value.position,heading:msg.value.heading*180/Math.PI}]).slice(-12);
+            if (msg.value.zone && currentZoneKey !== msg.value.worldId+'/'+msg.value.zone.id) {
+                currentZoneKey = msg.value.worldId+'/'+msg.value.zone.id;
+                zone = msg.value.zone.homeName; zoneSubtitle = msg.value.zone.worldName; zoneTimer.restart();
+            }
+            break;
+        case 'tool.changed': hudTool = msg.value; break;
+        case 'zone.entered': zone=msg.value.zone.homeName;zoneSubtitle=msg.value.zone.worldName;zoneTimer.restart();break;
+        case 'preferences':
+            Tokens.hudConcept = msg.value.concept;
+            Tokens.hudCurved = msg.value.curved;
+            Tokens.hudCurvature = msg.value.curvature;
+            Tokens.hudResource = msg.value.resource;
+            Tokens.worldStyles = msg.value.worldStyles;
+            break;
         case 'transition.clear':
             warpActive = false;
             pendingArrival = null;
@@ -223,7 +256,7 @@ QtObject {
                 samples = [];
                 projectionSamples = [];
                 markers = [];
-                graphics = null;
+                graphics = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null;
                 methods = [];
                 capabilities = [];
@@ -242,6 +275,7 @@ QtObject {
             presentation = msg;
             break;
         case 'state':
+            if (state && msg.state && state.workspaces && msg.state.workspaces && state.workspaces.currentId !== msg.state.workspaces.currentId) showBanner('WORKSPACE FOCUSED');
             state = msg.state;
             revision = msg.revision;
             lease = msg.lease || '';
@@ -270,7 +304,7 @@ QtObject {
             var position = state.movement.position;
             var entered = (zones || []).find((z) => position.every((v, i) => v >= z.bounds.min[i] && v <= z.bounds.max[i]));
             var zoneKey = entered && state.world ? state.world.id + '/' + entered.id : '';
-            if (zoneKey !== currentZoneKey) {
+            if (!hudPose && zoneKey !== currentZoneKey) {
                 currentZoneKey = zoneKey;
                 if (entered) {
                     zone = entered.name;
@@ -282,13 +316,14 @@ QtObject {
             arrive();
             var q = state.movement.orientation;
             var angle = -Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2])) * 180 / Math.PI;
-            samples = samples.concat([{
+            if (!hudPose) samples = samples.concat([{
                 "at": Date.now(),
                 "position": state.movement.position,
                 "heading": angle
             }]).slice(-12);
             break;
         case 'action':
+            if (msg.method === 'waypoint.set') showBanner('WAYPOINT SET');
             if (msg.method === 'graphics.get' || msg.method === 'graphics.set') graphics = msg.result;
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             break;
@@ -321,18 +356,7 @@ QtObject {
                 tab = msg.index;
 
             break;
-        case 'action':
-            notice(({
-                "runtime.exit": 'Returned to the ordinary desktop.',
-                "waypoint.set": 'Waypoint set. Your next destination is marked.',
-                "camera.set": 'Arrived at the selected location.',
-                "travel.start": 'Core travel started.',
-                "travel.cancel": 'Core travel cancelled.',
-                "surface.focus": 'Surface focus accepted.',
-                "world.load": 'World ready.',
-                "movement.set": 'Movement mode updated.'
-            })[msg.method] || 'Action accepted.', 'info');
-            break;
+
         }
     }
 

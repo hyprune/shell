@@ -37,7 +37,7 @@ Item {
     Component.onCompleted: load()
     Connections {
         target: ShellState
-        function onBrowseSettings(section) { root.section = section; scroll.contentItem.contentY = 0; }
+        function onBrowseSettings(section) { if (section === 1) { ShellState.tab=7; return; } root.section = section; scroll.contentItem.contentY = 0; }
         function onScrollSettings(fraction) { scroll.contentItem.contentY = Math.max(0, scroll.contentItem.contentHeight - scroll.contentItem.height) * fraction; }
         function onBeginInputCapture(mode, action, slot) {
             root.section = 2;
@@ -55,7 +55,6 @@ Item {
             ShellState.action('input.capture.cancel',{});
         }
     }
-    Timer { interval: 1000; running: root.visible && ShellState.director && ShellState.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: ShellState.action('graphics.get', {}) }
     onPendingChanged: {
         if (!pending) ShellState.action('input.capture.cancel', {});
         else Qt.callLater(function() {
@@ -84,13 +83,13 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Repeater {
-                model: ['Appearance', 'World graphics', 'Input bindings']
+                model: ['Appearance', 'Performance', 'Input bindings']
                 ActionButton {
                     required property string modelData
                     required property int index
                     Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
                     text: modelData; primary: root.section === index
-                    onClicked: root.section = index
+                    onClicked: { if (index === 1) ShellState.tab = 7; else root.section = index; }
                 }
             }
         }
@@ -104,22 +103,33 @@ Item {
                 spacing: 16
                 ColumnLayout {
                 Layout.fillWidth: true; spacing: 16; visible: root.section === 0
+                RowLayout {
+                    Layout.fillWidth: true
+                    HudLabel { text: 'HUD concept'; Layout.fillWidth: true }
+                    Choice { Layout.preferredWidth: 250; model: ['Vanguard','Instrument','Minimal']; currentIndex: model.indexOf(Tokens.hudConcept); onActivated: ShellState.setConcept(currentText) }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    HudLabel { text: 'Resource bar'; Layout.fillWidth: true }
+                    Choice { Layout.preferredWidth: 250; property var values: ['gpu','cpu','ram','tool']; model: ['GPU frame budget','CPU render budget','RAM (GPU fallback)','Tool capacity']; currentIndex: values.indexOf(Tokens.hudResource); onActivated: ShellState.preference({resource:values[currentIndex]}) }
+                }
+                ActionButton { Layout.fillWidth:true; text:'Use world HUD styles · '+(Tokens.worldStyles ? 'On' : 'Off'); onClicked:ShellState.preference({worldStyles:!Tokens.worldStyles}) }
                 HudLabel { text: 'PRESENTATION'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }
                 RowLayout {
                     Layout.fillWidth: true
                     ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.light ? 'Theme · Paper' : 'Theme · Night'; onClicked: Tokens.light = !Tokens.light }
                     ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.reducedMotion ? 'Reduced motion · On' : 'Reduced motion · Off'; onClicked: Tokens.reducedMotion = !Tokens.reducedMotion }
-                    ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.hudCurved ? 'Curved HUD · On' : 'Curved HUD · Off'; onClicked: Tokens.hudCurved = !Tokens.hudCurved }
+                    ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.hudCurved ? 'Curved HUD · On' : 'Curved HUD · Off'; onClicked: ShellState.preference({curved:!Tokens.hudCurved}) }
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     HudLabel { text: 'HUD curvature'; Layout.preferredWidth: 140 }
-                    SettingSlider { Layout.fillWidth: true; from: 0; to: 1; stepSize: 0.05; value: Tokens.hudCurvature; enabled: Tokens.hudCurved; onMoved: Tokens.hudCurvature = value }
+                    SettingSlider { Layout.fillWidth: true; from: 0; to: 1; stepSize: 0.05; value: Tokens.hudCurvature; enabled: Tokens.hudCurved; onMoved: ShellState.preference({curvature:value}) }
                     HudLabel { text: Math.round(Tokens.hudCurvature * 100) + '%'; Layout.preferredWidth: 42 }
                 }
-                HudLabel { Layout.fillWidth: true; text: 'Perspective applies to the HUD only. Presentation preferences last for this shell session.'; color: Tokens.muted; wrapMode: Text.Wrap; font.pixelSize: 12 }
+                HudLabel { Layout.fillWidth: true; text: 'HUD concepts, curvature and resource selection are saved automatically. Perspective applies to the HUD only.'; color: Tokens.muted; wrapMode: Text.Wrap; font.pixelSize: 12 }
                 }
-                GraphicsSettings { Layout.fillWidth: true; visible: root.section === 1 && ShellState.graphics !== null && ShellState.available('graphics.get') }
+                ActionButton { visible: root.section === 1; text: 'Open Performance'; onClicked: ShellState.tab = 7 }
                 HudLabel { Layout.fillWidth: true; visible: root.section === 1 && !ShellState.available('graphics.get'); text: 'Graphics controls require a core with graphics settings support.'; wrapMode: Text.Wrap; color: Tokens.muted }
                 ColumnLayout {
                 Layout.fillWidth: true; spacing: 16; visible: root.section === 2
