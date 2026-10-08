@@ -34,16 +34,37 @@ class HudEvents(unittest.TestCase):
         with self.assertRaises(ValueError):Client('/unused',lambda e:None,protocol='0.100')
 
 class PerspectiveGeometry(unittest.TestCase):
-    def test_projective_edges_recede_and_off_is_identity(self):
-        # Evaluate the same matrix builder used by Qt, without a graphical seat.
+    def test_convex_edges_default_angles_and_off_identity(self):
+        # Project actual corners, checking the visible result rather than signs
+        # of matrix coefficients. Screen y increases downwards.
         import subprocess,json
         script=(Path(__file__).resolve().parents[1]/'qml/components/HudPerspective.js').read_text()
         script='const Qt={matrix4x4:(...v)=>v};\n'+script+'''
 function p(m,x,y){let w=m[12]*x+m[13]*y+m[15];return [(m[0]*x+m[1]*y+m[3])/w,(m[4]*x+m[5]*y+m[7])/w]}
-let left=matrix(600,200,-1,0,.8),right=matrix(600,200,1,0,.8),off=matrix(600,200,-1,1,0);
-console.log(JSON.stringify({near:p(left,0,200)[1]-p(left,0,0)[1],far:p(left,600,200)[1]-p(left,600,0)[1],left:p(left,600,100)[0],right:p(right,0,100)[0],off:p(off,600,200)}));
+function corners(x,y,s){let m=matrix(590,203,x,y,s);return [p(m,0,0),p(m,590,0),p(m,0,203),p(m,590,203)]}
+console.log(JSON.stringify({strengths:[.25,.8,1].map(s=>({left:corners(-1,1,s),right:corners(1,1,s),top:corners(0,-1,s),bottom:corners(0,1,s)})),off:corners(-1,1,0)}));
 '''
         out=json.loads(subprocess.check_output(['node','--input-type=module','-e',script],text=True))
-        self.assertGreater(out['near'],out['far']*1.15)
-        self.assertAlmostEqual(out['left']+out['right'],600,places=5)
-        self.assertEqual(out['off'],[600,200])
+        import math
+        ratios=[]
+        for planes in out['strengths']:
+            tl,tr,bl,br=planes['left']
+            ratios.append((br[1]-tr[1])/(bl[1]-tl[1]))
+            self.assertGreater(ratios[-1],1)
+            self.assertLess(tr[1],tl[1])  # Upper border rises toward screen centre.
+            for left,right in zip(planes['left'],[planes['right'][i] for i in [1,0,3,2]]):
+                self.assertAlmostEqual(left[0]+right[0],590,places=5)
+                self.assertAlmostEqual(left[1],right[1],places=5)
+            tl,tr,bl,br=planes['top']
+            self.assertGreater(br[0]-bl[0],tr[0]-tl[0])  # Top/outer edge recedes.
+            tl,tr,bl,br=planes['bottom']
+            self.assertGreater(tr[0]-tl[0],br[0]-bl[0])
+        self.assertEqual(ratios,sorted(ratios))
+        self.assertGreater(ratios[1],1.04)
+        self.assertLess(ratios[1],1.06)
+        tl,tr,bl,br=out['strengths'][1]['left']
+        for a,b in [(tl,tr),(bl,br)]:
+            angle=math.degrees(math.atan2(b[1]-a[1],b[0]-a[0]))
+            self.assertGreater(angle,-3.5)
+            self.assertLess(angle,-2.3)
+        self.assertEqual(out['off'],[[0,0],[590,0],[0,203],[590,203]])
