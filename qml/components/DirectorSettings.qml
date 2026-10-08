@@ -78,6 +78,10 @@ Item {
             text: 'Invert mouse look Y'; checked: root.draft ? !!root.draft.invert_y : false
             onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.invert_y=checked;root.draft=next;root.preview(); }
         }
+        CheckBox {
+            text: 'Show area/place markers'; checked: root.draft ? !!root.draft.show_area_markers : false
+            onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.show_area_markers=checked;root.draft=next;root.preview(); }
+        }
         ScrollView {
             Layout.fillWidth:true; Layout.fillHeight:true
             ColumnLayout {

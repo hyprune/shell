@@ -118,11 +118,13 @@ async def main(args):
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
                 if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
-                        (['input.get','input.preview','input.set','input.capture','input.capture.cancel'] if args.protocol == '0.6' else []) +
+                        (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if args.protocol == '0.6' else []) +
                         (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if args.protocol in ['0.4','0.5','0.6'] else []) +
                         (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6'] else [])):
                     raise ValueError('Unknown shell action')
-                result = await client.call(cmd['method'], cmd['params'])
+                params=cmd['params']
+                if cmd['method']=='overlay.style':params={**params,'leaseId':client.lease}
+                result = await client.call(cmd['method'], params)
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
             elif cmd['type'] == 'dev.warp' and fixture and args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6']:
                 await client.call('world.load', {'worldId': cmd['worldId']})

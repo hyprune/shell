@@ -109,3 +109,12 @@ class KeymapContractTests(unittest.TestCase):
         V5_VALIDATOR.validate(message)  # Older versions allowed arbitrary panel strings.
         message['params']['panel'] = 'unknown'
         with self.assertRaises(Exception): V6_VALIDATOR.validate(message)
+
+class CoreOverlayContractTests(unittest.TestCase):
+    def test_style_is_bounded_and_protocol_06_only(self):
+        from protocol import V6_VALIDATOR,V5_VALIDATOR
+        valid={'jsonrpc':'2.0','id':'theme','method':'overlay.style','params':{'leaseId':'owned','style':{'fontFamily':'DejaVu Sans Mono','waypointColor':[1,0,0],'iconAtlas':None}}}
+        V6_VALIDATOR.validate(valid)
+        with self.assertRaises(Exception):V5_VALIDATOR.validate(valid)
+        for style in [{'routeColor':[1,2,0]},{'unknown':True},{'iconAtlas':{'path':'relative','cellSize':32,'waypointIndex':0,'promptIndex':0}}]:
+            with self.assertRaises(Exception):V6_VALIDATOR.validate({**valid,'params':{'leaseId':'owned','style':style}})

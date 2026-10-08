@@ -176,6 +176,8 @@ ShellRoot {
         function drive(index: int): void { if (ShellState.dev && ShellState.places[index]) ShellState.send({type:'drive',position:ShellState.places[index].position}); }
         function inputCapture(mode: string, action: string, slot: int): void { if(ShellState.dev) ShellState.beginInputCapture(mode,action,slot); }
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
+        function overlayStyle(): void { if(ShellState.dev) ShellState.action("overlay.style",{style:{waypointColor:[1,0,0],fontFamily:"DejaVu Sans Mono"}}); }
+        function routeTo(index: int): void { if(ShellState.dev && ShellState.places[index]) ShellState.action("route.set",{points:[{position:ShellState.places[index].position}]}); }
         function status(): string {
             return JSON.stringify({
                 captured: ShellState.lastCapturedInput,

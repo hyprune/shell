@@ -231,3 +231,14 @@ The launcher owns the authenticated bridge across QML restarts; same-UID owned
 replacement children reconnect and bind their actual Wayland PID. No credentials
 are exposed to QML. Back in world control gives a real cursor for native layers;
 Back/Super+Tab returns. The full live cursor checklist remains in core/docs/M3B.md.
+
+World-anchored waypoint labels, the active route and E/F prompts are drawn by
+core with the camera of the current frame. IPC 0.6 hides its projected HUD marker
+repeater; older protocols retain it. Director, notices, compass and minimap stay
+in the shell. Settings can enable optional area/place labels. The shell sends a
+lease-scoped `overlay.style` update (colours, font family and optional PNG icon
+atlas) when the lease or theme changes; core validates and applies it outside the
+render pass. Without an atlas, core uses its bundled vector waypoint/prompt icons.
+In world mode U captures a JSON/PNG pair; interactive, focus and menu use Super+U,
+which leaves U and Y available for ordinary typing. F3 toggles diagnostics in
+those modes; world also accepts Y.

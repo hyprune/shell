@@ -149,7 +149,7 @@ Item {
     }
 
     Repeater {
-        model: ShellState.markers
+        model: ShellState.protocol === "0.6" ? [] : ShellState.markers
 
         delegate: Item {
             id: marker

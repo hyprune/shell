@@ -17,6 +17,14 @@ QtObject {
     property string output: ''
     property string screenName: ''
     property string lease: ''
+    onLeaseChanged: { if (lease) Qt.callLater(applyCoreStyle); }
+    function applyCoreStyle() {
+        action('overlay.style', {style:{fontFamily:Tokens.mono,waypointColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],routeColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],labelColor:[Tokens.text.r,Tokens.text.g,Tokens.text.b],promptColor:[Tokens.gold.r,Tokens.gold.g,Tokens.gold.b]}});
+    }
+    property Connections coreThemeConnection: Connections {
+        target: Tokens
+        function onLightChanged() { root.applyCoreStyle(); }
+    }
     property bool director: false
     property int tab: 0
     property var lastCapturedInput: null
