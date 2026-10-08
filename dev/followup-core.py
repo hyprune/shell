@@ -33,7 +33,7 @@ def acceptance(client,children,args,shell_token,socketpath):
     s.ctl('eval','hl.plugin.hyprune.toggle("HEADLESS-1")')
     wait(lambda:state()['runtime']['active'])
     r,w=os.pipe();os.write(w,(shell_token+'\n').encode());os.close(w)
-    _,env=verified();env.update(HYPRUNE_TOKEN_FD=str(r),HYPRUNE_PROTOCOL=PROTOCOL,HYPRUNE_SOCKET=str(socketpath),HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',HYPRUNE_DEV_AUTOMATION='1')
+    _,env=verified();env.update(HYPRUNE_TOKEN_FD=str(r),HYPRUNE_PROTOCOL=PROTOCOL,HYPRUNE_SOCKET=str(socketpath),HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',HYPRUNE_DEV_AUTOMATION='1',HYPRUNE_SHELL_PREFERENCES=str(s.STATE/'followup-shell-preferences.json'))
     log=open(s.STATE/'shell.log','w')
     shell=subprocess.Popen(['python3',str(ROOT/'bridge/launch.py'),'--protocol',PROTOCOL],env=env,pass_fds=(r,),stdout=log,stderr=subprocess.STDOUT)
     os.close(r);children.append(shell)

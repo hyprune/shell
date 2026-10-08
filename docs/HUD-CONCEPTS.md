@@ -1,0 +1,69 @@
+# HUD concepts and package styles
+
+Hold TAB for the Director. **Settings → Appearance → HUD concept** selects
+Vanguard, Instrument or Minimal. **5** cycles them in world mode on IPC 0.9+;
+Input bindings exposes `hud.cycle`. Changes show a centre banner and save
+immediately. Application and Director text input retain ordinary key 5.
+
+Vanguard has large accent tiles and a spacious subtype plane; Instrument adds
+coordinates, denser geometry and cyan accents; Minimal reduces radar, tiles and
+secondary text. Shared components show actual core tools/subtypes, circular local
+radar, transparent compass rails, zone titles and the core-timed TAB ring.
+The projective matrix foreshortens inner edges; flattening output depth avoids
+Qt's 2D clip volume. Text stays in the native scenegraph. HUD input regions remain
+empty. Menus and core world markers stay flat.
+
+Appearance includes curvature On/Off and strength (default 80%), resource bar,
+and **Use world HUD styles**. GPU/CPU show measured render time against target
+frame budget, not system utilisation. Missing RAM telemetry explicitly falls
+back to GPU. Tool capacity shows path points or locked windows; other tools show
+unavailable. Preferences: `$XDG_CONFIG_HOME/hyprune/shell.json` (normally
+`~/.config/hyprune/shell.json`). Test runs use private files.
+
+**Performance** is a dedicated Director tab. Auto shows its resolved quality;
+overrides display Custom. Renderer policy/power, dynamic scale bounds and nullable
+GPU costs use exact IPC 0.10. Older 0.7–0.9 cores retain original controls with
+explicit unavailable states. Shared timings are never presented as isolated or
+additive effect measurements. Selecting a preset clears effect overrides;
+independent frame/scale/renderer choices stay explicit. Core owns handover/policy. Native FPS and the admitted offload FPS ceiling are labelled separately.
+
+World style format: [world-hud-style.md](proposals/world-hud-style.md).
+Only launcher-authorised `--world-package /package/world.json` paths currently
+supply skins; authenticated package discovery is requested from core. No executable
+style code or layout changes. Fonts and sanitised icons use a private immutable
+cache. Invalid theme, world exit and opt-out restore concept defaults; invalid
+optional assets fall back by role. Original sample: `dev/styles/signal-amber`.
+
+## Automated validation
+
+```sh
+python3 -m unittest discover -s tests -q
+./dev/run hud-check
+HYPRUNE_NESTED_PROTOCOL=0.10 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+The harness verifies its own child compositor/headless output and owns teardown;
+never target the owner session or stop the gallery autocommitter.
+`HYPRUNE_HUD_QUICK=1` limits captures and skips video. Full run covers four Lumen
+Reach homes, three concepts, 1080p/1440p/4K at scales 1 and 2. It checks real key 5,
+wheel subtypes, hold animation/cancel, persistence, graphics dropdowns against
+core state, and package styles/opt-out/world exit. Output: gallery
+`screenshots/hud-concepts/`, `videos/hud-concepts.mp4` and a string-only sidecar.
+Video encodes in `/tmp`, then moves into the gallery when complete.
+
+Development-only `preview cycleHud` uses the same persistence/banner path.
+`concept`, `resource`, `curvature`, `worldStyles` support capture automation;
+always target the verified nested Quickshell PID. Mutations require explicit
+`HYPRUNE_DEV_AUTOMATION=1` or a development fixture.
+
+
+## Results
+
+58 shell tests, 92 schema tests, SDK mock skin/font/icon smoke and the docs build
+passed. The full core 0.10 run produced 72 HUD matrix captures plus menus, styles,
+flat/curved and event comparisons; its 52.9-second video uses real core key 5.
+A dedicated watchdog-bounded menu test switched Intel → NVIDIA → Intel and
+verified Auto's USB-C policy rejection. Legacy IPC 0.8 hold/graphics/workspace
+regression also passed. See `evidence/hud-concepts.json` for measured values.
+Only dynamic package discovery and RAM/system CPU telemetry remain core requests;
+the sample skin works through an authorised package path.

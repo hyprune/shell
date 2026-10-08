@@ -1,0 +1,99 @@
+{
+  "protocol": "0.10",
+  "hudCaptures": 72,
+  "galleryPNGCount": 110,
+  "resolutions": [
+    "1920x1080",
+    "2560x1440",
+    "3840x2160"
+  ],
+  "scales": [
+    1,
+    2
+  ],
+  "homes": [
+    "Sun Court",
+    "Array Hall",
+    "Rime Vault",
+    "Signal Rise"
+  ],
+  "concepts": [
+    "Vanguard",
+    "Instrument",
+    "Minimal"
+  ],
+  "videoSeconds": "52.900000",
+  "key5": "Physical hold advances exactly once; tool unchanged",
+  "hold": {
+    "first": 0.11482301918498371,
+    "second": 0.2813563155756054,
+    "cancelled": true
+  },
+  "subtypes": {
+    "tool2": {
+      "before": "place",
+      "after": "lock"
+    },
+    "tool3": {
+      "before": "open line",
+      "after": "closed arc"
+    },
+    "tool4": {
+      "before": "move",
+      "after": "scale"
+    }
+  },
+  "worldStyle": "Sample applied; all concepts preserve layout; opt-out and leaving restore defaults",
+  "renderer": {
+    "before": {
+      "activeRenderer": "in-process",
+      "status": "local",
+      "profile": "usb-c",
+      "reason": "inactive",
+      "powerW": null,
+      "capW": 50.0
+    },
+    "after": {
+      "activeRenderer": "offload",
+      "status": "active",
+      "profile": "usb-c",
+      "reason": "ready",
+      "powerW": 25.653,
+      "capW": 50.0
+    },
+    "auto": {
+      "activeRenderer": "in-process",
+      "status": "local",
+      "profile": "usb-c",
+      "reason": "auto requires qualified full AC",
+      "powerW": null,
+      "capW": 50.0
+    },
+    "off": {
+      "activeRenderer": "in-process",
+      "status": "local",
+      "profile": "usb-c",
+      "reason": "inactive",
+      "powerW": null,
+      "capW": 50.0
+    }
+  },
+  "watchdog": {
+    "returncode": 0,
+    "reason": null,
+    "peakWatts": 26.55
+  },
+  "shellTests": 58,
+  "schemaTests": 92,
+  "docsBuild": "passed",
+  "mock": "concepts, Appearance, package font, sanitized SVG and opt-out passed",
+  "events": "waypoint and workspace banners passed; notice survives travel",
+  "gallery": "screenshots/hud-concepts/ and videos/hud-concepts.mp4",
+  "limits": [
+    "Installed package discovery currently needs launcher-authorised --world-package.",
+    "RAM and system-wide CPU utilisation are not published; explicit render-budget fallbacks.",
+    "Personal-world format reconciled; private package assets not yet available."
+  ],
+  "legacyCore": "IPC 0.8 follow-up passed: core-timed hold/cancel/fire, real graphics dropdown persistence and long workspace/app cards.",
+  "performanceCaption": "Native frame statistics are distinct from the admitted offload FPS ceiling; six display configurations passed layout audit."
+}
