@@ -6,6 +6,6 @@
     "protocol": "0.6"
   },
   "amendment": "core/docs/graphics-ipc-amendment.json",
-  "amendmentSha256": "be7ef3ee9d373057d3a4ab1a60a3f16762a63ebf68f6d368dfbdb4c0bd865d7d",
+  "amendmentSha256": "619cc7e42abcd6c8d6b095b5a9993fbcb4891e6042c5ed176920d42c7953014e",
   "notes": "Applied exact core handoff. Canonical schema repository has not published 0.7 yet; existing 0.1\u20130.6 pins remain unchanged."
 }

@@ -178,6 +178,19 @@ class ClientV2Tests(ClientTests):
         self.peers[-1].write(frame(self.delta(base,self.revision,{'location':self.state['location']}),self.validator))
         self.notify('location.transition',value)
 
+    async def test_native_catalog_retains_display_names_without_republishing(self):
+        # Exercise presentation reconciliation with the same connection/lease,
+        # without changing the test peer's frozen 0.2 wire projection.
+        self.client.protocol = '0.7'
+        for ident, name in [('com.hyprune.switchyard','The Switchyard'),('com.hyprune.lumen-reach','Lumen Reach')]:
+            self.client.state['spatial'] = {'output':{'id':'world','name':'TEST'},'world':{'id':ident,'name':name}}
+            await self.client.reconcile()
+        catalogs = [e for e in self.events if e['type'] == 'catalog']
+        self.assertEqual([w['name'] for w in catalogs[-1]['worlds']],['The Switchyard','Lumen Reach'])
+        await self.client.reconcile()
+        self.assertEqual(len([e for e in self.events if e['type']=='catalog']),len(catalogs))
+        self.client.protocol = '0.2'
+
     async def test_loading_hint_presents_without_patching_baseline(self):
         self.peers[-1].write(frame({'jsonrpc':'2.0','method':'location.transition','params':{
             'id':'jump-1','outputId':'world','monotonicMs':100,'phase':'departing','progress':0,'to':{'position':[4,1,-3]},'sessionId':'session','revision':self.revision+1}},self.validator))

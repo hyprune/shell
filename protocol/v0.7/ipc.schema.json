@@ -7507,6 +7507,11 @@
           "type": "number",
           "minimum": 0,
           "maximum": 4
+        },
+        "sharpen": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "required": [
@@ -7527,7 +7532,8 @@
         "target_fps",
         "fov",
         "exposure",
-        "bloom_strength"
+        "bloom_strength",
+        "sharpen"
       ],
       "additionalProperties": false
     },
@@ -7653,6 +7659,11 @@
           "type": "number",
           "minimum": 0,
           "maximum": 4
+        },
+        "sharpen": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "required": [],

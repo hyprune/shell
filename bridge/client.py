@@ -249,7 +249,10 @@ class Client:
                 self.bindings = {descriptor['id']: descriptor['name']}
                 current = self.state['spatial'].get('world')
                 if current:
-                    self.worlds = [w for w in self.worlds if w['id'] != current['id']] + [{'id': current['id'], 'name': current['name'], 'spawns': []}]
+                    known = next((w for w in self.worlds if w['id'] == current['id']), None)
+                    if not known or known['name'] != current['name']:
+                        self.worlds = [w for w in self.worlds if w['id'] != current['id']] + [{'id': current['id'], 'name': current['name'], 'spawns': []}]
+                        self.emit({'type': 'catalog', 'worlds': self.worlds})
             leases = self.state['shell']['leases']
             own = next((v for v in leases if v['id'] == self.lease), None)
             if own: self.lease_seen = True

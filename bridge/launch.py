@@ -14,6 +14,7 @@ import signal
 import stat
 import tempfile
 from client import Client
+from jsonschema.exceptions import ValidationError
 from protocol import decode, WORLD_VALIDATOR, WORLD_V2_VALIDATOR
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,7 +135,8 @@ async def main(args):
             else:
                 raise ValueError('Unknown presentation command')
         except Exception as error:
-            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': str(error)})
+            message = 'Core response does not match the negotiated protocol.' if isinstance(error, ValidationError) else str(error)[:512]
+            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message})
 
     current_peer = None
     async def peer(reader, writer):
