@@ -196,6 +196,10 @@ ShellRoot {
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
         function overlayStyle(): void { if(ShellState.dev) ShellState.action("overlay.style",{style:{waypointColor:[1,0,0],fontFamily:"DejaVu Sans Mono"}}); }
         function routeTo(index: int): void { if(ShellState.dev && ShellState.places[index]) ShellState.action("route.set",{points:[{position:ShellState.places[index].position}]}); }
+        function scrollPage(fraction: real): void {
+            if (ShellState.dev && ShellState.director)
+                Audit.scroll(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), fraction);
+        }
         function layoutAudit(): string {
             var views = ShellState.warpActive ? root.warpViews : ShellState.director ? root.directorViews : root.hudViews;
             var view = views.find(v => v.outputScreenName === ShellState.screenName);

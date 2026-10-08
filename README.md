@@ -242,3 +242,6 @@ render pass. Without an atlas, core uses its bundled vector waypoint/prompt icon
 In world mode U captures a JSON/PNG pair; interactive, focus and menu use Super+U,
 which leaves U and Y available for ordinary typing. F3 toggles diagnostics in
 those modes; world also accepts Y.
+
+The responsive layout, curved HUD, IPC 0.7 graphics controls and automated
+resolution/scale evidence are documented in [POLISH.md](POLISH.md).

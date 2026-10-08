@@ -41,7 +41,7 @@ export WAYLAND_DISPLAY=${session[1]}
 [[ "$HYPRLAND_INSTANCE_SIGNATURE" != "$outer_signature" && "$WAYLAND_DISPLAY" != "$outer_display" && -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] || { echo 'Refusing unsafe session target' >&2; exit 1; }
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" output create headless HYPRUNE-PREVIEW > "$ROOT/dev/.run/output.log"
 target_output=HYPRUNE-PREVIEW
-if [[ "$mode" != check && "$mode" != capture ]]; then
+if [[ "$mode" != check && "$mode" != capture && "$mode" != polish ]]; then
     target_output=$(hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" monitors -j | python3 -c 'import json,sys; print(next(m["name"] for m in json.load(sys.stdin) if m["name"]!="HYPRUNE-PREVIEW"))')
 fi
 [[ "$target_output" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
@@ -70,7 +70,9 @@ done
 export HYPRUNE_SHELL_PID=$shell_pid
 printf '%s\n' "$shell_pid" > "$ROOT/dev/.run/shell.pid"
 echo "Nested display: $WAYLAND_DISPLAY, shell PID: $shell_pid"
-if [[ "$mode" == capture ]]; then
+if [[ "$mode" == polish ]]; then
+    python3 "$ROOT/dev/polish-mock.py"
+elif [[ "$mode" == capture ]]; then
     "$ROOT/dev/capture"
 elif [[ "$mode" == check || "$mode" == check-window ]]; then
     sleep 3
