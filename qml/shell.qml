@@ -192,6 +192,13 @@ ShellRoot {
         function inputCapture(mode: string, action: string, slot: int): void { if(ShellState.dev) ShellState.beginInputCapture(mode,action,slot); }
         function settingsSection(section: int): void { if (ShellState.dev) ShellState.browseSettings(section); }
         function settingsScroll(fraction: real): void { if (ShellState.dev) ShellState.scrollSettings(Math.max(0,Math.min(1,fraction))); }
+        function graphicsFocus(key: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var choice = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'graphics-' + key);
+            if (!choice) return false;
+            choice.forceActiveFocus();
+            return true;
+        }
         function graphicsPatch(patch: string): void { if (ShellState.dev) ShellState.action("graphics.set", {patch:JSON.parse(patch)}); }
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
         function overlayStyle(): void { if(ShellState.dev) ShellState.action("overlay.style",{style:{waypointColor:[1,0,0],fontFamily:"DejaVu Sans Mono"}}); }
@@ -208,6 +215,8 @@ ShellRoot {
         function status(): string {
             return JSON.stringify({
                 graphics: ShellState.graphics,
+                menuHold: ShellState.menuHold,
+                holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
                 lease: ShellState.lease, director: ShellState.director,

@@ -83,10 +83,12 @@ file. Gallery autocommit is left running.
 
 ## Core limitations
 
-TAB's ring is currently a static hint. Core owns key interception and the hold
-timer but publishes no hold-start/progress/cancel state in 0.7. The `HoldRing`
-component accepts progress, ready for a future contract. Shell does not grab
-keyboard input or invent an unsynchronised timer to fake progress.
+On IPC 0.7 and earlier TAB remains a static hint. On exact IPC 0.8 the ring
+animates from core `keymap.holds` monotonic start/duration data. The bridge
+computes remaining time, and QML animates locally. Removal, firing and disconnect
+clear the ring; duration changes retain the original start. No shell keyboard
+interception or per-frame progress IPC is used. Launch with `--protocol 0.8`
+or `HYPRUNE_PROTOCOL=0.8`; an explicit older launcher argument stays older.
 
 No automatic luminance sampling is exposed by core; scrims adapt by alpha
 compositing with the world, with a stable dark floor for text contrast.
@@ -130,3 +132,47 @@ Useful exact comparisons (under the gallery's `screenshots/` directory):
 Key capture: `hyprune-shell-polish/core-1080p-s2-settings-capture.png`.
 Graphics: `hyprune-shell-polish/core-2160p-s1-settings-graphics.png` and
 `core-2160p-s1-settings-graphics-detail.png`.
+
+## Published-core follow-up
+
+Core and schema were pulled before this follow-up. IPC 0.8 is pinned directly
+from the published canonical schema; the existing 0.7 pin is byte-identical to
+the published 0.7 file. Earlier statements about unpublished graphics schemas
+and missing hold timing describe the initial polish run.
+
+Workspace app rows now live inside their SurfaceCard, above the action button.
+The card grows with the app list; titles and class names elide with tooltips.
+The nested audit checks that app bounds lie within the containing card.
+
+Reproduce the targeted acceptance independently under the shared lock:
+
+```sh
+flock /tmp/worldshell-nested.lock python3 dev/followup-core.py
+HYPRUNE_FOLLOWUP_PROTOCOL=0.7 flock /tmp/worldshell-nested.lock python3 dev/followup-core.py
+```
+
+The harness uses real nested keyboard events on the Settings ComboBoxes to
+select Ultra and Bloom Off. It then checks independent `graphics.get`, renderer
+configuration, persisted settings, and F3 before/after captures. IPC 0.8 also
+checks increasing rendered HoldRing progress, early-release cancellation, and
+hold completion opening the Director. This last check currently exposes the core
+version-gate blocker below. Workspace captures cover 1080p/scale 2,
+1440p/scale 1 and 4K/scale 2 with long titles and native workspace names.
+
+Evidence: `gallery/screenshots/hyprune-shell-followup/`, including
+`graphics-0.7-before-f3.png`, `graphics-0.7-after-f3.png`,
+`hold-08-progress.png`, `workspaces-0.7-1440p-s1.png` and per-protocol
+`verification-0.7.json` / `verification-0.8.json`.
+The old app-below-card comparison is
+`hyprune-shell-polish/core-1440p-s1-long-workspaces.png`.
+
+Follow-up results: 50 shell unit tests pass. The 0.7 nested acceptance passes,
+including real dropdown input, renderer/persistence checks and app containment.
+On 0.8, increasing rendered ring progress and early-release clearing pass, but
+Director opening is blocked by `core/src/platform/hyprland/Plugin.cpp:2721`:
+its `shell.overlay` exclusive-input version allowlist ends at 0.7. Core returns
+`-32007: verified association requires IPC 0.3` for the authenticated 0.8 shell.
+The shell keeps this failure visible and does not bypass exclusive-input checks.
+The 0.8 acceptance intentionally fails until core adds 0.8 to that allowlist.
+Do not switch the normal launcher to 0.8 until core resolves it. No core source
+was edited; all runs used the nested lock and isolated test configuration.

@@ -34,6 +34,7 @@ ColumnLayout {
             HudLabel { Layout.fillWidth: true; Layout.minimumWidth: 0; text: root.labels[optionRow.modelData] || optionRow.modelData; wrapMode: Text.Wrap }
             HudLabel { Layout.preferredWidth: 110; text: 'Active: ' + root.label(root.graphics.effective[optionRow.modelData]); font.pixelSize: 11; color: Tokens.muted }
             Choice {
+                objectName: 'graphics-' + optionRow.modelData
                 Layout.preferredWidth: 210
                 model: optionRow.values.map(root.label)
                 currentIndex: optionRow.values.indexOf(root.graphics.config[optionRow.modelData])
