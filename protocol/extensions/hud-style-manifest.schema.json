@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hyprune.com/schema/extensions/hud-style-manifest.schema.json",
+  "title": "Proposed com.hyprune.hud-style manifest value",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "theme"
+  ],
+  "properties": {
+    "theme": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^hud/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\\.json$"
+    }
+  }
+}
