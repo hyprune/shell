@@ -19,6 +19,16 @@ from protocol import decode, WORLD_VALIDATOR, WORLD_V2_VALIDATOR
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def presentation_child(pid):
+    """Only a descendant of this trusted launcher may use its private bridge."""
+    for _ in range(32):
+        if pid == os.getpid(): return True
+        if pid <= 1: return False
+        try: pid = int(Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()[1])
+        except (OSError, ValueError, IndexError): return False
+    return False
+
+
 def socket_path(explicit=None):
     runtime = os.environ.get('XDG_RUNTIME_DIR')
     if not runtime or not Path(runtime).is_absolute():
@@ -123,13 +133,23 @@ async def main(args):
         except Exception as error:
             emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': str(error)})
 
+    current_peer = None
     async def peer(reader, writer):
+        nonlocal current_peer
         creds = writer.get_extra_info('socket').getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
         import struct
-        if struct.unpack('3i', creds)[1] != os.getuid() or peers:
+        pid, uid, _ = struct.unpack('3i', creds)
+        if uid != os.getuid() or not presentation_child(pid):
             writer.close()
             return
+        # Quickshell's crash supervisor may retain the old socket FD. A verified
+        # replacement child supersedes it; the core connection/grant stays here.
+        for old in tuple(peers): old.close()
+        with contextlib.suppress(Exception): await client.overlay(False)
+        current_peer = writer
+        client.wayland_pid = pid
         peers.add(writer)
+        print(json.dumps({'type':'presentation.peer','pid':pid}), flush=True)
         commands = set()
         for event in cache.values(): writer.write((json.dumps(event) + '\n').encode())
         try:
@@ -148,7 +168,9 @@ async def main(args):
             await asyncio.gather(*commands, return_exceptions=True)
             peers.discard(writer)
             writer.close()
-            with contextlib.suppress(Exception): await client.overlay(False)
+            if current_peer is writer:
+                current_peer = None
+                with contextlib.suppress(Exception): await client.overlay(False)
 
     server = await asyncio.start_unix_server(peer, str(local), limit=1_048_576)
     os.chmod(local, 0o600)
@@ -192,7 +214,15 @@ async def main(args):
     child_wait = asyncio.create_task(child.wait())
     stop_wait = asyncio.create_task(stop.wait())
     try:
-        await asyncio.wait([child_wait, stop_wait], return_when=asyncio.FIRST_COMPLETED)
+        while True:
+            done, _ = await asyncio.wait([child_wait, stop_wait], return_when=asyncio.FIRST_COMPLETED)
+            if stop_wait in done or child.returncode == 0: break
+            emit({'type':'notice','level':'warning','code':'shell.qml-restart','message':'Presentation exited; restarting through the existing authenticated bridge'})
+            with contextlib.suppress(Exception): await client.overlay(False)
+            await asyncio.sleep(.3)
+            child = await asyncio.create_subprocess_exec('qs', '-p', str(ROOT / 'qml'), '--no-color', env=env)
+            client.wayland_pid = child.pid
+            child_wait = asyncio.create_task(child.wait())
     finally:
         stop_wait.cancel()
         touring.cancel()

@@ -223,3 +223,11 @@ uses core `input.set` with `input.control`; shell never writes the input file.
 HUD shows world/interactive/focus/menu and the selected tool/submode. TAB hold
 opens Map. Super+Tab or Back leaves E/F; Esc closes the Director. Defaults and
 option ranges are generated in the docs site's Keymap page, with HJKL first.
+
+Live follow-up: Workspaces includes native desktops and apps even without
+configured world homes, via the amended IPC 0.6 inventory (up to 128 apps).
+Director uses anchored page geometry after the Qt 6.11 StackLayout crash.
+The launcher owns the authenticated bridge across QML restarts; same-UID owned
+replacement children reconnect and bind their actual Wayland PID. No credentials
+are exposed to QML. Back in world control gives a real cursor for native layers;
+Back/Super+Tab returns. The full live cursor checklist remains in core/docs/M3B.md.

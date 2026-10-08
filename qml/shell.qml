@@ -186,6 +186,8 @@ ShellRoot {
                 world: ShellState.state && ShellState.state.world ? ShellState.state.world.id : null,
                 mode: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.mode : null,
                 tool: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tool : null,
+                workspaces: ShellState.workspaces,
+                appDetails: ShellState.state && ShellState.state.apps ? ShellState.state.apps : [],
                 apps: ShellState.state && ShellState.state.apps ? ShellState.state.apps.length : 0,
                 map: ShellState.mapData !== null, places: ShellState.places, markers: ShellState.markers.length
             });

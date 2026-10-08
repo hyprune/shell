@@ -73,9 +73,16 @@ QtObject {
         });
     }) : []
     readonly property var surfaces: state ? state.surfaces : []
-    readonly property var workspaces: state && state.workspaces ? state.workspaces.locations.map((w) => ({id: w.id, title: w.label, kind: 'workspace', worldId: w.worldId})) : surfaces.filter((s) => {
-        return s.kind === 'workspace';
-    })
+    readonly property var workspaces: {
+        var locations = state && state.workspaces ? state.workspaces.locations : [];
+        var entries = surfaces.filter((s) => s.kind === 'workspace').map((s) => {
+            var id = Number(s.id.replace('workspace-', ''));
+            var home = locations.find((w) => w.id === id);
+            return ({id:id, surfaceId:s.id, title:s.title, kind:'workspace', focused:s.focused, worldId:home ? home.worldId : '', desktop:!home});
+        });
+        locations.forEach((w) => { if (!entries.some((e) => e.id === w.id)) entries.push({id:w.id,title:w.label,kind:'workspace',worldId:w.worldId,desktop:false}); });
+        return entries;
+    }
     property Socket socket
     property Timer retry
     property Timer frames

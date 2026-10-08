@@ -151,30 +151,18 @@ Item {
             color: Tokens.line
         }
 
-        StackLayout {
-            currentIndex: ShellState.tab
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            DirectorMap {
-            }
-
-            DirectorPlaces {
-            }
-
-            DirectorSurfaces {
-            }
-
-            DirectorWorkspaces {
-            }
-
-            DirectorHelp {
-            }
-
-            DirectorNews {
-            }
-            DirectorSettings {}
-
+            // Concrete page geometry avoids Qt 6.11 StackLayout's recursive
+            // size-hint cache walking Repeater-owned/deleted layout children.
+            DirectorMap { anchors.fill: parent; visible: ShellState.tab === 0 }
+            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 1 }
+            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 2 }
+            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 3 }
+            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 4 }
+            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 5 }
+            DirectorSettings { anchors.fill: parent; visible: ShellState.tab === 6 }
         }
 
         Rectangle {

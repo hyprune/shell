@@ -22,7 +22,7 @@ Flickable {
         }
 
         HudLabel {
-            text: 'Core-owned workspace locations. Switching workspace opens its world through the same warp lifecycle.'
+            text: 'Your real desktops and apps, with world locations where configured.'
             color: Tokens.muted
             font.pixelSize: 14
         }
@@ -64,7 +64,7 @@ Flickable {
 
         HudLabel {
             visible: !ShellState.workspaces.length
-            text: 'Core has not advertised any workspace surfaces.'
+            text: 'No workspaces are currently available.'
             color: Tokens.muted
         }
 
