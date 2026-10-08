@@ -9,10 +9,13 @@ Item {
     readonly property bool compact: width < 1200 || height < 700
     readonly property real inset: compact ? 26 : 56
     readonly property string mode: HudData.editor ? HudData.editor.mode : 'world'
-    HudCluster {
+    Item {
         x: root.inset; y: root.inset; width: root.compact ? 126 : root.minimal ? 116 : root.technical ? 190 : 178; height: width+26
-        edgeX:-1; edgeY:-1
-        Radar { id:localRadar; width:parent.width; height:width }
+        HudCluster {
+            width:parent.width; height:width; edgeX:-1; edgeY:-1
+            Radar { id:localRadar; anchors.fill:parent }
+        }
+        // Small captions stay upright while the radar retains its glass plane.
         HudText { anchors.bottom:parent.bottom; width:parent.width; text: root.technical ? Math.round(ShellState.heading)+'° / '+Math.round(localRadar.range)+' m' : ShellState.worldName.toUpperCase(); font.pixelSize:12; font.letterSpacing:1 }
     }
     HudCluster {
@@ -22,6 +25,14 @@ Item {
     HudCluster {
         anchors.right:parent.right; anchors.rightMargin:root.inset; y:root.inset; width: root.compact ? 230 : 310; height:72
         edgeX:1; edgeY:-1
+        curvatureScale: .35
+        // Rasterise this small text cluster before projecting it, at twice its
+        // physical output size (including the HUD's own scale on large screens).
+        layer.enabled: bend > 0
+        layer.textureSize: Qt.size(Math.ceil((width+4)*2*root.scale*Screen.devicePixelRatio), Math.ceil((height+4)*2*root.scale*Screen.devicePixelRatio))
+        layer.sourceRect: Qt.rect(-2,-2,width+4,height+4)
+        layer.smooth: true
+        layer.mipmap: true
         HudText { width:parent.width; horizontalAlignment:Text.AlignRight; text: root.mode === 'world' ? 'NAVIGATION' : root.mode.toUpperCase(); font.pixelSize: root.technical ? 17 : 14; font.letterSpacing:2 }
         HudText { y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; color:Tokens.hudMuted; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
         HudText { y:49; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12; color:Tokens.hudMuted }
