@@ -9,7 +9,8 @@ Vanguard has large accent tiles and a spacious subtype plane; Instrument adds
 coordinates, denser geometry and cyan accents; Minimal reduces radar, tiles and
 secondary text. Shared components show actual core tools/subtypes, circular local
 radar, transparent compass rails, zone titles and the core-timed TAB ring.
-The projective matrix foreshortens inner edges; flattening output depth avoids
+The projective matrix brings inner edges forward on a convex surface, with the
+outer left/right/top edges receding; flattening output depth avoids
 Qt's 2D clip volume. The upper-right small-text cluster uses 35% of the selected
 curvature and a texture at twice its physical output size (including output and
 HUD scales) before projection. Its padded texture preserves the outline; the
@@ -62,6 +63,36 @@ Original filenames are preserved and new captures have a `-v2` suffix. Shared
 world shading appears once above the effects; only independent measurements
 appear beside individual controls. Power policy is a human-readable sentence.
 
+`HYPRUNE_HUD_CONVEX=1` captures the direction/calibration follow-up as `-v3`:
+all concepts in bright/dark homes at all six resolution/scale combinations,
+plus flat/default/maximum comparisons. It leaves older captures intact.
+
+## Convex calibration
+
+The supplied private reference, widescreen reference captures
+([source](https://example.invalid/reference)), and the HUD designer's gameplay
+captures ([source](https://elsamadisy.com/game_ux.html)) were reviewed before
+tuning. Native-pixel endpoints on four lower-left box borders give
+apparent slopes of approximately 2.4°, 2.9°, 3.2° and 3.0° upward toward centre.
+The upper-left objective rule slopes about 2.4° down toward centre; the supplied
+upper-right notice rule slopes about 2.8° in the opposite horizontal direction.
+These are screen angles, not recoverable physical camera/yaw angles. Manual
+endpoints have approximately ±2 px uncertainty (±3 px on blurred captures).
+Edge-height ratios are approximately 1.00–1.05, with greater relative uncertainty.
+
+At 80% strength, the 590×203 tool deck has 3.24°/2.37° rising top/bottom borders
+and a 1.049 inner/outer edge-height ratio. Opposite sides mirror exactly; the
+upper edge of top clusters recedes. Yaw and pitch reach 16° at maximum strength,
+with an inward tangent tilt of 3.5° and camera distance `max(500, width*5)`.
+The rotation order avoids a yaw/pitch cross term reversing the border slope.
+The existing slider value and saved preferences remain valid; its geometry is
+recalibrated. Upper-right supersampling/reduced curvature and the upright radar
+caption remain in effect. Tests assert visible corner geometry and angle bands.
+
+Downloaded images, pixel endpoints, source metadata and reference crop sheets
+are private gallery files under `reference/hud-curve-v3/`, locally excluded from
+Git before download. No reference artwork is included in the shell or docs.
+
 Development-only `preview cycleHud` uses the same persistence/banner path.
 `concept`, `resource`, `curvature`, `worldStyles` support capture automation;
 always target the verified nested Quickshell PID. Mutations require explicit
@@ -85,3 +116,13 @@ Rime Vault at 1080p/1440p/4K, scales 1/2, Performance top/bottom at each size,
 flat/curved comparison and the USB-C Auto policy. Every capture passed the
 layout audit and the shell log contained no QML errors. See gallery
 `screenshots/hud-concepts/review-v2-verification.json` for the core snapshot.
+
+Convex follow-up: 61 shell tests (including projected-corner direction, mirrored
+sides, monotonic strength, measured default angle bands and identity when off),
+the SDK mock and locked core 0.10 capture run passed. All 45 `-v3` captures passed
+layout audits without QML errors: 36 concept/home/resolution/scale shots and nine
+flat/default/maximum comparisons. Evidence: gallery
+`screenshots/hud-concepts/convex-v3-verification.json`. Private comparison sheet:
+`reference/hud-curve-v3/flat-curved-reference-v3.png`; endpoints and uncertainty:
+`reference/hud-curve-v3/measurements.json`; download attribution: `sources.json`
+in the same private directory.
