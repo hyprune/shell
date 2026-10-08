@@ -40,8 +40,10 @@ Theme example:
 ```
 
 Only `version` is required. Missing values inherit the selected concept.
-Colors are opaque six-digit hex. Stroke width 1–3 applies to native glyphs;
-text keeps a native one-pixel outline/shadow, independent of custom art.
+Colors are opaque six-digit hex. Stroke width 1–3 applies to native glyphs.
+Text defaults to solid fill with a soft dark shadow (50% opacity, small offset).
+An explicit `stroke.style: "outline"` selects a native one-pixel text outline;
+`shadow` or an omitted stroke style uses the soft shadow, independent of custom art.
 `style`: outline or shadow. Corners: square, bevel, round. Warp: default,
 ribbons, soft. Icons: navigate, window, path, position. Subtype glyphs remain
 original semantic art; overrides must not change tool names or actions.

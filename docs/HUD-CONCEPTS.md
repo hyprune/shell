@@ -13,9 +13,14 @@ The projective matrix brings inner edges forward on a convex surface, with the
 outer left/right/top edges receding; flattening output depth avoids
 Qt's 2D clip volume. The upper-right small-text cluster uses 35% of the selected
 curvature and a texture at twice its physical output size (including output and
-HUD scales) before projection. Its padded texture preserves the outline; the
-radar caption stays upright. Other clusters, including the tool deck, retain
-their native scenegraph rendering. HUD input regions remain empty. Menus and
+HUD scales) before projection. Its padded texture preserves the shadow; the
+radar caption stays upright. Default HUD text has solid curve-rasterized glyphs
+and a 50% dark shadow, with 1.5 logical pixels of blur and a 0.5-pixel downward
+offset (about 2–3 physical pixels of blur at 4K). Label textures are supersampled
+before perspective; only the shadow is blurred. Small text uses semibold weight.
+World styles can explicitly request `stroke.style: "outline"` to retain native
+outlines; omitted styles and `shadow` use the soft shadow. HUD input regions
+remain empty. Menus and
 core world markers stay flat.
 
 Appearance includes curvature On/Off and strength (default 80%), resource bar,
@@ -66,6 +71,8 @@ appear beside individual controls. Power policy is a human-readable sentence.
 `HYPRUNE_HUD_CONVEX=1` captures the direction/calibration follow-up as `-v3`:
 all concepts in bright/dark homes at all six resolution/scale combinations,
 plus flat/default/maximum comparisons. It leaves older captures intact.
+`HYPRUNE_HUD_TEXT=1` captures the same bright/dark matrix as `-v4`, with
+flat/default comparisons and an explicit world-outline/opt-out pair.
 
 ## Convex calibration
 
@@ -126,3 +133,11 @@ flat/default/maximum comparisons. Evidence: gallery
 `reference/hud-curve-v3/flat-curved-reference-v3.png`; endpoints and uncertainty:
 `reference/hud-curve-v3/measurements.json`; download attribution: `sources.json`
 in the same private directory.
+
+Text follow-up: 61 shell tests, the SDK mock, and the locked core 0.10 run passed.
+All 44 `-v4` captures passed layout audits with no QML errors, including the
+explicit world-outline and opt-out pair. The gallery includes 24 separate status
+and radar-caption crops and `screenshots/hud-concepts/hud-status-crops-v4.png`
+(v3/v4 comparisons in both homes at three resolutions). The private reference
+sheet is updated at `reference/hud-curve-v3/flat-curved-reference-v4.png` and
+remains excluded from Git.
