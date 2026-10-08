@@ -56,7 +56,7 @@ optional assets fall back by role. Original sample: `dev/styles/signal-amber`.
 python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -q
 ./dev/run hud-check
-HYPRUNE_NESTED_PROTOCOL=0.10 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+HYPRUNE_NESTED_PROTOCOL=0.12 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
 ```
 
 The harness verifies its own child compositor/headless output and owns teardown;
@@ -190,3 +190,52 @@ fill, soft shadows and explicit world outlines are retained. The gallery has
 24 standalone status/caption crops and two v4/v5 sheets with contrast columns:
 `screenshots/hud-concepts/hud-status-crops-v5.png` and
 `hud-status-crops-s2-v5.png`. [Recorded results](evidence/hud-contrast-v5.json).
+
+
+## Cursor and climbing (IPC 0.12)
+
+The launcher now defaults to exact **0.12**; explicit older selections remain
+supported. Canonical 0.11/0.12 schemas are pinned separately with their hashes;
+climbing comes from 0.11, and cursor mode from 0.12. Recording/replay contracts
+are validated without adding automatic recording or replay actions.
+
+Back / Super+Tab switches to the real cursor. A passive **CURSOR · Back /
+Super+Tab to return** chip replaces the bottom action hints on the same curved
+plane. Vanguard uses its accent stripe, Instrument a technical border/mono font,
+and Minimal a smaller stripe and restrained scrim. TAB/use/focus/scope and
+subtype-action hints disappear; the status label says **NATIVE POINTER**.
+
+While climbing, a small original ladder indicator and core's `movement.prompt`
+replace the tool cluster's secondary stats. Empty prompts fall back to
+**W/S climb · Space let go**. The text wraps/elides safely. Cursor mode wins over
+climbing, including stale activity snapshots; releasing the climb removes the
+prompt. Core continues to own all keys, cursor routing and climbing behavior.
+
+```sh
+HYPRUNE_HUD_INTERACTION=1 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+The check exercises both actual toggle gestures, all three climbing mechanics,
+all concepts, 1080p/1440p/4K scale 1 and compact 1080p scale 2. It asserts actual
+visible QML items, exact core prompt text, no truncation, native cursor visibility,
+frozen movement, return and Space-detach behavior. Screenshots are in gallery
+`screenshots/hud-concepts/{climb,cursor}-*-ipc012.png`.
+
+Integration note: core `0a4c6d1` still sets `PROTOCOL = '0.10'` in
+`dev/live/live.py`. That explicit launcher argument must move to 0.12 for the
+new HUD states in the owner's next live launch. Shell does not override an
+explicit negotiation or edit the core-owned launcher. Nested verification
+launches 0.12 explicitly; no live-session commands were used.
+
+Core follow-up found in the screenshots: its centre **Move into ladder to climb**
+hint is still drawn during cursor mode. The prompt generation in
+`core/src/platform/hyprland/Plugin.cpp` (around line 3337 at `0a4c6d1`) checks
+walking/noclip/typing but does not exclude suspended free-cursor mode. Core must
+suppress its own interaction prompts there. Shell cannot hide a prompt baked
+into the world frame; its own climb/tool/footer prompts are verified hidden.
+See `cursor-vanguard-1080p-s1-ipc012.png` for direct evidence.
+
+Validation: **67 shell tests**, the SDK 0.2 mock compatibility check, and **12
+real-core 0.12 concept/resolution cases** passed. The locked run captured 25
+screenshots with no QML/schema/layout errors. [Recorded results and core
+follow-ups](evidence/hud-interaction-012.json).

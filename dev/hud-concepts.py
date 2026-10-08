@@ -12,7 +12,7 @@ import m3b
 from ctl import verified
 from m2 import wait, keys, pose
 GALLERY=pathlib.Path.home()/'hyprune-gallery'
-PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.10')
+PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
@@ -74,6 +74,10 @@ def acceptance(client,children,args,shell_token,socketpath):
         s.ctl('eval',f'hl.monitor({{output="HEADLESS-1",mode="{w}x{h}@60",position="1600x0",scale={scale}}})');time.sleep(1)
     evidence = {'protocol':PROTOCOL, 'captures':[]}
     homes={'sun-court':[-8,2,12],'array-hall':[8,2,-34],'rime-vault':[38,-4.3,-79],'signal-rise':[54,2,-125]}
+    if os.environ.get('HYPRUNE_HUD_INTERACTION'):
+        from hud_interaction_check import check
+        check(client,children,ui,status,state,shot,resolution)
+        return
     if any(os.environ.get(k) for k in ['HYPRUNE_HUD_CONVEX','HYPRUNE_HUD_TEXT','HYPRUNE_HUD_CONTRAST']):
         contrast_review=bool(os.environ.get('HYPRUNE_HUD_CONTRAST'))
         if contrast_review:
@@ -271,5 +275,8 @@ def acceptance(client,children,args,shell_token,socketpath):
 
 if __name__=='__main__':
     os.environ.setdefault('HYPRUNE_NESTED_PROTOCOL',PROTOCOL)
+    if os.environ.get('HYPRUNE_HUD_INTERACTION'):
+        subprocess.run([sys.executable,str(CORE/'tests/fixtures/climbing.py')],check=True)
+        os.environ['HYPRUNE_M2_PACKAGE']=str(CORE/'tests/fixtures/climbing')
     m3b.acceptance=acceptance
     s.run(argparse.Namespace(m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))

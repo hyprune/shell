@@ -223,6 +223,16 @@ ShellRoot {
             view.contrastProbe = mode;
             return JSON.stringify(['hudRadarCaption','hudNavigation','hudInputStatus'].map(name => Audit.find(view,name).contrastRegion()));
         }
+        function interactionHud(): string {
+            if (!ShellState.dev) return '{}';
+            var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
+            var result = {};
+            ['hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint'].forEach(name => {
+                var item = Audit.find(view,name);
+                result[name] = item ? {visible:true,text:item.text || '',truncated:!!item.truncated} : {visible:false};
+            });
+            return JSON.stringify(result);
+        }
         function status(): string {
             return JSON.stringify({
                 worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,

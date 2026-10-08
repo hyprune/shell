@@ -1,0 +1,121 @@
+{
+  "protocol": "0.12",
+  "coreCommit": "0a4c6d1b0acbcb1e7154b4ffe4bf7aefa959b865",
+  "results": [
+    {
+      "concept": "Vanguard",
+      "mechanic": "grab",
+      "resolution": "1920x1080",
+      "scale": 1,
+      "prompt": "W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Instrument",
+      "mechanic": "look-to-climb",
+      "resolution": "1920x1080",
+      "scale": 1,
+      "prompt": "Look up/down + W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Minimal",
+      "mechanic": "auto-traverse",
+      "resolution": "1920x1080",
+      "scale": 1,
+      "prompt": "E traverse / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Vanguard",
+      "mechanic": "grab",
+      "resolution": "2560x1440",
+      "scale": 1,
+      "prompt": "W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Instrument",
+      "mechanic": "look-to-climb",
+      "resolution": "2560x1440",
+      "scale": 1,
+      "prompt": "Look up/down + W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Minimal",
+      "mechanic": "auto-traverse",
+      "resolution": "2560x1440",
+      "scale": 1,
+      "prompt": "E traverse / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Vanguard",
+      "mechanic": "grab",
+      "resolution": "3840x2160",
+      "scale": 1,
+      "prompt": "W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Instrument",
+      "mechanic": "look-to-climb",
+      "resolution": "3840x2160",
+      "scale": 1,
+      "prompt": "Look up/down + W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Minimal",
+      "mechanic": "auto-traverse",
+      "resolution": "3840x2160",
+      "scale": 1,
+      "prompt": "E traverse / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Vanguard",
+      "mechanic": "grab",
+      "resolution": "1920x1080",
+      "scale": 2,
+      "prompt": "W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Instrument",
+      "mechanic": "look-to-climb",
+      "resolution": "1920x1080",
+      "scale": 2,
+      "prompt": "Look up/down + W/S climb / Ctrl slide / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    },
+    {
+      "concept": "Minimal",
+      "mechanic": "auto-traverse",
+      "resolution": "1920x1080",
+      "scale": 2,
+      "prompt": "E traverse / Space let go",
+      "cursorPromptsHidden": true,
+      "detachedPromptHidden": true
+    }
+  ],
+  "worldEntry": "Super+Tab entry / Back return",
+  "climbingEntry": "Back entry / Super+Tab return; native cursor and frozen camera verified",
+  "validation": "No QML/schema errors; layout audits and actual visible-item checks passed",
+  "coreFollowups": [
+    "Core-owned centre ladder hint remains visible in cursor mode (Plugin.cpp climbing prompt generation lacks suspended-cursor guard). Shell-owned hints are hidden.",
+    "Core dev/live/live.py explicitly requests 0.10; switch to 0.12 for new states."
+  ]
+}

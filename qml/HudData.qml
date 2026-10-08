@@ -1,7 +1,12 @@
 pragma Singleton
 import QtQuick
 import "theme"
+import "HudInteraction.js" as Interaction
 QtObject {
+    readonly property bool freeCursor: Interaction.freeCursor(ShellState.state)
+    readonly property bool climbing: Interaction.climbing(ShellState.state)
+    readonly property string climbPrompt: Interaction.climbPrompt(ShellState.state)
+    readonly property bool worldPrompts: !freeCursor
     readonly property var editor: ShellState.state ? ShellState.state.editor : null
     readonly property int tool: ShellState.hudTool ? ShellState.hudTool.slot : editor && editor.tool <= 4 ? editor.tool : 1
     readonly property string subtype: ShellState.hudTool ? ShellState.hudTool.subtype : editor && editor.submode !== 'reserved' ? editor.submode : 'normal'

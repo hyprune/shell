@@ -11,7 +11,7 @@ from pathlib import Path
 import socket
 import stat
 import struct
-from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR, V9_VALIDATOR, V10_VALIDATOR, SUPPORTED_PROTOCOLS, at_least
+from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR, V9_VALIDATOR, V10_VALIDATOR, V11_VALIDATOR, V12_VALIDATOR, SUPPORTED_PROTOCOLS, at_least
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
@@ -25,7 +25,7 @@ class Client:
         if protocol not in SUPPORTED_PROTOCOLS: raise ValueError('Unsupported core protocol')
         self.protocol = protocol
         self.client_id = client_id
-        self.validator = V10_VALIDATOR if protocol == '0.10' else V9_VALIDATOR if protocol == '0.9' else V8_VALIDATOR if protocol == '0.8' else V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
+        self.validator = V12_VALIDATOR if protocol == '0.12' else V11_VALIDATOR if protocol == '0.11' else V10_VALIDATOR if protocol == '0.10' else V9_VALIDATOR if protocol == '0.9' else V8_VALIDATOR if protocol == '0.8' else V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
         self.wayland_pid = None
         self.worlds = []
         self.native_transition = None

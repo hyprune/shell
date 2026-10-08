@@ -8,7 +8,7 @@ Item {
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property bool compact: width < 1200 || height < 700
     readonly property real inset: compact ? 26 : 56
-    readonly property string mode: HudData.editor ? HudData.editor.mode : 'world'
+    readonly property string mode: HudData.freeCursor ? 'cursor' : HudData.editor ? HudData.editor.mode : 'world'
     property string contrastProbe: 'normal'
     Rectangle {
         // Mask only the measured labels; nearby zone text must not enter it.
@@ -43,7 +43,7 @@ Item {
         layer.mipmap: true
         Item { x:24; y:24; width:parent.width-48; height:72
             HudStatusText { objectName:'hudNavigation'; probeMode:root.contrastProbe; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.mode === 'world' ? 'NAVIGATION' : root.mode.toUpperCase(); font.pixelSize: root.technical ? 17 : 14; font.letterSpacing:2 }
-            HudStatusText { objectName:'hudInputStatus'; probeMode:root.contrastProbe; y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
+            HudStatusText { objectName:'hudInputStatus'; probeMode:root.contrastProbe; y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: HudData.freeCursor ? 'NATIVE POINTER' : root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
             HudStatusText { y:49; probeMode:root.contrastProbe; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12 }
         }
     }
@@ -64,8 +64,9 @@ Item {
     }
     HudCluster {
         x:root.inset; y:root.height-root.inset-36; width:Math.min(680,root.width-root.inset*2); height:36; edgeX:-1;edgeY:1
-        HoldRing { id:holdRing; width:32;height:32 }
-        HudText { x:44;y:9;width:parent.width-x;text:root.minimal ? 'HOLD · DIRECTOR' : 'HOLD · DIRECTOR    E · USE    F · FOCUS    Q · SCOPE'; font.pixelSize:12; font.letterSpacing:.5; color:Tokens.hudMuted }
+        HoldRing { id:holdRing; width:32;height:32; visible:HudData.worldPrompts }
+        HudText { objectName:'hudWorldHints'; visible:HudData.worldPrompts; x:44;y:9;width:parent.width-x;text:root.minimal || HudData.climbing ? 'HOLD · DIRECTOR' : 'HOLD · DIRECTOR    E · USE    F · FOCUS    Q · SCOPE'; font.pixelSize:12; font.letterSpacing:.5; color:Tokens.hudMuted }
+        HudModeChip { objectName:'hudCursorChip'; visible:HudData.freeCursor; width:Math.min(parent.width,implicitWidth); height:36 }
     }
     Item {
         anchors.horizontalCenter:parent.horizontalCenter; y:root.compact ? 110 : root.height*.29; width:Math.min(520,root.width*.7);height:49
