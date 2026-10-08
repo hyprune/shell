@@ -29,13 +29,13 @@ Item {
         // Rasterise this small text cluster before projecting it, at twice its
         // physical output size (including the HUD's own scale on large screens).
         layer.enabled: bend > 0
-        layer.textureSize: Qt.size(Math.ceil((width+4)*2*root.scale*Screen.devicePixelRatio), Math.ceil((height+4)*2*root.scale*Screen.devicePixelRatio))
-        layer.sourceRect: Qt.rect(-2,-2,width+4,height+4)
+        layer.textureSize: Qt.size(Math.ceil((width+8)*2*root.scale*Screen.devicePixelRatio), Math.ceil((height+8)*2*root.scale*Screen.devicePixelRatio))
+        layer.sourceRect: Qt.rect(-4,-4,width+8,height+8)
         layer.smooth: true
         layer.mipmap: true
         HudText { width:parent.width; horizontalAlignment:Text.AlignRight; text: root.mode === 'world' ? 'NAVIGATION' : root.mode.toUpperCase(); font.pixelSize: root.technical ? 17 : 14; font.letterSpacing:2 }
-        HudText { y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; color:Tokens.hudMuted; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
-        HudText { y:49; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12; color:Tokens.hudMuted }
+        HudText { y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
+        HudText { y:49; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12 }
     }
     HudCluster {
         id: deck
@@ -48,7 +48,7 @@ Item {
         x:root.inset; y:deck.y-height-30; width:Math.min(640,root.width*.65); height:zoneColumn.height
         edgeX:-1; edgeY:.5; shown:ShellState.zone !== ''
         Column { id:zoneColumn; width:parent.width; spacing:12
-            HudText { width:parent.width; text:ShellState.zone.toUpperCase(); font.pixelSize:root.compact ? 25 : 35; font.letterSpacing:5; maximumLineCount:root.compact ? 1 : 2; wrapMode:root.compact ? Text.NoWrap : Text.Wrap }
+            HudText { smallText:false; width:parent.width; text:ShellState.zone.toUpperCase(); font.pixelSize:root.compact ? 25 : 35; font.letterSpacing:5; maximumLineCount:root.compact ? 1 : 2; wrapMode:root.compact ? Text.NoWrap : Text.Wrap }
             HudText { width:parent.width; text:ShellState.zoneSubtitle.toUpperCase(); font.pixelSize:12; font.letterSpacing:3; color:Tokens.hudMuted }
         }
     }

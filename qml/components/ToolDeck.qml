@@ -38,7 +38,7 @@ Item {
             id: subtypeContent
             x: 14; y: 25; width: parent.width-24; height: parent.height-29
             ToolGlyph { allowOverride:false; width: root.minimal ? 33 : 46; height: width; anchors.verticalCenter: parent.verticalCenter; tool: HudData.tool; subtype: root.displayedSubtype; tint: Tokens.hudAccent }
-            HudText { x: root.minimal ? 46 : 60; width: parent.width-x; anchors.verticalCenter: parent.verticalCenter; text: root.displayedSubtype === 'normal' ? 'EXPLORE' : root.displayedSubtype.toUpperCase(); font.pixelSize: root.minimal ? 24 : 32; font.letterSpacing: 1; maximumLineCount: 2; wrapMode: Text.Wrap }
+            HudText { smallText:false; x: root.minimal ? 46 : 60; width: parent.width-x; anchors.verticalCenter: parent.verticalCenter; text: root.displayedSubtype === 'normal' ? 'EXPLORE' : root.displayedSubtype.toUpperCase(); font.pixelSize: root.minimal ? 24 : 32; font.letterSpacing: 1; maximumLineCount: 2; wrapMode: Text.Wrap }
         }
         ParallelAnimation {
             id: whoosh
