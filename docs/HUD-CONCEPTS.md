@@ -18,6 +18,12 @@ radar caption stays upright. Default HUD text has solid curve-rasterized glyphs
 and a 50% dark shadow, with 1.5 logical pixels of blur and a 0.5-pixel downward
 offset (about 2–3 physical pixels of blur at 4K). Label textures are supersampled
 before perspective; only the shadow is blurred. Small text uses semibold weight.
+The radar caption and upper-right status labels also have tightly fitted black
+scrims (72% opacity, feathered edges). Core has no regional background-luminance
+telemetry, so these use the fixed fallback rather than screen capture in normal
+operation. Glyph fill and the dark-world shadow remain unchanged. Real padding
+around the status cluster keeps the feather inside its supersampled texture
+without stretching the text.
 World styles can explicitly request `stroke.style: "outline"` to retain native
 outlines; omitted styles and `shadow` use the soft shadow. HUD input regions
 remain empty. Menus and
@@ -47,6 +53,7 @@ optional assets fall back by role. Original sample: `dev/styles/signal-amber`.
 ## Automated validation
 
 ```sh
+python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -q
 ./dev/run hud-check
 HYPRUNE_NESTED_PROTOCOL=0.10 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
@@ -73,6 +80,37 @@ all concepts in bright/dark homes at all six resolution/scale combinations,
 plus flat/default/maximum comparisons. It leaves older captures intact.
 `HYPRUNE_HUD_TEXT=1` captures the same bright/dark matrix as `-v4`, with
 flat/default comparisons and an explicit world-outline/opt-out pair.
+
+`HYPRUNE_HUD_CONTRAST=1` adds the `-v5` bright-background regression matrix.
+It captures all concepts in Sun Court and Rime Vault, plus white-background
+stress cases at each resolution/scale. Run under the same flock:
+
+```sh
+HYPRUNE_HUD_CONTRAST=1 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+python3 dev/hud-contrast-sheet.py
+```
+
+The development-only `preview.contrastProbe` endpoint can hide the text while
+keeping its scrim, or render white glyph masks over black. It has no effect in
+normal operation and does not capture the screen itself. Numerical evidence
+uses the three static Vanguard labels to avoid changing frame-stat strings.
+Text/background/mask crops are retained in gallery `contrast-v5/`, and
+`contrast-v5-measurements.json` records bounding boxes and unrounded results.
+
+Two gates must pass at 4.5:1: nominal foreground versus the brightest captured
+background beneath glyph ink, and the minimum actual rendered glyph-core
+contrast against the text-free background. Glyph cores have ≥80% coverage in
+the mask; partially covered antialiasing edges are excluded explicitly. The
+calculation uses linearised sRGB luminance and `(Llight+.05)/(Ldark+.05)`, following
+[W3C contrast guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+World frames are sequential captures; the static pure-white stress case supplies
+a conservative background bound without scene-motion differences. This is
+capture evidence for these default labels, not a general accessibility claim
+for arbitrary fonts, world styles or the entire HUD.
+
+The v5 crop sheets retain v4 beside v5 and add measured contrast in a third
+column; scale 2 has a separate sheet. The private reference is not needed or
+copied for this regression check.
 
 ## Convex calibration
 
@@ -141,3 +179,14 @@ and radar-caption crops and `screenshots/hud-concepts/hud-status-crops-v4.png`
 (v3/v4 comparisons in both homes at three resolutions). The private reference
 sheet is updated at `reference/hud-curve-v3/flat-curved-reference-v4.png` and
 remains excluded from Git.
+
+
+Bright-background follow-up: 65 shell tests, the SDK mock, and the locked core
+0.10 run passed. All 50 `-v5` captures passed layout audits with no QML errors.
+All 54 static-label measurements passed both 4.5:1 gates. Minimum rendered
+core-pixel contrast: **6.62:1 Sun Court**, **6.28:1 Rime Vault**, **5.93:1 pure
+white**; minimum nominal contrast over pure white was **8.22:1**. Default solid
+fill, soft shadows and explicit world outlines are retained. The gallery has
+24 standalone status/caption crops and two v4/v5 sheets with contrast columns:
+`screenshots/hud-concepts/hud-status-crops-v5.png` and
+`hud-status-crops-s2-v5.png`. [Recorded results](evidence/hud-contrast-v5.json).

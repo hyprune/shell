@@ -9,33 +9,43 @@ Item {
     readonly property bool compact: width < 1200 || height < 700
     readonly property real inset: compact ? 26 : 56
     readonly property string mode: HudData.editor ? HudData.editor.mode : 'world'
+    property string contrastProbe: 'normal'
+    Rectangle {
+        // Mask only the measured labels; nearby zone text must not enter it.
+        z: root.contrastProbe === 'mask' ? 1 : -1000; anchors.fill: parent
+        visible: root.contrastProbe === 'mask' || root.contrastProbe.indexOf('white') === 0
+        color: root.contrastProbe === 'mask' ? '#000000' : '#ffffff'
+    }
     Item {
+        z:2
         x: root.inset; y: root.inset; width: root.compact ? 126 : root.minimal ? 116 : root.technical ? 190 : 178; height: width+26
         HudCluster {
             width:parent.width; height:width; edgeX:-1; edgeY:-1
-            Radar { id:localRadar; anchors.fill:parent }
+            Radar { id:localRadar; anchors.fill:parent; visible:root.contrastProbe !== 'mask' }
         }
         // Small captions stay upright while the radar retains its glass plane.
-        HudText { anchors.bottom:parent.bottom; width:parent.width; text: root.technical ? Math.round(ShellState.heading)+'° / '+Math.round(localRadar.range)+' m' : ShellState.worldName.toUpperCase(); font.pixelSize:12; font.letterSpacing:1 }
+        HudStatusText { objectName:'hudRadarCaption'; probeMode:root.contrastProbe; anchors.bottom:parent.bottom; width:parent.width; text: root.technical ? Math.round(ShellState.heading)+'° / '+Math.round(localRadar.range)+' m' : ShellState.worldName.toUpperCase(); font.pixelSize:12; font.letterSpacing:1 }
     }
     HudCluster {
         anchors.horizontalCenter:parent.horizontalCenter; y: root.inset; width: Math.min(510,root.width*.38); height:70; edgeY:-1
         Compass { anchors.fill:parent }
     }
     HudCluster {
-        anchors.right:parent.right; anchors.rightMargin:root.inset; y:root.inset; width: root.compact ? 230 : 310; height:72
+        z:2
+        anchors.right:parent.right; anchors.rightMargin:root.inset-24; y:root.inset-24; width: (root.compact ? 230 : 310)+48; height:120
         edgeX:1; edgeY:-1
         curvatureScale: .35
         // Rasterise this small text cluster before projecting it, at twice its
         // physical output size (including the HUD's own scale on large screens).
         layer.enabled: bend > 0
-        layer.textureSize: Qt.size(Math.ceil((width+8)*2*root.scale*Screen.devicePixelRatio), Math.ceil((height+8)*2*root.scale*Screen.devicePixelRatio))
-        layer.sourceRect: Qt.rect(-4,-4,width+8,height+8)
+        layer.textureSize: Qt.size(Math.ceil(width*2*root.scale*Screen.devicePixelRatio), Math.ceil(height*2*root.scale*Screen.devicePixelRatio))
         layer.smooth: true
         layer.mipmap: true
-        HudText { width:parent.width; horizontalAlignment:Text.AlignRight; text: root.mode === 'world' ? 'NAVIGATION' : root.mode.toUpperCase(); font.pixelSize: root.technical ? 17 : 14; font.letterSpacing:2 }
-        HudText { y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
-        HudText { y:49; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12 }
+        Item { x:24; y:24; width:parent.width-48; height:72
+            HudStatusText { objectName:'hudNavigation'; probeMode:root.contrastProbe; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.mode === 'world' ? 'NAVIGATION' : root.mode.toUpperCase(); font.pixelSize: root.technical ? 17 : 14; font.letterSpacing:2 }
+            HudStatusText { objectName:'hudInputStatus'; probeMode:root.contrastProbe; y:29; width:parent.width; horizontalAlignment:Text.AlignRight; text: root.technical ? ShellState.pose.map(v=>v.toFixed(1)).join(' / ')+' m' : root.mode === 'world' ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB · RETURN'; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.sans }
+            HudStatusText { y:49; probeMode:root.contrastProbe; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12 }
+        }
     }
     HudCluster {
         id: deck

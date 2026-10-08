@@ -1,0 +1,4 @@
+-r requirements.txt
+# Nested screenshot contrast measurements and crop sheets.
+numpy>=1.26,<3
+Pillow>=10,<13

@@ -47,6 +47,7 @@ are recorded in `dev/SDK-SOURCE.json`.
 ./dev/run check-window  # visible 1280x720 composition check
 ./dev/run capture       # screenshots, 20–40 s video and recovery checks
 HYPRUNE_SKIP_RECORD=1 ./dev/run capture
+python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -v
 ```
 

@@ -1,0 +1,127 @@
+{
+  "protocol": "0.10",
+  "curvature": 0.8,
+  "fullCaptures": 50,
+  "labelMeasurements": 54,
+  "shellTests": 65,
+  "sdkMock": "PASS concepts, Appearance and world-style opt-out",
+  "nested": "PASS layouts and QML logs, Sun Court/Rime Vault, all concepts, 1080p/1440p/4K, scales 1/2",
+  "method": "Linearised sRGB. Nominal foreground vs brightest background under >2% glyph ink, plus minimum actual glyph-core contrast at >=80% mask coverage. Separate text-free and mask renders preserve effect bounds; unrelated HUD is excluded from masks. White stress is static. Gate 4.5:1 without rounding.",
+  "gallery": "screenshots/hud-concepts/",
+  "rawMeasurements": "contrast-v5-measurements.json",
+  "diagnostics": "contrast-v5/",
+  "sheets": [
+    "hud-status-crops-v5.png",
+    "hud-status-crops-s2-v5.png"
+  ],
+  "results": [
+    {
+      "capture": "vanguard-sun-court-1080p-s1-v5.png",
+      "nominalMin": 9.440986350985067,
+      "rasterCoreMin": 6.733166707485444,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-1080p-s1-v5.png",
+      "nominalMin": 10.773982257288738,
+      "rasterCoreMin": 8.033824566697048,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-1080p-s1-v5.png",
+      "nominalMin": 8.217568118342225,
+      "rasterCoreMin": 5.925869546922067,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-sun-court-1440p-s1-v5.png",
+      "nominalMin": 9.427719552944557,
+      "rasterCoreMin": 6.679700060174008,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-1440p-s1-v5.png",
+      "nominalMin": 10.89148849804379,
+      "rasterCoreMin": 7.7682669980205965,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-1440p-s1-v5.png",
+      "nominalMin": 8.217568118342225,
+      "rasterCoreMin": 5.925869546922067,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-sun-court-2160p-s1-v5.png",
+      "nominalMin": 9.304558634243143,
+      "rasterCoreMin": 6.618087308349572,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-2160p-s1-v5.png",
+      "nominalMin": 15.113257613885645,
+      "rasterCoreMin": 10.467978808344185,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-2160p-s1-v5.png",
+      "nominalMin": 8.217568118342225,
+      "rasterCoreMin": 5.925869546922067,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-sun-court-1080p-s2-v5.png",
+      "nominalMin": 9.432170691399714,
+      "rasterCoreMin": 6.7240075084415345,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-1080p-s2-v5.png",
+      "nominalMin": 9.000155209245928,
+      "rasterCoreMin": 7.733752780238661,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-1080p-s2-v5.png",
+      "nominalMin": 8.217568118342225,
+      "rasterCoreMin": 5.9427532704375645,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-sun-court-1440p-s2-v5.png",
+      "nominalMin": 9.59071853077051,
+      "rasterCoreMin": 6.757765553929715,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-1440p-s2-v5.png",
+      "nominalMin": 8.722070179563888,
+      "rasterCoreMin": 6.2849887036002645,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-1440p-s2-v5.png",
+      "nominalMin": 8.348034187341007,
+      "rasterCoreMin": 5.925869546922067,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-sun-court-2160p-s2-v5.png",
+      "nominalMin": 9.440986350985067,
+      "rasterCoreMin": 6.6660226522484844,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-rime-vault-2160p-s2-v5.png",
+      "nominalMin": 10.741596064269885,
+      "rasterCoreMin": 8.04090741895198,
+      "allPass": true
+    },
+    {
+      "capture": "vanguard-white-2160p-s2-v5.png",
+      "nominalMin": 8.348034187341007,
+      "rasterCoreMin": 5.925869546922067,
+      "allPass": true
+    }
+  ]
+}

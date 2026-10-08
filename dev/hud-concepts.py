@@ -74,9 +74,15 @@ def acceptance(client,children,args,shell_token,socketpath):
         s.ctl('eval',f'hl.monitor({{output="HEADLESS-1",mode="{w}x{h}@60",position="1600x0",scale={scale}}})');time.sleep(1)
     evidence = {'protocol':PROTOCOL, 'captures':[]}
     homes={'sun-court':[-8,2,12],'array-hall':[8,2,-34],'rime-vault':[38,-4.3,-79],'signal-rise':[54,2,-125]}
-    if os.environ.get('HYPRUNE_HUD_CONVEX') or os.environ.get('HYPRUNE_HUD_TEXT'):
-        text_review=bool(os.environ.get('HYPRUNE_HUD_TEXT'))
-        version='v4' if text_review else 'v3'
+    if any(os.environ.get(k) for k in ['HYPRUNE_HUD_CONVEX','HYPRUNE_HUD_TEXT','HYPRUNE_HUD_CONTRAST']):
+        contrast_review=bool(os.environ.get('HYPRUNE_HUD_CONTRAST'))
+        if contrast_review:
+            import hud_contrast
+        contrast_results=[]
+        def raw_shot(path):
+            subprocess.run([str(s.HERE/'ctl.py'),'shot',str(path)],check=True)
+        text_review=contrast_review or bool(os.environ.get('HYPRUNE_HUD_TEXT'))
+        version='v5' if contrast_review else ('v4' if text_review else 'v3')
         ui('curvature',.8);ui('worldStyles','false');keys('-k','2')
         for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
             resolution(width,height,scale)
@@ -86,6 +92,15 @@ def acceptance(client,children,args,shell_token,socketpath):
                     pose(client,homes[home]);time.sleep(.5)
                     name=f'{concept.lower()}-{home}-{height}p-s{scale}-{version}'
                     shot(name);evidence['captures'].append(name)
+                    if contrast_review and concept=='Vanguard':
+                        contrast_results.append(hud_contrast.capture(ui,raw_shot,SHOTS/(name+'.png')))
+                if contrast_review and concept=='Vanguard':
+                    ui('contrastProbe','white')
+                    name=f'vanguard-white-{height}p-s{scale}-{version}'
+                    shot(name);evidence['captures'].append(name)
+                    contrast_results.append(hud_contrast.capture(ui,raw_shot,SHOTS/(name+'.png'),white=True))
+                    (SHOTS/'contrast-v5-measurements.json').write_text(json.dumps(contrast_results,indent=2)+'\n')
+                    hud_contrast.verify(contrast_results)
             print('PASS convex resolution',height,scale,flush=True)
             if os.environ.get('HYPRUNE_HUD_QUICK'): break
         resolution(1920,1080,1);pose(client,homes['sun-court'])
@@ -98,13 +113,15 @@ def acceptance(client,children,args,shell_token,socketpath):
         if text_review:
             ui('concept','Vanguard');ui('worldStyles','true');time.sleep(1)
             assert status()['worldStyle']=='com.hyprune.lumen-reach'
-            shot('vanguard-world-outline-v4');evidence['captures'].append('vanguard-world-outline-v4')
+            shot(f'vanguard-world-outline-{version}');evidence['captures'].append(f'vanguard-world-outline-{version}')
             ui('worldStyles','false');time.sleep(1)
-            shot('vanguard-world-outline-optout-v4');evidence['captures'].append('vanguard-world-outline-optout-v4')
+            shot(f'vanguard-world-outline-optout-{version}');evidence['captures'].append(f'vanguard-world-outline-optout-{version}')
         errors=(s.STATE/'shell.log').read_text()
         assert not any(x in errors for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Presentation:']),errors[-6000:]
         evidence.update(defaultStrength=.8,quick=bool(os.environ.get('HYPRUNE_HUD_QUICK')),validation='All layout audits passed; no QML errors')
         (SHOTS/f'{"text" if text_review else "convex"}-{version}-verification.json').write_text(json.dumps(evidence,indent=2)+'\n')
+        if contrast_review:
+            hud_contrast.verify(contrast_results)
         print('PASS HUD',version,flush=True)
         return
     if os.environ.get('HYPRUNE_HUD_REVIEW'):

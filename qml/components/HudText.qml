@@ -4,6 +4,7 @@ import "../theme"
 HudLabel {
     id: root
     property bool smallText: true
+    property bool shadowEnabled: true
     readonly property bool outlined: !!Tokens.skin.stroke && Tokens.skin.stroke.style === 'outline'
     readonly property real rasterScale: {
         var item = parent;
@@ -26,10 +27,11 @@ HudLabel {
     layer.textureSize: Qt.size(Math.ceil(width * rasterScale * 2), Math.ceil(height * rasterScale * 2))
     layer.smooth: true
     layer.effect: MultiEffect {
+        // Keep effect bounds identical for contrast-mask captures.
         shadowEnabled: true
         blurMax: 2
         shadowBlur: .75
-        shadowOpacity: .5
+        shadowOpacity: root.shadowEnabled ? .5 : 0
         shadowColor: Tokens.hudOutline
         shadowHorizontalOffset: 0
         shadowVerticalOffset: .5
