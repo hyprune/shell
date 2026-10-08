@@ -74,6 +74,31 @@ def acceptance(client,children,args,shell_token,socketpath):
         s.ctl('eval',f'hl.monitor({{output="HEADLESS-1",mode="{w}x{h}@60",position="1600x0",scale={scale}}})');time.sleep(1)
     evidence = {'protocol':PROTOCOL, 'captures':[]}
     homes={'sun-court':[-8,2,12],'array-hall':[8,2,-34],'rime-vault':[38,-4.3,-79],'signal-rise':[54,2,-125]}
+    if os.environ.get('HYPRUNE_HUD_REVIEW'):
+        # Preserve the owner's original shots for direct before/after review.
+        ui('curvature',.8);ui('worldStyles','false');keys('-k','2')
+        for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
+            resolution(width,height,scale)
+            for concept in ['Vanguard','Instrument','Minimal']:
+                ui('concept',concept)
+                for home in ['sun-court','rime-vault']:
+                    pose(client,homes[home]);time.sleep(.5)
+                    shot(f'{concept.lower()}-{home}-{height}p-s{scale}-v2')
+            opened();ui('tab',7);ui('scrollPage',0);shot(f'performance-{height}p-s{scale}-v2')
+            ui('scrollPage',1);shot(f'performance-effects-{height}p-s{scale}-v2');closed()
+            print('PASS review resolution',height,scale,flush=True)
+            if os.environ.get('HYPRUNE_HUD_QUICK'): break
+        resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Vanguard')
+        ui('curvature',0);shot('vanguard-sun-court-flat-v2');ui('curvature',.8);shot('vanguard-sun-court-curved-v2')
+        # Auto exercises the blocked USB-C policy without requesting offload On.
+        client.call('graphics.set',{'patch':{'offload':'auto'}})
+        opened();ui('tab',7);ui('scrollPage',0);time.sleep(1);shot('performance-renderer-auto-policy-v2')
+        client.call('graphics.set',{'patch':{'offload':'off'}})
+        errors=(s.STATE/'shell.log').read_text()
+        assert not any(x in errors for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Presentation:']),errors[-6000:]
+        (SHOTS/'review-v2-verification.json').write_text(json.dumps({'protocol':PROTOCOL,'graphics':client.call('graphics.get',{}),'log':'No QML errors; layout audits passed','quick':bool(os.environ.get('HYPRUNE_HUD_QUICK'))},indent=2)+'\n')
+        print('PASS HUD review v2',flush=True)
+        return
     if os.environ.get('HYPRUNE_HUD_EVENTS_ONLY'):
         ui('concept','Vanguard');ui('worldStyles','true')
         ui('select',1);wait(lambda:status()['banner']=='WAYPOINT SET');shot('waypoint-set-banner')

@@ -10,8 +10,12 @@ coordinates, denser geometry and cyan accents; Minimal reduces radar, tiles and
 secondary text. Shared components show actual core tools/subtypes, circular local
 radar, transparent compass rails, zone titles and the core-timed TAB ring.
 The projective matrix foreshortens inner edges; flattening output depth avoids
-Qt's 2D clip volume. Text stays in the native scenegraph. HUD input regions remain
-empty. Menus and core world markers stay flat.
+Qt's 2D clip volume. The upper-right small-text cluster uses 35% of the selected
+curvature and a texture at twice its physical output size (including output and
+HUD scales) before projection. Its padded texture preserves the outline; the
+radar caption stays upright. Other clusters, including the tool deck, retain
+their native scenegraph rendering. HUD input regions remain empty. Menus and
+core world markers stay flat.
 
 Appearance includes curvature On/Off and strength (default 80%), resource bar,
 and **Use world HUD styles**. GPU/CPU show measured render time against target
@@ -51,6 +55,13 @@ core state, and package styles/opt-out/world exit. Output: gallery
 `screenshots/hud-concepts/`, `videos/hud-concepts.mp4` and a string-only sidecar.
 Video encodes in `/tmp`, then moves into the gallery when complete.
 
+`HYPRUNE_HUD_REVIEW=1` captures the upper-cluster/Performance follow-up without
+recording another video: three concepts in Sun Court and Rime Vault, all six
+resolution/scale combinations, plus flat/curved and USB-C policy comparisons.
+Original filenames are preserved and new captures have a `-v2` suffix. Shared
+world shading appears once above the effects; only independent measurements
+appear beside individual controls. Power policy is a human-readable sentence.
+
 Development-only `preview cycleHud` uses the same persistence/banner path.
 `concept`, `resource`, `curvature`, `worldStyles` support capture automation;
 always target the verified nested Quickshell PID. Mutations require explicit
@@ -67,3 +78,10 @@ verified Auto's USB-C policy rejection. Legacy IPC 0.8 hold/graphics/workspace
 regression also passed. See `evidence/hud-concepts.json` for measured values.
 Only dynamic package discovery and RAM/system CPU telemetry remain core requests;
 the sample skin works through an authorised package path.
+
+Gallery review follow-up: 61 shell tests and the SDK mock check passed. The
+locked core 0.10 run produced 51 `-v2` captures: all concepts in Sun Court and
+Rime Vault at 1080p/1440p/4K, scales 1/2, Performance top/bottom at each size,
+flat/curved comparison and the USB-C Auto policy. Every capture passed the
+layout audit and the shell log contained no QML errors. See gallery
+`screenshots/hud-concepts/review-v2-verification.json` for the core snapshot.
