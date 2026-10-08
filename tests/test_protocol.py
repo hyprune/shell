@@ -118,3 +118,19 @@ class CoreOverlayContractTests(unittest.TestCase):
         with self.assertRaises(Exception):V5_VALIDATOR.validate(valid)
         for style in [{'routeColor':[1,2,0]},{'unknown':True},{'iconAtlas':{'path':'relative','cellSize':32,'waypointIndex':0,'promptIndex':0}}]:
             with self.assertRaises(Exception):V6_VALIDATOR.validate({**valid,'params':{'leaseId':'owned','style':style}})
+
+class GraphicsContractTests(unittest.TestCase):
+    def test_07_graphics_presets_are_explicit_and_closed(self):
+        from protocol import V6_VALIDATOR, V7_VALIDATOR
+        message={'jsonrpc':'2.0','id':'graphics','method':'graphics.set','params':{'patch':{'quality':'medium','msaa':None,'sky':'gradient','render_scale':.75,'target_fps':60}}}
+        V7_VALIDATOR.validate(message)
+        with self.assertRaises(Exception): V6_VALIDATOR.validate(message)
+        for patch in [{'ssr':True},{'msaa':8},{'render_scale':.2},{'target_fps':60.5},{'quality':'cinematic'},{'fog':'volumetric'}]:
+            with self.assertRaises(Exception): V7_VALIDATOR.validate({**message,'params':{'patch':patch}})
+
+    def test_07_keeps_inherited_input_and_overlay_contracts(self):
+        from protocol import V7_VALIDATOR
+        for method,params in [('input.capture',{'leaseId':'owned','mode':'world','action':'debug','slot':2}),('overlay.style',{'leaseId':'owned','style':{'fontFamily':'DejaVu Sans Mono'}})]:
+            V7_VALIDATOR.validate({'jsonrpc':'2.0','id':'a','method':method,'params':params})
+        # External 0.6 common schema references still resolve entirely offline.
+        V7_VALIDATOR.validate({'jsonrpc':'2.0','id':'hello','method':'session.hello','params':{'protocols':['0.7'],'client':{'id':'com.hyprune.shell','name':'Shell'},'capabilities':['input.control','world.control']}})
