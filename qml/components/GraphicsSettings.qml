@@ -39,7 +39,7 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth:true
             HudLabel {Layout.fillWidth:true;text:root.performance && root.performance.activeRenderer === 'offload' ? ((root.performance.workerTimings || {}).renderer || 'NVIDIA · Offload') : root.timings.renderer || 'Renderer unavailable';wrapMode:Text.Wrap}
-            HudLabel {Layout.fillWidth:true;text:'Power draw '+(root.performance && typeof root.performance.powerW === 'number' ? root.performance.powerW.toFixed(1)+' W' : '—')+'   /   Profile '+(root.performance ? ({'usb-c':'USB-C','full-ac':'AC power','limited-ac':'Limited AC','battery':'Battery','unknown':'Unknown'})[root.performance.profile] : 'unavailable');color:Tokens.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+            HudLabel {Layout.fillWidth:true;text:'Power draw '+(root.performance && typeof root.performance.powerW === 'number' ? root.performance.powerW.toFixed(1)+' W' : '—')+'   /   Profile '+(root.performance ? ({'usb-c':'USB-C','full-ac':'AC power','limited-ac':'Limited AC','battery':'Battery','unknown':'Unknown'})[root.performance.profile] : 'unavailable')+(root.performance && root.performance.targetFPS>0 ? '   /   Offload ceiling '+root.performance.targetFPS+' FPS' : '');color:Tokens.muted;font.pixelSize:12;wrapMode:Text.Wrap}
         }
         Choice {objectName:'graphics-offload';Layout.preferredWidth:220;model:['Offload · Off','Offload · Auto','Offload · On'];enabled:root.values('offload').length>0 && ShellState.available('graphics.set');currentIndex:Math.max(0,['off','auto','on'].indexOf(root.config.offload));onActivated:root.setValue('offload',['off','auto','on'][currentIndex])}
     }

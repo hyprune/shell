@@ -37,7 +37,7 @@ Item {
         x:root.inset; y:deck.y-height-30; width:Math.min(640,root.width*.65); height:zoneColumn.height
         edgeX:-1; edgeY:.5; shown:ShellState.zone !== ''
         Column { id:zoneColumn; width:parent.width; spacing:12
-            HudText { width:parent.width; text:ShellState.zone.toUpperCase(); font.pixelSize:root.compact ? 25 : 35; font.letterSpacing:5; maximumLineCount:2; wrapMode:Text.Wrap }
+            HudText { width:parent.width; text:ShellState.zone.toUpperCase(); font.pixelSize:root.compact ? 25 : 35; font.letterSpacing:5; maximumLineCount:root.compact ? 1 : 2; wrapMode:root.compact ? Text.NoWrap : Text.Wrap }
             HudText { width:parent.width; text:ShellState.zoneSubtitle.toUpperCase(); font.pixelSize:12; font.letterSpacing:3; color:Tokens.hudMuted }
         }
     }
