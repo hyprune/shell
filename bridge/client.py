@@ -108,7 +108,7 @@ class Client:
             world_id = target.get('worldId') or self.state['world']['id']
             world = next((w for w in self.worlds if w['id'] == world_id), None)
             if 'worldId' in target:
-                name = world['name'] if world else next((w['label'] for w in self.state.get('workspaces', {}).get('locations', []) if w['worldId'] == world_id), world_id)
+                name = world['name'] if world else next((w['label'] for w in self.state.get('workspaces', {}).get('locations', []) if w['worldId'] == world_id), world_id.rsplit('.', 1)[-1].replace('-', ' ').replace('_', ' ').title())
             elif 'zoneId' in target:
                 zone = next((z for z in self.state['location']['zones'] if z['id'] == target['zoneId']), None)
                 name = zone['name'] if zone else target['zoneId']
@@ -124,6 +124,13 @@ class Client:
                        'progress': transition['progress'] or 0, 'to': self.native_transition['to'],
                        'revision': revision, 'indeterminate': transition['progress'] is None})
             if self.director: self.spawn(self.overlay(False))
+        if 'worldId' in target and self.native_transition:
+            current = self.state.get('spatial', {}).get('world')
+            known = next((w for w in self.worlds if w['id'] == target['worldId']), None)
+            if current and current['id'] == target['worldId']:
+                self.native_transition['to']['name'] = current['name']
+            elif known:
+                self.native_transition['to']['name'] = known['name']
         mapped = {'loading': 'loading', 'departing': 'departing', 'travelling': 'transit',
                   'arrived': 'arrived', 'cancelled': 'failed', 'failed': 'failed'}[phase]
         if phase == 'travelling' and transition['progress'] >= .82: mapped = 'approach'
@@ -241,7 +248,8 @@ class Client:
                 descriptor = self.state['spatial']['output']
                 self.bindings = {descriptor['id']: descriptor['name']}
                 current = self.state['spatial'].get('world')
-                self.worlds = [{'id': current['id'], 'name': current['name'], 'spawns': []}] if current else []
+                if current:
+                    self.worlds = [w for w in self.worlds if w['id'] != current['id']] + [{'id': current['id'], 'name': current['name'], 'spawns': []}]
             leases = self.state['shell']['leases']
             own = next((v for v in leases if v['id'] == self.lease), None)
             if own: self.lease_seen = True

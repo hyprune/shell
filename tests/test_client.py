@@ -236,6 +236,13 @@ class ClientV2Tests(ClientTests):
         await self.until(lambda:any(e.get('phase')=='failed' for e in self.events))
         self.assertEqual(self.client.state['world']['id'],'com.hyprune.observatory')
 
+    async def test_unknown_world_loading_uses_readable_name(self):
+        self.location('loading',None,{'worldId':'com.hyprune.switchyard'})
+        await self.until(lambda:any(e.get('phase')=='loading' for e in self.events))
+        loading=next(e for e in self.events if e.get('phase')=='loading')
+        self.assertEqual(loading['to']['name'],'Switchyard')
+        self.assertNotIn('com.hyprune',loading['to']['name'])
+
     async def test_native_events_discard_other_session(self):
         self.peers[-1].write(frame({'jsonrpc':'2.0','method':'ui.opened','params':{
             'leaseId':self.client.lease,'outputId':'world','panel':'overview','sessionId':'stale','revision':self.revision}},self.validator))
