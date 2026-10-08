@@ -1,11 +1,23 @@
 import QtQuick
 import QtQuick.Shapes
+import ".."
 
 Item {
     id: root
     property real progress: 0
-    // Progress must come from core. Until core publishes hold state the ring
-    // remains an honest static key hint, not an invented input timer.
+    property var hold: ShellState.menuHold
+    function updateHold() {
+        fill.stop();
+        progress = hold ? hold.progress : 0;
+        if (hold && hold.remainingMs > 0) {
+            fill.from = progress;
+            fill.duration = hold.remainingMs;
+            fill.start();
+        }
+    }
+    onHoldChanged: updateHold()
+    Component.onCompleted: updateHold()
+    NumberAnimation { id: fill; target: root; property: 'progress'; to: 1; easing.type: Easing.Linear }
     width: 40; height: 40
     Rectangle { anchors.fill: parent; radius: width / 2; color: 'transparent'; border.color: '#52667d'; border.width: 1 }
     Shape {

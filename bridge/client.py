@@ -5,12 +5,13 @@ import itertools
 import json
 from jsonschema.exceptions import ValidationError
 import random
+import time
 import os
 from pathlib import Path
 import socket
 import stat
 import struct
-from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR
+from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
@@ -21,16 +22,17 @@ class Client:
     def __init__(self, path, emit, token_source=None, bindings=None, protocol='0.2', client_id='com.hyprune.shell'):
         self.path, self.emit, self.token_source = path, emit, token_source
         self.bindings = bindings or {}
-        if protocol not in ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7']: raise ValueError('Unsupported core protocol')
+        if protocol not in ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']: raise ValueError('Unsupported core protocol')
         self.protocol = protocol
         self.client_id = client_id
-        self.validator = V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
+        self.validator = V8_VALIDATOR if protocol == '0.8' else V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
         self.wayland_pid = None
         self.worlds = []
         self.native_transition = None
         self.native_hint = None
         self.transition_signature = None
         self.metadata = None
+        self.hold_signature = object()
         self.screens = []
         self.pending = {}
         self.pending_methods = {}
@@ -79,12 +81,26 @@ class Client:
                    'lease': self.lease, 'output': self.output,
                    'screen': self.bindings.get(self.output), 'director': self.director})
         self.present_location()
+        self.publish_hold()
+
+    def publish_hold(self, force=False):
+        holds = self.state.get('keymap', {}).get('holds', []) if self.state and self.protocol == '0.8' else []
+        hold = next((h for h in holds if h['action'] == 'menu'), None)
+        signature = json.dumps(hold, sort_keys=True)
+        if not force and signature == self.hold_signature:
+            return
+        self.hold_signature = signature
+        timing = None
+        if hold:
+            remaining = max(0, min(hold['durationMs'], hold['startedAtMs'] + hold['durationMs'] - time.monotonic() * 1000))
+            timing = {**hold, 'remainingMs': remaining, 'progress': 1 - remaining / hold['durationMs']}
+        self.emit({'type': 'menu.hold', 'hold': timing})
 
     def present_location(self, hint=None):
         # Core emits loading before a pending RPC returns. A validated hint can
         # present that phase without patching state. Arrival still waits for its
         # committed baseline revision in QML; gaps/reconnect use the snapshot.
-        if self.protocol not in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7']: return
+        if self.protocol not in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']: return
         if hint is not None:
             self.native_hint = hint
         if self.native_hint and self.native_hint['revision'] <= self.revision:
@@ -115,7 +131,7 @@ class Client:
             else:
                 spawn = next((s for s in world['spawns'] if [s['pose']['position'][0], s['pose']['position'][1] + 1.7, s['pose']['position'][2]] == target['position']), None) if world else None
                 if spawn: name = spawn['id'].replace('-', ' ').title()
-                if self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7']:
+                if self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7', '0.8']:
                     place = next((p for p in self.state.get('spatial', {}).get('world', {}).get('places', []) if all(abs(a-b)<.01 for a,b in zip(p['position'],target['position']))), None)
                     if place: name = place['name'].replace('-', ' ').title()
             self.native_transition = {'id': transition['id'],
@@ -185,7 +201,7 @@ class Client:
             if msg['method'] not in self.hello.get('events', []):
                 raise ValueError('unadvertised event')
             p = msg['params']
-            if self.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7'] and msg['method'] in ['location.transition', 'ui.opened', 'ui.closed', 'data.updated']:
+            if self.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'] and msg['method'] in ['location.transition', 'ui.opened', 'ui.closed', 'data.updated']:
                 if p['sessionId'] != self.session or p['revision'] < self.revision:
                     continue  # Transient hints are not a replay log.
             if msg['method'] == 'session.revoked':
@@ -193,7 +209,7 @@ class Client:
             if msg['method'] == 'runtime.notice':
                 self.emit({'type': 'notice', **p})
             elif msg['method'] == 'ui.opened':
-                if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] in ['director', 'overview', 'map'] and (self.protocol not in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7'] or p['revision'] >= self.overlay_revision):
+                if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] in ['director', 'overview', 'map'] and (self.protocol not in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'] or p['revision'] >= self.overlay_revision):
                     self.emit({'type':'menu.panel','panel':p['panel']})
                     self.ui_epoch += 1
                     self.spawn(self.overlay(True, self.ui_epoch))
@@ -244,7 +260,7 @@ class Client:
             if not self.ready or not self.state:
                 return
             runtime = self.state['runtime']
-            if self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7'] and self.state.get('spatial', {}).get('output'):
+            if self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7', '0.8'] and self.state.get('spatial', {}).get('output'):
                 descriptor = self.state['spatial']['output']
                 self.bindings = {descriptor['id']: descriptor['name']}
                 current = self.state['spatial'].get('world')
@@ -296,10 +312,10 @@ class Client:
                 self.emit({'type': 'director', 'open': False})
             epoch = self.ui_epoch
             try:
-                if not visible and self.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7'] and 'ui.close' in self.hello['methods']:
+                if not visible and self.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8'] and 'ui.close' in self.hello['methods']:
                     result = await self.call('ui.close', {'leaseId': self.lease, 'outputId': self.output})
                 else:
-                    if visible and self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7']:
+                    if visible and self.protocol in ['0.3', '0.4', '0.5', '0.6', '0.7', '0.8']:
                         if not self.wayland_pid: raise RuntimeError('Wayland child unavailable')
                         await self.call('shell.bind', {'leaseId': self.lease, 'pid': self.wayland_pid})
                     result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
@@ -333,7 +349,7 @@ class Client:
                     raise ValueError('Core peer UID mismatch')
                 reader_task = asyncio.create_task(self.receive(reader))
                 reader_task.add_done_callback(self.reader_finished)
-                params = {'protocols': [self.protocol], 'client': {'id': self.client_id, 'name': 'Hyprune shell'}, 'capabilities': GRANTS + (['input.control'] if self.protocol in ['0.6', '0.7'] else [])}
+                params = {'protocols': [self.protocol], 'client': {'id': self.client_id, 'name': 'Hyprune shell'}, 'capabilities': GRANTS + (['input.control'] if self.protocol in ['0.6', '0.7', '0.8'] else [])}
                 if token: params['token'] = token
                 self.hello = await self.call('session.hello', params, bootstrap=True)
                 if self.hello['protocol'] != self.protocol: raise ValueError('protocol mismatch')

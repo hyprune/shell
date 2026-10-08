@@ -4,6 +4,7 @@ import QtQuick
 
 Item {
     id: root
+    readonly property real holdProgress: holdRing.progress
     readonly property real inset: width < 1200 ? 30 : 54
     readonly property bool compact: width < 1200 || height < 700
     readonly property color foreground: '#f1f4fb'
@@ -77,7 +78,7 @@ Item {
     // Legacy protocols may still supply screen-projected markers. Core 0.6
     // owns all world-locked markers; never curve those with the screen HUD.
     Repeater {
-        model: ['0.6','0.7'].indexOf(ShellState.protocol) >= 0 ? [] : ShellState.markers
+        model: ['0.6','0.7','0.8'].indexOf(ShellState.protocol) >= 0 ? [] : ShellState.markers
         delegate: Item {
             required property var modelData
             x: Math.max(8, Math.min(root.width - width - 8, root.width * modelData.x - width / 2))
@@ -106,7 +107,7 @@ Item {
         x: root.inset; y: root.height - height - root.inset
         width: Math.min(750, root.width - root.inset * 2); height: inputColumn.height
         edgeX: -0.8; edgeY: 1
-        HoldRing { anchors.verticalCenter: parent.verticalCenter }
+        HoldRing { id: holdRing; anchors.verticalCenter: parent.verticalCenter }
         Column {
             id: inputColumn
             x: 54; width: parent.width - x; spacing: 9
@@ -123,7 +124,7 @@ Item {
             HudLabel {
                 width: parent.width; font.pixelSize: 10; color: root.secondary
                 wrapMode: Text.Wrap
-                text: ['0.6','0.7'].indexOf(ShellState.protocol) >= 0 ? 'HOLD TAB · MAP   /   E · USE   /   F · FOCUS   /   Q · SCOPE   /   F12 · DESKTOP' : 'HOLD TAB · OVERVIEW   /   F12 · DESKTOP'
+                text: ['0.6','0.7','0.8'].indexOf(ShellState.protocol) >= 0 ? 'HOLD TAB · MAP   /   E · USE   /   F · FOCUS   /   Q · SCOPE   /   F12 · DESKTOP' : 'HOLD TAB · OVERVIEW   /   F12 · DESKTOP'
             }
         }
     }

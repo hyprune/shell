@@ -14,6 +14,7 @@ QtObject {
     property var capabilities: []
     property var state: null
     property var graphics: null
+    property var menuHold: null
     property double revision: 0
     property string output: ''
     property string screenName: ''
@@ -208,6 +209,9 @@ QtObject {
         case 'transition':
             transitionEvent(msg);
             break;
+        case 'menu.hold':
+            menuHold = msg.hold;
+            break;
         case 'connection':
             status = msg.status;
             error = msg.message || '';
@@ -220,6 +224,7 @@ QtObject {
                 projectionSamples = [];
                 markers = [];
                 graphics = null;
+                menuHold = null;
                 methods = [];
                 capabilities = [];
             }
@@ -388,6 +393,8 @@ QtObject {
         onConnectedChanged: {
             if (connected)
                 root.reportScreens();
+            else
+                root.menuHold = null;
 
         }
 

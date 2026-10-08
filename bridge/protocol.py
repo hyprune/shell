@@ -21,6 +21,7 @@ V4_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.4/ipc.schema.json").r
 V5_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.5/ipc.schema.json").read_text()), registry=registry)
 V6_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.6/ipc.schema.json").read_text()), registry=registry)
 V7_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.7/ipc.schema.json").read_text()), registry=registry)
+V8_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.8/ipc.schema.json").read_text()), registry=registry)
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
