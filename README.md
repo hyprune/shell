@@ -205,3 +205,13 @@ home, Return and Recall all windows when those methods are advertised. Mount
 ownership and restored placement state are authoritative in `mounts`; these
 actions are unavailable on older negotiated protocols. The pinned 0.4 schemas
 are in `protocol/v0.4/`. Core owns focus, collision recovery and persistence.
+
+## M3A hands-on desktop
+
+IPC 0.5 adds the authoritative movement/typing/workspace/fullscreen mode, noclip,
+selected tool and five slots to the HUD. The Workspaces tab lists each workspace's
+open app icon, title and class. Icons resolve through the local theme. Launch with
+`python3 bridge/launch.py --protocol 0.5`; `protocol/v0.5/` pins the exact schema.
+Core owns gestures, cursor/input routing, fullscreen, flight and placement. See
+`../core/docs/M3A.md` for controls, config and supervised hardware cursor testing.
+Older versions retain their existing mode-independent presentation.

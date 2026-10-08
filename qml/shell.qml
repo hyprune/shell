@@ -181,6 +181,9 @@ ShellRoot {
                 revision: ShellState.revision, tab: ShellState.tab,
                 warp: ShellState.warpActive, phase: ShellState.transition.phase,
                 world: ShellState.state && ShellState.state.world ? ShellState.state.world.id : null,
+                mode: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.mode : null,
+                tool: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tool : null,
+                apps: ShellState.state && ShellState.state.apps ? ShellState.state.apps.length : 0,
                 map: ShellState.mapData !== null, places: ShellState.places, markers: ShellState.markers.length
             });
         }

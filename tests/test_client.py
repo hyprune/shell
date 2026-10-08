@@ -260,3 +260,14 @@ class ClientV2Tests(ClientTests):
         await self.until(lambda:self.client.director)
 
 if __name__=='__main__':unittest.main()
+
+class ReaderFailureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_malformed_reader_fails_pending_bootstrap_without_timeout(self):
+        import struct
+        client=Client('/unused',lambda event:None,None,{})
+        future=asyncio.get_running_loop().create_future()
+        client.pending['bootstrap']=future
+        reader=asyncio.StreamReader();reader.feed_data(struct.pack('!I',0));reader.feed_eof()
+        task=asyncio.create_task(client.receive(reader));task.add_done_callback(client.reader_finished)
+        with self.assertRaises(ValueError): await asyncio.wait_for(future,.2)
+        await asyncio.gather(task,return_exceptions=True)

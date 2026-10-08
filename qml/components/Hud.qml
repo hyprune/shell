@@ -265,12 +265,19 @@ Item {
             spacing: 8
 
             HudLabel {
-                text: ShellState.state ? ShellState.state.movement.modeId.split('.').pop().toUpperCase() + '  /  ' + ShellState.pose.map((v) => {
+                text: ShellState.state ? (ShellState.state.interaction ? ShellState.state.interaction.mode.toUpperCase() + '  /  ' + (ShellState.state.interaction.noclip ? 'NOCLIP  /  ' : '') : '') + ShellState.state.movement.modeId.split('.').pop().toUpperCase() + '  /  ' + ShellState.pose.map((v) => {
                     return v.toFixed(1);
                 }).join(' · ') + ' m' : ''
                 font.pixelSize: 11
                 font.letterSpacing: 1.3
                 color: Tokens.accent
+            }
+
+            HudLabel {
+                visible: !!(ShellState.state && ShellState.state.interaction)
+                text: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tools.map((name, i) => (ShellState.state.interaction.tool === i + 1 ? '▸ ' : '') + (i + 1) + ' ' + name.toUpperCase()).join('    ') : ''
+                color: Tokens.accent
+                font.pixelSize: 11
             }
 
             HudLabel {

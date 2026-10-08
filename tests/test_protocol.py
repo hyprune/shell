@@ -64,3 +64,12 @@ class SessionContractTests(unittest.TestCase):
             V4_VALIDATOR.validate(request)
             with self.assertRaises(Exception): V3_VALIDATOR.validate(request)
             with self.assertRaises(Exception): V4_VALIDATOR.validate({**request,'params':{**params,'unexpected':True}})
+
+class HandsContractTests(unittest.TestCase):
+    def test_05_modes_apps_are_isolated_and_closed(self):
+        from protocol import V4_VALIDATOR,V5_VALIDATOR
+        msg={'jsonrpc':'2.0','method':'state.delta','params':{'subscriptionId':'sub','sessionId':'session','baseRevision':1,'revision':2,'changes':{'interaction':{'mode':'typing','tool':2,'tools':['pointer','mount','path','path','path'],'noclip':False,'cursor':'virtual','taggedSurfaceId':None},'apps':[{'surfaceId':'surface-1','workspaceId':10,'title':'Terminal','appClass':'kitty','icon':'kitty'}]}}}
+        V5_VALIDATOR.validate(msg)
+        with self.assertRaises(Exception): V4_VALIDATOR.validate(msg)
+        msg['params']['changes']['interaction']['tool']=6
+        with self.assertRaises(Exception): V5_VALIDATOR.validate(msg)
