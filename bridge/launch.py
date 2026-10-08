@@ -90,7 +90,7 @@ async def main(args):
     if fixture: emit({'type': 'presentation', **fixture})
 
     async def open_preview():
-        if args.protocol in ['0.2', '0.3', '0.4', '0.5']:
+        if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6']:
             await client.call('ui.open', {'leaseId':client.lease,'outputId':client.output,'panel':'overview'})
         else:
             await client.overlay(True)
@@ -102,18 +102,19 @@ async def main(args):
                 await client.reconcile()
             elif cmd['type'] == 'close':
                 await client.overlay(False)
-            elif cmd['type'] == 'drive' and args.protocol in ['0.3', '0.4', '0.5']:
+            elif cmd['type'] == 'drive' and args.protocol in ['0.3', '0.4', '0.5', '0.6']:
                 await client.call('route.set', {'points':[{'position':cmd['position']}]})
                 await client.call('autodrive.start', {})
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
                 if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
-                        (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if args.protocol in ['0.4','0.5'] else []) +
-                        (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if args.protocol in ['0.2', '0.3', '0.4', '0.5'] else [])):
+                        (['input.get','input.preview','input.set','input.capture','input.capture.cancel'] if args.protocol == '0.6' else []) +
+                        (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if args.protocol in ['0.4','0.5','0.6'] else []) +
+                        (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6'] else [])):
                     raise ValueError('Unknown shell action')
                 result = await client.call(cmd['method'], cmd['params'])
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
-            elif cmd['type'] == 'dev.warp' and fixture and args.protocol in ['0.2', '0.3', '0.4', '0.5']:
+            elif cmd['type'] == 'dev.warp' and fixture and args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6']:
                 await client.call('world.load', {'worldId': cmd['worldId']})
             elif cmd['type'] == 'dev.open' and fixture:
                 await open_preview()
@@ -169,7 +170,7 @@ async def main(args):
             emit({'type': 'dev.tab', 'index': index})
             await asyncio.sleep(4)
         await client.overlay(False)
-        if args.protocol in ['0.2', '0.3', '0.4', '0.5']: await client.call('world.load', {'worldId': 'com.hyprune.garden'})
+        if args.protocol in ['0.2', '0.3', '0.4', '0.5', '0.6']: await client.call('world.load', {'worldId': 'com.hyprune.garden'})
 
     async def projection_preview():
         # Synthetic projection samples supplied by a dev camera fixture, never
@@ -212,7 +213,7 @@ async def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
-    parser.add_argument('--protocol', choices=['0.1', '0.2', '0.3', '0.4', '0.5'], default=os.environ.get('HYPRUNE_PROTOCOL', '0.2'), help='Exact production protocol; never auto-upgrade')
+    parser.add_argument('--protocol', choices=['0.1', '0.2', '0.3', '0.4', '0.5', '0.6'], default=os.environ.get('HYPRUNE_PROTOCOL', '0.2'), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')

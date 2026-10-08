@@ -1,12 +1,12 @@
 # Hyprune shell
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1, 0.2 and **0.3**. The first real session runs against core through the
+IPC 0.1–0.6. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
 world metadata, safe SVG map, places, output descriptor, projected markers and
 workspace locations. No launcher package paths are needed for that session.
 
-Hold Tab in exploration to open the Director; core owns the 350 ms hold. The
+Hold Tab in exploration to open the Director; core owns the configurable 1000 ms hold in M3B. The
 bridge binds its direct Quickshell child, core verifies the actual Wayland HUD
 credentials, and the Director maps only after exclusive overlay acceptance.
 Escape closes it; F12 returns to the desktop. HUD/warp remain passive and only
@@ -215,3 +215,11 @@ open app icon, title and class. Icons resolve through the local theme. Launch wi
 Core owns gestures, cursor/input routing, fullscreen, flight and placement. See
 `../core/docs/M3A.md` for controls, config and supervised hardware cursor testing.
 Older versions retain their existing mode-independent presentation.
+
+M3B uses exact IPC 0.6 (`python3 bridge/launch.py --protocol 0.6`). The Director’s
+Settings tab lists every mode/action with three capture boxes, clear controls,
+conflicts, native shortcut stealing, long-hold timing and scope vignette. Save
+uses core `input.set` with `input.control`; shell never writes the input file.
+HUD shows world/interactive/focus/menu and the selected tool/submode. TAB hold
+opens Map. Super+Tab or Back leaves E/F; Esc closes the Director. Defaults and
+option ranges are generated in the docs site's Keymap page, with HJKL first.

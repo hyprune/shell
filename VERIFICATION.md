@@ -128,3 +128,9 @@ Workspace-to-location mapping remains development-only in this delivery. See
 
 Concurrent 0.3 changes are owned by the integration agent and were not part of
 these results. The gallery is the verified 0.2 recording.
+
+M3B IPC 0.6: `python3 -m unittest discover -s tests` passes 42 protocol,
+lease, revision, reconnect and parser tests, including closed keymap/capture
+requests, three-variant bounds and the Map opening intent. Real Settings capture/save, native
+collision descriptions and HUD mode/submode are exercised by core's lifetime-
+locked `dev/nested/run.sh --m3b` with the actual Quickshell Director.

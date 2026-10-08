@@ -7,12 +7,12 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new"]
+    readonly property var tabs: ['Map', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
     Keys.onLeftPressed: ShellState.tab = Math.max(0, ShellState.tab - 1)
-    Keys.onRightPressed: ShellState.tab = Math.min(5, ShellState.tab + 1)
+    Keys.onRightPressed: ShellState.tab = Math.min(6, ShellState.tab + 1)
 
     Constellation {
         anchors.fill: parent
@@ -137,7 +137,7 @@ Item {
             }
 
             HudLabel {
-                text: '0' + (ShellState.tab + 1) + ' / 06'
+                text: '0' + (ShellState.tab + 1) + ' / 07'
                 font.family: Tokens.mono
                 color: Tokens.muted
                 font.pixelSize: 12
@@ -173,6 +173,7 @@ Item {
 
             DirectorNews {
             }
+            DirectorSettings {}
 
         }
 

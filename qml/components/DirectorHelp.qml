@@ -28,7 +28,7 @@ RowLayout {
         }
 
         Repeater {
-            model: [['OVERVIEW', 'Core owns the hold-to-open binding and timing.'], ['ESCAPE', 'Return to desktop restores ordinary input through core.'], ['MAP', 'Select a spawn to inspect it. Arrive reloads at that spawn.'], ['SURFACES', 'Focus is a request. Hidden-workspace focus may be refused.'], ['KEYBOARD', 'Tab moves focus. Left / Right change view. Esc closes.']]
+            model: ShellState.protocol === '0.6' ? [['MOVEMENT','HJKL / WASD / arrows; Shift boosts, Space jumps/up, Ctrl crouches/down.'],['USE / FOCUS','E uses a window or workspace in place. F zooms to fullscreen. Super+Tab or Back returns.'],['MAP / SETTINGS','Hold Tab to open Map. Settings captures up to three bindings per action, with conflict feedback.'],['TOOLS','1 normal, 2 window place/lock, 3 path, 4 position move/rotate/scale; wheel changes submode.'],['SCOPE / DEBUG','Hold Q and wheel to zoom; F3/Y toggles debug; U saves a state capture.']] : [['OVERVIEW', 'Core owns the hold-to-open binding and timing.'], ['ESCAPE', 'Return to desktop restores ordinary input through core.'], ['MAP', 'Select a spawn to inspect it. Arrive reloads at that spawn.'], ['SURFACES', 'Focus is a request. Hidden-workspace focus may be refused.'], ['KEYBOARD', 'Tab moves focus. Left / Right change view. Esc closes.']]
 
             delegate: RowLayout {
                 required property var modelData

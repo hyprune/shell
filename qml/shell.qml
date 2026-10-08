@@ -150,7 +150,7 @@ ShellRoot {
             if (ShellState.dev) ShellState.close();
         }
         function tab(index: int): void {
-            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(5, index));
+            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(6, index));
         }
         function select(index: int): void {
             if (ShellState.dev && ShellState.places[index]) {
@@ -174,8 +174,11 @@ ShellRoot {
         }
         function workspace(id: int): void { if (ShellState.dev) ShellState.action('workspace.activate',{id:id}); }
         function drive(index: int): void { if (ShellState.dev && ShellState.places[index]) ShellState.send({type:'drive',position:ShellState.places[index].position}); }
+        function inputCapture(mode: string, action: string, slot: int): void { if(ShellState.dev) ShellState.beginInputCapture(mode,action,slot); }
+        function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
         function status(): string {
             return JSON.stringify({
+                captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
                 lease: ShellState.lease, director: ShellState.director,
                 revision: ShellState.revision, tab: ShellState.tab,

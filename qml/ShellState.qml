@@ -19,6 +19,11 @@ QtObject {
     property string lease: ''
     property bool director: false
     property int tab: 0
+    property var lastCapturedInput: null
+    signal beginInputCapture(string mode, string action, int slot)
+    signal saveInputDraft()
+    signal inputFeedback(var result)
+    signal inputCapture(var result)
     property var worlds: []
     property var presentation: ({
     })
@@ -249,6 +254,7 @@ QtObject {
                     zoneTimer.restart();
                 }
             }
+            if (state.keymap && state.keymap.capture && state.keymap.capture.status === 'captured') inputCapture(state.keymap.capture);
             arrive();
             var q = state.movement.orientation;
             var angle = -Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2])) * 180 / Math.PI;
@@ -257,6 +263,12 @@ QtObject {
                 "position": state.movement.position,
                 "heading": angle
             }]).slice(-12);
+            break;
+        case 'action':
+            if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
+            break;
+        case 'menu.panel':
+            if (msg.panel === 'map') tab = 0;
             break;
         case 'director':
             director = msg.open;

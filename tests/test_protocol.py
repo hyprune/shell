@@ -73,3 +73,39 @@ class HandsContractTests(unittest.TestCase):
         with self.assertRaises(Exception): V4_VALIDATOR.validate(msg)
         msg['params']['changes']['interaction']['tool']=6
         with self.assertRaises(Exception): V5_VALIDATOR.validate(msg)
+
+class KeymapContractTests(unittest.TestCase):
+    def test_06_input_capture_is_closed_and_versioned(self):
+        from protocol import V5_VALIDATOR, V6_VALIDATOR
+        params = {'leaseId':'director','mode':'world','action':'debug','slot':2}
+        message = {'jsonrpc':'2.0','id':'capture','method':'input.capture','params':params}
+        V6_VALIDATOR.validate(message)
+        with self.assertRaises(Exception): V5_VALIDATOR.validate(message)
+        for update in [{'slot':3}, {'mode':'typing'}, {'unexpected':True}]:
+            with self.assertRaises(Exception):
+                V6_VALIDATOR.validate({**message,'params':{**params,**update}})
+
+    def test_06_config_bounds_and_three_variants(self):
+        from protocol import V6_VALIDATOR
+        defs = V6_VALIDATOR.schema['$defs']['inputConfig']
+        config = dict(version=2,longHoldMs=1000,scopeVignette=True,useDistance=6,
+                      useTolerance=.12,captureInputLimit=256,
+                      modes={mode:{action:[] for action in schema['properties']}
+                             for mode,schema in defs['properties']['modes']['properties'].items()})
+        message = {'jsonrpc':'2.0','id':'save','method':'input.set','params':{'config':config}}
+        V6_VALIDATOR.validate(message)
+        config['modes']['world']['forward'] = ['k','w','Up','F1']
+        with self.assertRaises(Exception): V6_VALIDATOR.validate(message)
+        config['modes']['world']['forward'] = ['k','w','Up']
+        config['longHoldMs'] = 99
+        with self.assertRaises(Exception): V6_VALIDATOR.validate(message)
+
+    def test_06_map_intent_has_closed_panels(self):
+        from protocol import V5_VALIDATOR, V6_VALIDATOR
+        message = {'jsonrpc':'2.0','method':'ui.opened','params':dict(
+            leaseId='director',outputId='world',panel='map',
+            sessionId='session',revision=2)}
+        V6_VALIDATOR.validate(message)
+        V5_VALIDATOR.validate(message)  # Older versions allowed arbitrary panel strings.
+        message['params']['panel'] = 'unknown'
+        with self.assertRaises(Exception): V6_VALIDATOR.validate(message)

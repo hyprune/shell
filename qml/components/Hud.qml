@@ -110,7 +110,7 @@ Item {
             spacing: 9
 
             HudLabel {
-                text: ShellState.surfaces.some((s) => s.focused) ? 'APPLICATION INPUT' : 'NAVIGATION'
+                text: ShellState.state && ShellState.state.editor ? ({world:'NAVIGATION',interactive:'APPLICATION INPUT',focus:'FULLSCREEN',menu:'DIRECTOR'})[ShellState.state.editor.mode] : ShellState.surfaces.some((s) => s.focused) ? 'APPLICATION INPUT' : 'NAVIGATION'
                 font.pixelSize: 15
                 font.letterSpacing: 4
                 horizontalAlignment: Text.AlignRight
@@ -118,7 +118,7 @@ Item {
             }
 
             HudLabel {
-                text: ShellState.surfaces.some((s) => s.focused) ? 'ESC · RETURN TO EXPLORATION' : 'WORLD RECEIVES INPUT'
+                text: ShellState.state && ShellState.state.editor ? (ShellState.state.editor.mode === 'world' ? 'WORLD RECEIVES INPUT' : ShellState.state.editor.mode === 'menu' ? 'ESC · RETURN TO EXPLORATION' : 'SUPER+TAB / BACK · RETURN') : ShellState.surfaces.some((s) => s.focused) ? 'ESC · RETURN TO EXPLORATION' : 'WORLD RECEIVES INPUT'
                 font.pixelSize: 10
                 font.letterSpacing: 2
                 color: Tokens.muted
@@ -265,7 +265,7 @@ Item {
             spacing: 8
 
             HudLabel {
-                text: ShellState.state ? (ShellState.state.interaction ? ShellState.state.interaction.mode.toUpperCase() + '  /  ' + (ShellState.state.interaction.noclip ? 'NOCLIP  /  ' : '') : '') + ShellState.state.movement.modeId.split('.').pop().toUpperCase() + '  /  ' + ShellState.pose.map((v) => {
+                text: ShellState.state ? (ShellState.state.editor && ShellState.state.editor.debug ? 'DEBUG r' + ShellState.revision + '  /  ' : '') + (ShellState.state.interaction ? (ShellState.state.editor ? ShellState.state.editor.mode : ShellState.state.interaction.mode).toUpperCase() + '  /  ' + (ShellState.state.interaction.noclip ? 'NOCLIP  /  ' : '') : '') + ShellState.state.movement.modeId.split('.').pop().toUpperCase() + '  /  ' + ShellState.pose.map((v) => {
                     return v.toFixed(1);
                 }).join(' · ') + ' m' : ''
                 font.pixelSize: 11
@@ -275,13 +275,13 @@ Item {
 
             HudLabel {
                 visible: !!(ShellState.state && ShellState.state.interaction)
-                text: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tools.map((name, i) => (ShellState.state.interaction.tool === i + 1 ? '▸ ' : '') + (i + 1) + ' ' + name.toUpperCase()).join('    ') : ''
+                text: ShellState.state && ShellState.state.editor ? ['NORMAL','WINDOW','PATH','POSITION','RESERVED'].map((name,i) => (ShellState.state.editor.tool === i+1 ? '▸ ' : '') + (i+1) + ' ' + name + (ShellState.state.editor.tool === i+1 ? ' · ' + ShellState.state.editor.submode.toUpperCase() : '')).join('    ') : ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tools.map((name, i) => (ShellState.state.interaction.tool === i + 1 ? '▸ ' : '') + (i + 1) + ' ' + name.toUpperCase()).join('    ') : ''
                 color: Tokens.accent
                 font.pixelSize: 11
             }
 
             HudLabel {
-                text: ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  OVERVIEW     /     F12  ·  RETURN TO DESKTOP' : 'OVERVIEW  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
+                text: ShellState.protocol === '0.6' ? 'HOLD TAB (' + (ShellState.state && ShellState.state.keymap ? ShellState.state.keymap.config.longHoldMs : 1000) + ' ms) · MAP  /  E · USE  F · FOCUS  Q · SCOPE  /  F12 · DESKTOP' : ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  OVERVIEW     /     F12  ·  RETURN TO DESKTOP' : 'OVERVIEW  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
                 font.pixelSize: 10
                 color: Tokens.muted
                 font.letterSpacing: 1
