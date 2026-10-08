@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
 import "../theme"
+import "PerformanceText.js" as PerformanceText
 ColumnLayout {
     id:root
     property var graphics:ShellState.graphics
@@ -17,7 +18,7 @@ ColumnLayout {
     function label(v){return v === null ? 'Preset' : v === true ? 'On' : v === false ? 'Off' : String(v).replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());}
     function values(key){return graphics && graphics.options[key] ? (inherited.indexOf(key)>=0 ? [null] : []).concat(graphics.options[key]) : [];}
     function setValue(key,value){var p=Object.assign({},pendingPatch);p[key]=value;pendingPatch=p;commit.restart();}
-    function cost(key){if(performance && performance.controls && performance.controls[key]) { var c=performance.controls[key]; return typeof c.gpuMs === 'number' ? c.gpuMs.toFixed(2)+' ms' : typeof c.passGpuMs === 'number' ? c.passGpuMs.toFixed(2)+' ms · shared' : 'Cost unavailable'; } var costs=timings.gpuEffectsMs || {}, group=key==='bloom' ? 'bloom' : key==='sky' ? 'sky' : key==='msaa' ? 'msaa_resolve' : key==='alpha_haze' ? 'native_surfaces_geometry' : key==='sharpen' ? 'upscale_sharpen' : 'world_shading_shared'; return typeof costs[group] === 'number' ? costs[group].toFixed(2)+' ms'+(group==='world_shading_shared' ? ' · shared' : '') : 'Cost unavailable';}
+    function cost(key){return PerformanceText.effectCost(performance,timings,key);}
     Timer {id:commit;interval:120;onTriggered:{ShellState.action('graphics.set',{patch:root.pendingPatch});root.pendingPatch=({});}}
     HudLabel {Layout.fillWidth:true;text:'Live changes · saved automatically';color:Tokens.muted;font.pixelSize:12}
     RowLayout {
@@ -43,7 +44,7 @@ ColumnLayout {
         }
         Choice {objectName:'graphics-offload';Layout.preferredWidth:220;model:['Offload · Off','Offload · Auto','Offload · On'];enabled:root.values('offload').length>0 && ShellState.available('graphics.set');currentIndex:Math.max(0,['off','auto','on'].indexOf(root.config.offload));onActivated:root.setValue('offload',['off','auto','on'][currentIndex])}
     }
-    HudLabel {Layout.fillWidth:true;text:root.performance ? root.performance.status==='warming' ? 'Switching renderer…' : root.performance.reason && root.performance.reason!=='off' ? 'Renderer policy: '+root.performance.reason : 'Live renderer changes are available.' : 'Live renderer switching, power policy and power cap are unavailable on this core version.';wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
+    HudLabel {Layout.fillWidth:true;text:PerformanceText.policy(root.performance);wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
     Rectangle {Layout.fillWidth:true;height:1;color:Tokens.line}
     RowLayout {
         Layout.fillWidth:true;visible:root.config.offload_power_cap_w!==undefined
@@ -59,7 +60,7 @@ ColumnLayout {
             Layout.fillWidth:true
             HudLabel {Layout.preferredWidth:190;text:modelData.name;wrapMode:Text.Wrap}
             SettingSlider {objectName:'graphics-'+modelData.key;Layout.fillWidth:true;from:modelData.min;to:modelData.max;stepSize:modelData.step;value:root.config[modelData.key] || from;enabled:ShellState.available('graphics.set');onMoved:root.setValue(modelData.key,modelData.step===1 ? Math.round(value) : value)}
-            HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? ' / '+root.cost('sharpen') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
+            HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? (root.cost('sharpen') ? ' / '+root.cost('sharpen') : '') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
         }
     }
     Repeater {
@@ -94,6 +95,7 @@ ColumnLayout {
             Layout.fillWidth:true;Layout.minimumWidth:0;Layout.alignment:Qt.AlignTop;spacing:12
             Rectangle {Layout.fillWidth:true;height:1;color:Tokens.line}
     HudLabel {text:'EFFECTS';color:Tokens.gold;font.pixelSize:Tokens.caption;Layout.fillWidth:true;font.letterSpacing:1.5}
+    HudLabel {Layout.fillWidth:true;text:PerformanceText.worldShading(root.performance,root.timings,root.labels);wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
     Repeater {
         model:['anisotropy','bloom','fog','alpha_haze','ambient_occlusion','normal_maps','reflections','sky','specular']
         RowLayout {
@@ -105,7 +107,7 @@ ColumnLayout {
             Choice {objectName:'graphics-'+modelData;Layout.preferredWidth:220;model:root.values(modelData).map(root.label);currentIndex:root.values(modelData).indexOf(root.config[modelData]);enabled:ShellState.available('graphics.set');onActivated:root.setValue(modelData,root.values(modelData)[currentIndex])}
         }
     }
-    HudLabel {Layout.fillWidth:true;text:'Shared timings cover the complete world shading pass. They are not additive or an isolated measurement of each effect. Unavailable measurements are never estimated.';wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
+    HudLabel {Layout.fillWidth:true;text:'Per-effect costs appear only for separately measured effects. World shading is one shared pass; its cost is not additive.';wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
         }
     }
     HudLabel {Layout.fillWidth:true;text:root.graphics ? root.graphics.error || '' : 'Waiting for graphics settings from core.';visible:text!=='';wrapMode:Text.Wrap;color:Tokens.gold;font.pixelSize:12}
