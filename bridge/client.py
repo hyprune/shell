@@ -11,7 +11,7 @@ from pathlib import Path
 import socket
 import stat
 import struct
-from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR, V9_VALIDATOR, SUPPORTED_PROTOCOLS, at_least
+from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR, V9_VALIDATOR, V10_VALIDATOR, SUPPORTED_PROTOCOLS, at_least
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
@@ -25,7 +25,7 @@ class Client:
         if protocol not in SUPPORTED_PROTOCOLS: raise ValueError('Unsupported core protocol')
         self.protocol = protocol
         self.client_id = client_id
-        self.validator = V9_VALIDATOR if protocol == '0.9' else V8_VALIDATOR if protocol == '0.8' else V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
+        self.validator = V10_VALIDATOR if protocol == '0.10' else V9_VALIDATOR if protocol == '0.9' else V8_VALIDATOR if protocol == '0.8' else V7_VALIDATOR if protocol == '0.7' else V6_VALIDATOR if protocol == '0.6' else V5_VALIDATOR if protocol == '0.5' else V4_VALIDATOR if protocol == '0.4' else V3_VALIDATOR if protocol == '0.3' else V2_VALIDATOR if protocol == '0.2' else VALIDATOR
         self.wayland_pid = None
         self.worlds = []
         self.native_transition = None
@@ -79,6 +79,7 @@ class Client:
         finally:
             self.pending.pop(rid, None)
             self.pending_methods.pop(rid, None)
+            if future.done() and not future.cancelled(): future.exception()  # Drain errors during shutdown cancellation.
 
     def publish(self):
         self.emit({'type': 'state', 'state': self.state, 'revision': self.revision,
@@ -309,7 +310,12 @@ class Client:
                 self.publish()
 
             if at_least(self.protocol, 9) and self.lease and self.wayland_pid and self.bound_child != (self.lease,self.wayland_pid):
-                await self.call('shell.bind', {'leaseId':self.lease,'pid':self.wayland_pid})
+                try:
+                    await self.call('shell.bind', {'leaseId':self.lease,'pid':self.wayland_pid})
+                except RuntimeError as error:
+                    if 'no credential-matched HUD' in str(error): return  # Mapping races the first snapshot.
+                    raise
+                self.emit({'type':'hud.bound'})
                 self.bound_child = (self.lease,self.wayland_pid)
 
     def hud_event(self, method, params):
@@ -325,7 +331,7 @@ class Client:
             return True
         if params['subscriptionId'] != self.hud_subscription or params['monotonicMs'] <= self.hud_times.get(method,-1):
             return True
-        if method == 'hud.pose' and (params['outputId'] != self.output or not self.state or params['worldId'] != self.state['world']['id']):
+        if method == 'hud.pose' and (params['outputId'] != self.output or not self.state or params['worldId'] != (self.state.get('world') or {}).get('id')):
             return True
         self.hud_times[method] = params['monotonicMs']
         self.emit({'type':method,'value':params})
