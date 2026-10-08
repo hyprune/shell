@@ -2,10 +2,13 @@ import ".."
 import "../theme"
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 Rectangle {
     id: root
 
+    objectName: "surfaceCard"
+    property var apps: []
     property var surface
 
     implicitHeight: cardColumn.implicitHeight + 40
@@ -61,6 +64,28 @@ Rectangle {
             font.family: Tokens.mono
             font.pixelSize: 11
             color: Tokens.muted
+        }
+
+        ColumnLayout {
+            visible: root.apps.length > 0
+            Layout.fillWidth: true
+            spacing: 10
+            Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
+            Repeater {
+                model: root.apps
+                RowLayout {
+                    required property var modelData
+                    objectName: 'workspaceApp'
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Image { Layout.preferredWidth: 24; Layout.preferredHeight: 24; source: Quickshell.iconPath(modelData.icon, 'application-x-executable'); fillMode: Image.PreserveAspectFit }
+                    ColumnLayout {
+                        Layout.fillWidth: true; Layout.minimumWidth: 0; spacing: 3
+                        HudLabel { Layout.fillWidth: true; text: modelData.title; elide: Text.ElideRight }
+                        HudLabel { Layout.fillWidth: true; text: modelData.appClass; color: Tokens.muted; font.pixelSize: 10; elide: Text.ElideRight }
+                    }
+                }
+            }
         }
 
         Item {
