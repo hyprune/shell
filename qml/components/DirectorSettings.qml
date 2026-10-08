@@ -74,6 +74,10 @@ Item {
                 onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.scopeVignette=checked;root.draft=next;root.preview(); }
             }
         }
+        CheckBox {
+            text: 'Invert mouse look Y'; checked: root.draft ? !!root.draft.invert_y : false
+            onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.invert_y=checked;root.draft=next;root.preview(); }
+        }
         ScrollView {
             Layout.fillWidth:true; Layout.fillHeight:true
             ColumnLayout {
