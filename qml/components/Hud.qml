@@ -4,366 +4,147 @@ import QtQuick
 
 Item {
     id: root
+    readonly property real inset: width < 1200 ? 30 : 54
+    readonly property bool compact: width < 1200 || height < 700
+    readonly property color foreground: '#f1f4fb'
+    readonly property color secondary: '#bbcce0'
+    readonly property var editor: ShellState.state ? ShellState.state.editor : null
+    readonly property var interaction: ShellState.state ? ShellState.state.interaction : null
+    readonly property string mode: editor ? editor.mode : interaction ? interaction.mode : 'world'
 
-    // Noninteractive layer: transparent input region is set by shell.qml.
-    Reveal {
-        x: 66
-        y: 50
-        width: 230
-        height: 250
-        shown: ShellState.active
-
-        MapView {
-            width: 200
-            height: 200
-            compact: true
-            clip: true
-            opacity: 0.85
-        }
-
+    HudCluster {
+        x: root.inset; y: root.inset
+        width: root.compact ? 160 : 210
+        height: width + 28
+        edgeX: -1; edgeY: -1
+        MapView { width: parent.width; height: width; compact: true; clip: true; opacity: 0.9 }
         HudLabel {
-            x: 0
-            y: 216
+            anchors.bottom: parent.bottom; width: parent.width
             text: ShellState.worldName.toUpperCase()
-            font.pixelSize: 11
-            font.letterSpacing: 2.2
-            color: Tokens.accent
-            width: 230
+            color: root.foreground; font.pixelSize: 11; font.letterSpacing: 1
         }
-
     }
-
-    Item {
-        anchors.top: parent.top
-        anchors.topMargin: 52
+    HudCluster {
+        anchors.top: parent.top; anchors.topMargin: root.inset
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 600
-        height: 64
+        width: Math.min(420, root.width - 670); height: 56
+        visible: !root.compact && width >= 230
+        edgeY: -1
         clip: true
-
         Repeater {
-            model: 25
-
+            model: 17
             delegate: Item {
                 required property int index
-
-                x: (index - 12) * 48 + 300 - (ShellState.heading % 15) * 3.2
-                width: 1
-                height: 28
-
-                Rectangle {
-                    width: 1
-                    height: index % 3 === 0 ? 12 : 5
-                    color: Tokens.muted
-                    opacity: 0.6
-                    anchors.bottom: parent.bottom
-                }
-
+                x: (index - 8) * 40 + parent.width / 2 - (ShellState.heading % 15) * 40 / 15
+                width: 1; height: 24
+                Rectangle { anchors.bottom: parent.bottom; width: 1; height: index % 3 === 0 ? 10 : 5; color: root.secondary }
                 HudLabel {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.bottom
-                    anchors.topMargin: 10
-                    text: {
-                        var deg = (Math.floor(ShellState.heading / 15) * 15 + (index - 12) * 15 + 720) % 360;
-                        return deg % 90 === 0 ? ['N', 'E', 'S', 'W'][deg / 90] : deg.toString();
-                    }
-                    font.pixelSize: 10
-                    font.letterSpacing: 1
-                    color: Tokens.muted
+                    anchors.horizontalCenter: parent.horizontalCenter; y: 32
+                    text: { var d = (Math.floor(ShellState.heading / 15) * 15 + (index - 8) * 15 + 720) % 360; return d % 90 === 0 ? ['N', 'E', 'S', 'W'][d / 90] : d.toString(); }
+                    color: root.secondary; font.pixelSize: 10
                 }
-
             }
-
         }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: 7
-            height: 7
-            rotation: 45
-            color: Tokens.accent
-        }
-
-        HudLabel {
-            anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: 8
-            text: Math.round(ShellState.heading) + '°'
-            font.pixelSize: 11
-            color: Tokens.accent
-        }
-
+        HudLabel { anchors.horizontalCenter: parent.horizontalCenter; text: Math.round(ShellState.heading) + '°'; color: root.foreground; font.pixelSize: 11 }
     }
-
-    Row {
-        spacing: 18
-
-        anchors {
-            top: parent.top
-            right: parent.right
-            topMargin: 58
-            rightMargin: 74
-        }
-
+    HudCluster {
+        anchors.right: parent.right; anchors.rightMargin: root.inset
+        y: root.inset
+        width: root.compact ? 300 : 340; height: statusColumn.height
+        edgeX: 1; edgeY: -1
         Column {
-            spacing: 9
-
+            id: statusColumn
+            width: parent.width; spacing: 8
             HudLabel {
-                text: ShellState.state && ShellState.state.editor ? ({world:'NAVIGATION',interactive:'APPLICATION INPUT',focus:'FULLSCREEN',menu:'DIRECTOR'})[ShellState.state.editor.mode] : ShellState.surfaces.some((s) => s.focused) ? 'APPLICATION INPUT' : 'NAVIGATION'
-                font.pixelSize: 15
-                font.letterSpacing: 4
-                horizontalAlignment: Text.AlignRight
-                width: 230
+                width: parent.width
+                text: ({world:'NAVIGATION',movement:'NAVIGATION',interactive:'APPLICATION INPUT',typing:'APPLICATION INPUT',focus:'FULLSCREEN',fullscreen:'FULLSCREEN',menu:'DIRECTOR'})[root.mode] || root.mode.toUpperCase()
+                font.pixelSize: 14; font.letterSpacing: 2; horizontalAlignment: Text.AlignRight; color: root.foreground
             }
-
             HudLabel {
-                text: ShellState.state && ShellState.state.editor ? (ShellState.state.editor.mode === 'world' ? 'WORLD RECEIVES INPUT' : ShellState.state.editor.mode === 'menu' ? 'ESC · RETURN TO EXPLORATION' : 'SUPER+TAB / BACK · RETURN') : ShellState.surfaces.some((s) => s.focused) ? 'ESC · RETURN TO EXPLORATION' : 'WORLD RECEIVES INPUT'
-                font.pixelSize: 10
-                font.letterSpacing: 2
-                color: Tokens.muted
-                horizontalAlignment: Text.AlignRight
-                width: 230
+                width: parent.width
+                text: ['world','movement'].indexOf(root.mode) >= 0 ? 'WORLD RECEIVES INPUT' : 'SUPER+TAB / BACK · RETURN'
+                font.pixelSize: 10; font.letterSpacing: 0.8; horizontalAlignment: Text.AlignRight; color: root.secondary
             }
-
         }
-
-        Seal {
-            width: 55
-            height: 55
-            variant: 1
-        }
-
     }
-
-    Reveal {
-        x: 68
-        y: 306
-        width: 430
-        height: 160
-        shown: ShellState.active && ShellState.protocol !== '0.3'
-
-        MissionPanel {
-        }
-
+    HudCluster {
+        x: root.inset; y: root.compact ? 264 : 330
+        width: Math.min(400, root.width * 0.32); height: 160
+        visible: ShellState.presentation.dev === true && !root.compact
+        edgeX: -1
+        MissionPanel { width: parent.width }
     }
-
+    // Legacy protocols may still supply screen-projected markers. Core 0.6
+    // owns all world-locked markers; never curve those with the screen HUD.
     Repeater {
-        model: ShellState.protocol === "0.6" ? [] : ShellState.markers
-
+        model: ['0.6','0.7'].indexOf(ShellState.protocol) >= 0 ? [] : ShellState.markers
         delegate: Item {
-            id: marker
-
             required property var modelData
-
-            x: Math.max(4, Math.min(parent.width - 244, parent.width * modelData.x - 120))
-            y: parent.height * modelData.y
-            width: 240
-            height: 80
-
-            Rectangle {
-                x: 45; y: 46; width: 150; height: 45
-                color: '#ca0a111d'; radius: 2
-            }
-            Seal {
-                width: 34
-                height: 34
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-
-            Rectangle {
-                x: 118
-                y: 39
-                width: 4
-                height: 4
-                color: Tokens.accent
-                rotation: 45
-            }
-
-            HudLabel {
-                anchors.top: parent.top
-                anchors.topMargin: 51
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: marker.modelData.name.toUpperCase()
-                font.pixelSize: 11
-                font.letterSpacing: 2.1
-            }
-
-            HudLabel {
-                anchors.top: parent.top
-                anchors.topMargin: 71
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: Math.round(marker.modelData.distance) + ' m'
-                font.pixelSize: 10
-                color: Tokens.muted
-                font.letterSpacing: 1.2
-            }
-
+            x: Math.max(8, Math.min(root.width - width - 8, root.width * modelData.x - width / 2))
+            y: Math.max(8, Math.min(root.height - height - 8, root.height * modelData.y))
+            width: 220; height: 76
+            Seal { width: 30; height: 30; anchors.horizontalCenter: parent.horizontalCenter; tint: root.foreground }
+            Rectangle { y: 36; width: parent.width; height: 40; radius: 3; color: '#da0a1420' }
+            HudLabel { y: 40; width: parent.width - 12; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.name; horizontalAlignment: Text.AlignHCenter; color: root.foreground; font.pixelSize: 11 }
+            HudLabel { y: 58; width: parent.width; text: Math.round(modelData.distance) + ' m'; horizontalAlignment: Text.AlignHCenter; color: root.secondary; font.pixelSize: 10 }
         }
-
     }
-
-    Reveal {
-        x: 94
-        y: parent.height - 360
-        width: parent.width * 0.65
-        height: 150
+    HudCluster {
+        x: root.inset; y: root.height - height - (root.compact ? 160 : 210)
+        width: Math.min(root.width * 0.56, 650); height: zoneColumn.height
         shown: ShellState.zone !== ''
-        travel: 24
-
-        Rectangle { x: -18; y: -16; width: 550; height: 150; color: '#ce0a111d'; radius: 3 }
+        edgeX: -1; edgeY: 0.5
         Column {
-            spacing: 17
-
-            HudLabel {
-                text: 'SECTOR DISCOVERED'
-                font.pixelSize: 11
-                font.letterSpacing: 4
-                color: Tokens.muted
-            }
-
-            HudLabel {
-                text: ShellState.zone.toUpperCase()
-                font.pixelSize: 40
-                font.weight: Font.Light
-                font.letterSpacing: 6
-            }
-
-            HudLabel {
-                text: ShellState.zoneSubtitle.toUpperCase()
-                font.pixelSize: 13
-                font.letterSpacing: 4
-                color: Tokens.accent
-            }
-
+            id: zoneColumn
+            width: parent.width; spacing: 10
+            HudLabel { width: parent.width; text: 'SECTOR DISCOVERED'; color: root.secondary; font.pixelSize: 10; font.letterSpacing: 2 }
+            HudLabel { width: parent.width; text: ShellState.zone; color: root.foreground; font.pixelSize: root.compact ? 24 : 36; maximumLineCount: 2; wrapMode: Text.Wrap }
+            HudLabel { width: parent.width; text: ShellState.zoneSubtitle; color: root.secondary; font.pixelSize: 11 }
         }
-
     }
-
-    Rectangle {
-        x: 60; y: parent.height - 118; width: 610; height: 72
-        color: '#cf0a111d'; radius: 3; visible: ShellState.active
-    }
-    Row {
-        spacing: 20
-
-        anchors {
-            left: parent.left
-            bottom: parent.bottom
-            leftMargin: 76
-            bottomMargin: 60
-        }
-
-        Seal {
-            width: 32
-            height: 32
-            anchors.verticalCenter: parent.verticalCenter
-            variant: 1
-        }
-
+    HudCluster {
+        x: root.inset; y: root.height - height - root.inset
+        width: Math.min(750, root.width - root.inset * 2); height: inputColumn.height
+        edgeX: -0.8; edgeY: 1
+        HoldRing { anchors.verticalCenter: parent.verticalCenter }
         Column {
-            spacing: 8
-
+            id: inputColumn
+            x: 54; width: parent.width - x; spacing: 9
             HudLabel {
-                text: ShellState.state ? (ShellState.state.editor && ShellState.state.editor.debug ? 'DEBUG r' + ShellState.revision + '  /  ' : '') + (ShellState.state.interaction ? (ShellState.state.editor ? ShellState.state.editor.mode : ShellState.state.interaction.mode).toUpperCase() + '  /  ' + (ShellState.state.interaction.noclip ? 'NOCLIP  /  ' : '') : '') + ShellState.state.movement.modeId.split('.').pop().toUpperCase() + '  /  ' + ShellState.pose.map((v) => {
-                    return v.toFixed(1);
-                }).join(' · ') + ' m' : ''
-                font.pixelSize: 11
-                font.letterSpacing: 1.3
-                color: Tokens.accent
+                width: parent.width; font.pixelSize: 11; color: root.foreground
+                text: root.mode.toUpperCase() + (root.interaction && root.interaction.noclip ? '  /  NOCLIP' : '') + '  /  ' + ShellState.pose.map(v => v.toFixed(1)).join(' · ') + ' m'
             }
-
             HudLabel {
-                visible: !!(ShellState.state && ShellState.state.interaction)
-                text: ShellState.state && ShellState.state.editor ? ['NORMAL','WINDOW','PATH','POSITION','RESERVED'].map((name,i) => (ShellState.state.editor.tool === i+1 ? '▸ ' : '') + (i+1) + ' ' + name + (ShellState.state.editor.tool === i+1 ? ' · ' + ShellState.state.editor.submode.toUpperCase() : '')).join('    ') : ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.tools.map((name, i) => (ShellState.state.interaction.tool === i + 1 ? '▸ ' : '') + (i + 1) + ' ' + name.toUpperCase()).join('    ') : ''
-                color: Tokens.accent
-                font.pixelSize: 11
+                visible: !!root.interaction
+                width: parent.width; font.pixelSize: 11; color: root.foreground
+                wrapMode: Text.Wrap; maximumLineCount: 2
+                text: root.editor ? ['NORMAL','WINDOW','PATH','POSITION','RESERVED'].map((name,i) => (root.editor.tool === i+1 ? '▸ ' : '') + (i+1) + ' ' + name + (root.editor.tool === i+1 ? ' · ' + root.editor.submode.toUpperCase() : '')).join('   ') : root.interaction ? root.interaction.tools.map((name,i) => (root.interaction.tool === i+1 ? '▸ ' : '') + (i+1) + ' ' + name.toUpperCase()).join('   ') : ''
             }
-
             HudLabel {
-                text: ShellState.protocol === '0.6' ? 'HOLD TAB (' + (ShellState.state && ShellState.state.keymap ? ShellState.state.keymap.config.longHoldMs : 1000) + ' ms) · MAP  /  E · USE  F · FOCUS  Q · SCOPE  /  F12 · DESKTOP' : ShellState.protocol !== '0.1' ? 'HOLD TAB  ·  OVERVIEW     /     F12  ·  RETURN TO DESKTOP' : 'OVERVIEW  ·  CORE BINDING     /     DESKTOP ESCAPE  ·  CORE BINDING'
-                font.pixelSize: 10
-                color: Tokens.muted
-                font.letterSpacing: 1
+                width: parent.width; font.pixelSize: 10; color: root.secondary
+                wrapMode: Text.Wrap
+                text: ['0.6','0.7'].indexOf(ShellState.protocol) >= 0 ? 'HOLD TAB · MAP   /   E · USE   /   F · FOCUS   /   Q · SCOPE   /   F12 · DESKTOP' : 'HOLD TAB · OVERVIEW   /   F12 · DESKTOP'
             }
-
         }
-
     }
-
-    VehiclePanel {
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            rightMargin: 76
-            bottomMargin: 60
-        }
-
-    }
-
-    Column {
-        width: 430
-        spacing: 15
-
-        anchors {
-            right: parent.right
-            bottom: parent.bottom
-            rightMargin: 76
-            bottomMargin: ShellState.dev && ShellState.presentation.vehicle && ShellState.presentation.vehicle.active ? 240 : 90
-        }
-
-        Repeater {
-            model: ShellState.notices
-
-            delegate: Item {
-                required property var modelData
-
-                width: 430
-                height: Math.max(45, message.implicitHeight + 16)
-
-                Rectangle {
-                    width: 1
-                    height: parent.height
-                    color: modelData.level === 'info' ? Tokens.accent : Tokens.gold
-                    opacity: 0.65
-                }
-
+    HudCluster {
+        anchors.right: parent.right; anchors.rightMargin: root.inset
+        y: root.compact ? root.inset + 90 : root.height - height - 170
+        width: Math.min(360, root.width * 0.34); height: noticeColumn.height
+        shown: ShellState.notices.length > 0
+        edgeX: 1; edgeY: root.compact ? -0.5 : 0.6
+        Column {
+            id: noticeColumn
+            width: parent.width; spacing: 12
+            Repeater {
+                model: ShellState.notices.slice(-3)
                 HudLabel {
-                    id: message
-
-                    text: modelData.message
-                    font.pixelSize: 12
-                    wrapMode: Text.WordWrap
-                    lineHeight: 1.4
-                    color: Tokens.muted
-
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        verticalCenter: parent.verticalCenter
-                        leftMargin: 18
-                    }
-
+                    required property var modelData
+                    width: parent.width; text: modelData.message
+                    font.pixelSize: 12; wrapMode: Text.Wrap; maximumLineCount: 3
+                    color: modelData.level === 'info' ? root.secondary : '#efd49f'
                 }
-
             }
-
         }
-
     }
-
-    HudLabel {
-        text: ShellState.presentation.dev ? 'HYPRUNE  /  M0 PREVIEW' : 'HYPRUNE  /  LIVE SESSION'
-        font.pixelSize: 9
-        font.letterSpacing: 3
-        color: Tokens.muted
-
-        anchors {
-            horizontalCenter: parent.horizontalCenter
-            bottom: parent.bottom
-            bottomMargin: 38
-        }
-
-    }
-
 }

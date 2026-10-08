@@ -1,114 +1,48 @@
 import ".."
 import "../theme"
 import QtQuick
+import QtQuick.Layouts
 
-Item {
+Rectangle {
     id: root
-
     property var destination
     property int variant: 0
     property bool selected: false
-
+    property bool compact: false
     signal chosen()
-
-    width: 380
-    height: 410
-
-    Rectangle {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 12
-        width: 194
-        height: 194
-        radius: 97
-        color: Tokens.raised
-        opacity: hover.containsMouse ? 0.7 : 0.28
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Tokens.motion
-            }
-
+    implicitHeight: content.implicitHeight + 40
+    color: selected ? Tokens.raised : Tokens.panel
+    radius: Tokens.radius
+    border.color: selected ? Tokens.accent : Tokens.line
+    TapHandler { onTapped: root.chosen() }
+    ColumnLayout {
+        id: content
+        anchors.fill: parent; anchors.margins: 20
+        spacing: root.compact ? 10 : 20
+        HudLabel {
+            Layout.fillWidth: true
+            text: root.destination.name
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: 24
+            maximumLineCount: 2
+            wrapMode: Text.Wrap
         }
-
-    }
-
-    Seal {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 9
-        width: 200
-        height: 200
-        variant: root.variant
-        tint: root.selected ? Tokens.text : Tokens.muted
-        scale: hover.containsMouse ? 1.04 : 1
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: Tokens.motion * 2
-                easing.type: Easing.OutCubic
-            }
-
+        Seal { Layout.alignment: Qt.AlignHCenter; width: root.compact ? 48 : 120; height: width; variant: root.variant; tint: Tokens.accent }
+        HudLabel {
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.compact ? 36 : 64
+            text: root.destination.description || 'An explorable desktop world.'
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            maximumLineCount: 3
+            color: Tokens.muted
         }
-
-    }
-
-    HudLabel {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 235
-        text: root.destination.name.toUpperCase()
-        font.pixelSize: 22
-        font.weight: Font.Light
-        font.letterSpacing: 4
-    }
-
-    Rectangle {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 278
-        width: root.selected ? 150 : 44
-        height: 1
-        color: Tokens.accent
-
-        Behavior on width {
-            NumberAnimation {
-                duration: Tokens.motion * 2
-            }
-
+        ActionButton {
+            Layout.fillWidth: true
+            text: 'Travel to destination ↗'
+            primary: root.selected
+            enabled: ShellState.available('world.load')
+            onClicked: ShellState.action('world.load', {worldId:root.destination.id})
         }
-
     }
-
-    HudLabel {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 300
-        width: 340
-        text: root.destination.description || 'An explorable desktop world.'
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        lineHeight: 1.6
-        font.pixelSize: 13
-        color: Tokens.muted
-    }
-
-    MouseArea {
-        id: hover
-
-        anchors.fill: parent
-        hoverEnabled: true
-        onClicked: root.chosen()
-        onDoubleClicked: ShellState.action('world.load', {
-            "worldId": root.destination.id
-        })
-    }
-
-    ActionButton {
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: 367
-        width: 230
-        text: 'Travel to destination ↗'
-        primary: root.selected
-        enabled: ShellState.available('world.load')
-        onClicked: ShellState.action('world.load', {
-            "worldId": root.destination.id
-        })
-    }
-
 }

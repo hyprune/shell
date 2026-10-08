@@ -4,9 +4,13 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "theme"
 import "components"
+import "components/LayoutAudit.js" as Audit
 
 ShellRoot {
     id: root
+    property var directorViews: []
+    property var hudViews: []
+    property var warpViews: []
     property string lastScreen: Quickshell.env('HYPRUNE_OUTPUT_SCREEN')
 
     Connections {
@@ -34,7 +38,10 @@ ShellRoot {
             mask: Region {}
 
             Hud {
-                property real uiScale: Math.min(parent.width / 1920, parent.height / 1080)
+                id: hudScene
+                property string outputScreenName: modelData.name
+                Component.onCompleted: root.hudViews = root.hudViews.concat([hudScene])
+                property real uiScale: Math.max(1, Math.min(parent.width / 1920, parent.height / 1080, 1.5))
                 width: parent.width / uiScale
                 height: parent.height / uiScale
                 scale: uiScale
@@ -89,12 +96,15 @@ ShellRoot {
 
             Item {
                 anchors.fill: parent
-                property real uiScale: Math.min(width / 1920, height / 1080)
+                property real uiScale: Math.max(1, Math.min(width / 1920, height / 1080, 1.5))
                 Director {
-                    x: 58 * parent.uiScale
-                    y: 48 * parent.uiScale
-                    width: (parent.width - 116 * parent.uiScale) / parent.uiScale
-                    height: (parent.height - 96 * parent.uiScale) / parent.uiScale
+                    id: directorScene
+                    property string outputScreenName: modelData.name
+                    Component.onCompleted: root.directorViews = root.directorViews.concat([directorScene])
+                    x: 20 * parent.uiScale
+                    y: 20 * parent.uiScale
+                    width: parent.width / parent.uiScale - 40
+                    height: parent.height / parent.uiScale - 40
                     scale: parent.uiScale
                     transformOrigin: Item.TopLeft
                 }
@@ -119,6 +129,8 @@ ShellRoot {
             mask: Region {}
             Warp {
                 id: warpScene
+                property string outputScreenName: modelData.name
+                Component.onCompleted: root.warpViews = root.warpViews.concat([warpScene])
                 anchors.fill: parent
                 activeOutput: modelData.name === ShellState.screenName
             }
@@ -161,6 +173,9 @@ ShellRoot {
         function travel(index: int): void {
             if (ShellState.dev && ShellState.places[index]) ShellState.travel(ShellState.places[index]);
         }
+        function curvature(amount: real): void {
+            if (ShellState.dev) { Tokens.hudCurved = amount > 0; Tokens.hudCurvature = amount; }
+        }
         function motion(reduced: bool): void {
             if (ShellState.dev) Tokens.reducedMotion = reduced;
         }
@@ -175,11 +190,20 @@ ShellRoot {
         function workspace(id: int): void { if (ShellState.dev) ShellState.action('workspace.activate',{id:id}); }
         function drive(index: int): void { if (ShellState.dev && ShellState.places[index]) ShellState.send({type:'drive',position:ShellState.places[index].position}); }
         function inputCapture(mode: string, action: string, slot: int): void { if(ShellState.dev) ShellState.beginInputCapture(mode,action,slot); }
+        function settingsSection(section: int): void { if (ShellState.dev) ShellState.browseSettings(section); }
+        function settingsScroll(fraction: real): void { if (ShellState.dev) ShellState.scrollSettings(Math.max(0,Math.min(1,fraction))); }
+        function graphicsPatch(patch: string): void { if (ShellState.dev) ShellState.action("graphics.set", {patch:JSON.parse(patch)}); }
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
         function overlayStyle(): void { if(ShellState.dev) ShellState.action("overlay.style",{style:{waypointColor:[1,0,0],fontFamily:"DejaVu Sans Mono"}}); }
         function routeTo(index: int): void { if(ShellState.dev && ShellState.places[index]) ShellState.action("route.set",{points:[{position:ShellState.places[index].position}]}); }
+        function layoutAudit(): string {
+            var views = ShellState.warpActive ? root.warpViews : ShellState.director ? root.directorViews : root.hudViews;
+            var view = views.find(v => v.outputScreenName === ShellState.screenName);
+            return ShellState.dev ? JSON.stringify(Audit.inspect(view)) : '{}';
+        }
         function status(): string {
             return JSON.stringify({
+                graphics: ShellState.graphics,
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
                 lease: ShellState.lease, director: ShellState.director,

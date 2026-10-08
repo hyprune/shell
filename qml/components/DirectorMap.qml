@@ -11,7 +11,7 @@ RowLayout {
         return p.id === ShellState.selectedPlace;
     }) || (ShellState.places.length ? ShellState.places[0] : null)
 
-    spacing: 28
+    spacing: 20
 
     Rectangle {
         Layout.fillWidth: true
@@ -50,12 +50,16 @@ RowLayout {
 
     }
 
-    ColumnLayout {
-        Layout.preferredWidth: 300
-        Layout.minimumWidth: 300
+    ScrollView {
+        Layout.preferredWidth: root.width < 1100 ? 260 : 300
+        Layout.minimumWidth: 260
         Layout.maximumWidth: 300
         Layout.fillHeight: true
-        spacing: 20
+        clip: true
+        contentWidth: availableWidth
+        ColumnLayout {
+        width: parent.width
+        spacing: 16
 
         HudLabel {
             text: 'LOCATION INDEX'
@@ -142,4 +146,5 @@ RowLayout {
 
     }
 
+    }
 }

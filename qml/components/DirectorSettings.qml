@@ -9,6 +9,7 @@ Item {
     property var draft: null
     property var feedback: ({conflicts:[], steals:[]})
     property string mode: 'world'
+    property int section: 0
     property string pending: ''
     property string lastCapture: ''
     readonly property var actions: draft ? Object.keys(draft.modes[mode]) : []
@@ -32,11 +33,14 @@ Item {
         var steals = (feedback.steals || []).filter(c => c.mode === mode && c.action === action).map(c => c.binding + ' — steals Hyprland: ' + c.description);
         return conflicts.concat(steals).join('   ·   ');
     }
-    onVisibleChanged: if (visible) load()
+    onVisibleChanged: { if (visible) load(); else if (pending) pending = ''; }
     Component.onCompleted: load()
     Connections {
         target: ShellState
+        function onBrowseSettings(section) { root.section = section; scroll.contentItem.contentY = 0; }
+        function onScrollSettings(fraction) { scroll.contentItem.contentY = Math.max(0, scroll.contentItem.contentHeight - scroll.contentItem.height) * fraction; }
         function onBeginInputCapture(mode, action, slot) {
+            root.section = 2;
             root.mode=mode;root.pending=action+':'+slot;root.lastCapture='';ShellState.action('input.capture',{leaseId:ShellState.lease,mode:mode,action:action,slot:slot});
         }
         function onSaveInputDraft() {ShellState.action('input.set',{config:root.draft});}
@@ -51,66 +55,138 @@ Item {
             ShellState.action('input.capture.cancel',{});
         }
     }
+    Timer { interval: 1000; running: root.visible && ShellState.director && ShellState.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: ShellState.action('graphics.get', {}) }
+    onPendingChanged: {
+        if (!pending) ShellState.action('input.capture.cancel', {});
+        else Qt.callLater(function() {
+            var index = root.actions.indexOf(root.pending.split(':')[0]);
+            var row = bindingRows.itemAt(index);
+            if (row && scroll.contentItem) {
+                var point = row.mapToItem(scroll.contentItem.contentItem, 0, 0);
+                scroll.contentItem.contentY = Math.max(0, Math.min(point.y, scroll.contentItem.contentHeight - scroll.contentItem.height));
+            }
+        });
+    }
+    function option(name, value) {
+        if (!draft) return;
+        var next = JSON.parse(JSON.stringify(draft)); next[name] = value;
+        draft = next; preview();
+    }
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
         RowLayout {
-            Text { text: 'INPUT / KEYMAP V2'; color: Tokens.text; font.family: Tokens.mono; font.pixelSize: 16 }
-            Item { Layout.fillWidth:true }
-            ComboBox { model:['world','interactive','focus','menu']; onActivated: root.mode = currentText }
-            Button { text:'Revert'; onClicked: root.load() }
-            Button { text:'Save'; enabled: !!root.draft && !(root.feedback.conflicts || []).length; onClicked: ShellState.action('input.set',{config:root.draft}) }
+            Layout.fillWidth: true
+            HudLabel { text: 'Settings'; font.pixelSize: Tokens.title; Layout.fillWidth: true }
+            ActionButton { visible: root.section === 2; text: 'Revert'; enabled: !!root.draft; onClicked: root.load() }
+            ActionButton { visible: root.section === 2; text: 'Save input'; primary: true; enabled: !!root.draft && !(root.feedback.conflicts || []).length && ShellState.available('input.set'); onClicked: ShellState.action('input.set',{config:root.draft}) }
         }
-        Text { text: 'Click a binding, then press a key, chord, mouse button or wheel. × clears it. Esc leaves the menu.'; color:Tokens.muted; font.pixelSize:12 }
         RowLayout {
-            Text { text:'Long hold: ' + (root.draft ? root.draft.longHoldMs : 1000) + ' ms'; color:Tokens.text }
-            Slider {
-                Layout.fillWidth:true; from:100; to:5000; stepSize:50
-                value:root.draft ? root.draft.longHoldMs : 1000
-                onMoved: { var next=JSON.parse(JSON.stringify(root.draft));next.longHoldMs=Math.round(value);root.draft=next;root.preview(); }
-            }
-            CheckBox {
-                text:'Scope vignette'; checked: root.draft ? root.draft.scopeVignette : true
-                onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.scopeVignette=checked;root.draft=next;root.preview(); }
-            }
-        }
-        CheckBox {
-            text: 'Invert mouse look Y'; checked: root.draft ? !!root.draft.invert_y : false
-            onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.invert_y=checked;root.draft=next;root.preview(); }
-        }
-        CheckBox {
-            text: 'Show area/place markers'; checked: root.draft ? !!root.draft.show_area_markers : false
-            onClicked: { var next=JSON.parse(JSON.stringify(root.draft));next.show_area_markers=checked;root.draft=next;root.preview(); }
-        }
-        ScrollView {
-            Layout.fillWidth:true; Layout.fillHeight:true
-            ColumnLayout {
-                width: root.width - 24
-                Repeater {
-                    model:root.actions
-                    delegate: ColumnLayout {
-                        required property string modelData
-                        Layout.fillWidth:true
-                        RowLayout {
-                            Text { text:modelData; color:Tokens.text; font.family:Tokens.mono; Layout.preferredWidth:160 }
-                            Repeater {
-                                model:3
-                                delegate: RowLayout {
-                                    required property int index
-                                    Button {
-                                        Layout.preferredWidth:170
-                                        text: root.pending === modelData + ':' + index ? 'Press input…' : root.draft.modes[root.mode][modelData][index] || 'Capture…'
-                                        onClicked: {root.pending=modelData + ':' + index; root.lastCapture=''; ShellState.action('input.capture',{leaseId:ShellState.lease,mode:root.mode,action:modelData,slot:index});}
-                                    }
-                                    Button {text:'×'; onClicked: root.change(modelData,index,'')}
-                                }
-                            }
-                        }
-                        Text { Layout.fillWidth:true; text:root.details(modelData); color:Tokens.gold; font.pixelSize:11; wrapMode:Text.Wrap; visible:text.length > 0 }
-                    }
+            Layout.fillWidth: true
+            Repeater {
+                model: ['Appearance', 'World graphics', 'Input bindings']
+                ActionButton {
+                    required property string modelData
+                    required property int index
+                    Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
+                    text: modelData; primary: root.section === index
+                    onClicked: root.section = index
                 }
             }
         }
-        Text { text: ShellState.state && ShellState.state.keymap ? ShellState.state.keymap.path + (ShellState.state.keymap.error ? ' · ' + ShellState.state.keymap.error : '') : 'Core IPC 0.6 with input.control required'; color:Tokens.muted; font.pixelSize:10 }
+        ScrollView {
+            id: scroll
+            Layout.fillWidth: true; Layout.fillHeight: true
+            contentWidth: availableWidth
+            clip: true
+            ColumnLayout {
+                width: Math.min(scroll.availableWidth - 16, 1100)
+                spacing: 16
+                ColumnLayout {
+                Layout.fillWidth: true; spacing: 16; visible: root.section === 0
+                HudLabel { text: 'PRESENTATION'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }
+                RowLayout {
+                    Layout.fillWidth: true
+                    ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.light ? 'Theme · Paper' : 'Theme · Night'; onClicked: Tokens.light = !Tokens.light }
+                    ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.reducedMotion ? 'Reduced motion · On' : 'Reduced motion · Off'; onClicked: Tokens.reducedMotion = !Tokens.reducedMotion }
+                    ActionButton { Layout.fillWidth: true; Layout.minimumWidth: 0; text: Tokens.hudCurved ? 'Curved HUD · On' : 'Curved HUD · Off'; onClicked: Tokens.hudCurved = !Tokens.hudCurved }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    HudLabel { text: 'HUD curvature'; Layout.preferredWidth: 140 }
+                    SettingSlider { Layout.fillWidth: true; from: 0; to: 1; stepSize: 0.05; value: Tokens.hudCurvature; enabled: Tokens.hudCurved; onMoved: Tokens.hudCurvature = value }
+                    HudLabel { text: Math.round(Tokens.hudCurvature * 100) + '%'; Layout.preferredWidth: 42 }
+                }
+                HudLabel { Layout.fillWidth: true; text: 'Perspective applies to the HUD only. Presentation preferences last for this shell session.'; color: Tokens.muted; wrapMode: Text.Wrap; font.pixelSize: 12 }
+                }
+                GraphicsSettings { Layout.fillWidth: true; visible: root.section === 1 && ShellState.graphics !== null && ShellState.available('graphics.get') }
+                HudLabel { Layout.fillWidth: true; visible: root.section === 1 && !ShellState.available('graphics.get'); text: 'Graphics controls require a core with graphics settings support.'; wrapMode: Text.Wrap; color: Tokens.muted }
+                ColumnLayout {
+                Layout.fillWidth: true; spacing: 16; visible: root.section === 2
+                HudLabel { text: 'INPUT'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }
+                HudLabel { Layout.fillWidth: true; wrapMode: Text.Wrap; text: root.draft ? 'Choose a binding, then press a key, chord, mouse button or wheel. Clear removes a binding. Changes apply with Save input.' : 'Input settings require a core connection with input control.'; color: Tokens.muted; font.pixelSize: 12 }
+                RowLayout {
+                    visible: !!root.draft
+                    Layout.fillWidth: true
+                    HudLabel { text: 'Long hold: ' + (root.draft ? root.draft.longHoldMs : 1000) + ' ms'; Layout.preferredWidth: 160 }
+                    SettingSlider { Layout.fillWidth: true; from:100; to:5000; stepSize:50; value:root.draft ? root.draft.longHoldMs : 1000; onMoved: root.option('longHoldMs', Math.round(value)) }
+                }
+                Flow {
+                    visible: !!root.draft
+                    Layout.fillWidth: true
+                    spacing: 12
+                    ActionButton { text: 'Scope vignette · ' + (root.draft && root.draft.scopeVignette ? 'On' : 'Off'); onClicked: root.option('scopeVignette', !root.draft.scopeVignette) }
+                    ActionButton { text: 'Invert Y · ' + (root.draft && root.draft.invert_y ? 'On' : 'Off'); onClicked: root.option('invert_y', !root.draft.invert_y) }
+                    ActionButton { text: 'Area markers · ' + (root.draft && root.draft.show_area_markers ? 'On' : 'Off'); onClicked: root.option('show_area_markers', !root.draft.show_area_markers) }
+                }
+                RowLayout {
+                    visible: !!root.draft
+                    HudLabel { text: 'Input mode'; Layout.preferredWidth: 140 }
+                    Choice { model: ['world','interactive','focus','menu']; currentIndex: model.indexOf(root.mode); onActivated: { root.pending = ''; root.mode = currentText; } }
+                }
+                Repeater {
+                    id: bindingRows
+                    model: root.actions
+                    delegate: ColumnLayout {
+                        required property string modelData
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
+                        HudLabel { text: modelData.replace(/_/g, ' '); color: Tokens.text; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+                            Repeater {
+                                model: 3
+                                delegate: RowLayout {
+                                    required property int index
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    Layout.preferredWidth: 1
+                                    spacing: 4
+                                    ActionButton {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        primary: root.pending === modelData + ':' + index
+                                        text: root.pending === modelData + ':' + index ? 'Press input…' : root.draft.modes[root.mode][modelData][index] || 'Capture…'
+                                        onClicked: {root.pending=modelData + ':' + index; root.lastCapture=''; ShellState.action('input.capture',{leaseId:ShellState.lease,mode:root.mode,action:modelData,slot:index});}
+                                    }
+                                    ActionButton { implicitWidth: 36; leftPadding: 6; rightPadding: 6; text: '×'; Accessible.name: 'Clear binding'; ToolTip.text: 'Clear binding'; ToolTip.visible: hovered; enabled: !!root.draft.modes[root.mode][modelData][index]; onClicked: root.change(modelData,index,'') }
+                                }
+                            }
+                        }
+                        HudLabel { Layout.fillWidth: true; text: root.details(modelData); color:Tokens.gold; font.pixelSize:12; wrapMode:Text.Wrap; visible:text.length > 0 }
+                    }
+                }
+                }
+            }
+        }
+        RowLayout {
+            visible: root.pending !== ''
+            Layout.fillWidth: true
+            HudLabel { Layout.fillWidth: true; text: 'Listening · ' + root.mode + ' / ' + root.pending.split(':')[0] + ' · press a key or chord…'; color: Tokens.gold }
+            ActionButton { text: 'Cancel capture'; onClicked: root.pending = '' }
+        }
+        HudLabel { Layout.fillWidth: true; visible: text !== ''; text: ShellState.state && ShellState.state.keymap ? ShellState.state.keymap.error : ''; color:Tokens.gold; font.pixelSize:12; wrapMode: Text.Wrap }
     }
 }

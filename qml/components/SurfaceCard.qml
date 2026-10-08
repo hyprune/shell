@@ -8,7 +8,7 @@ Rectangle {
 
     property var surface
 
-    implicitHeight: ShellState.available("surface.pull") ? 310 : 220
+    implicitHeight: cardColumn.implicitHeight + 40
     radius: 3
     color: Tokens.panel
     border.color: hover.containsMouse || surface.focused ? Tokens.accent : Tokens.line
@@ -22,8 +22,9 @@ Rectangle {
     }
 
     ColumnLayout {
+        id: cardColumn
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: 20
         spacing: 16
 
         RowLayout {
@@ -55,7 +56,8 @@ Rectangle {
         }
 
         HudLabel {
-            text: root.surface.kind === 'workspace' ? (root.surface.worldId || 'Native desktop workspace') : root.surface.logicalSize.join(' × ') + '  /  logical pixels'
+            Layout.fillWidth: true
+            text: root.surface.kind === 'workspace' ? (root.surface.desktop ? 'Native desktop workspace' : (ShellState.worlds.find(w => w.id === root.surface.worldId)?.name || 'World workspace')) : root.surface.logicalSize.join(' × ') + '  /  logical pixels'
             font.family: Tokens.mono
             font.pixelSize: 11
             color: Tokens.muted
@@ -69,14 +71,17 @@ Rectangle {
             visible: root.surface.kind === 'window' && ShellState.available('surface.pull')
             Layout.fillWidth: true
             ActionButton {
+                Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
                 text: 'Pull out'
                 onClicked: ShellState.action('surface.pull', {surfaceId:root.surface.id})
             }
             ActionButton {
+                Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
                 text: 'Place at home'
                 onClicked: ShellState.action('surface.place', {surfaceId:root.surface.id})
             }
             ActionButton {
+                Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
                 text: 'Return'
                 onClicked: ShellState.action('surface.return', {surfaceId:root.surface.id})
             }

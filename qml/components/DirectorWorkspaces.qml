@@ -7,6 +7,9 @@ import Quickshell
 
 Flickable {
     clip: true
+    ScrollBar.vertical: ScrollBar {}
+    boundsBehavior: Flickable.StopAtBounds
+    contentWidth: width
     contentHeight: workspaceColumn.height
 
     Column {
@@ -16,12 +19,16 @@ Flickable {
         spacing: 24
 
         HudLabel {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: 'Make room for a different kind of work'
             font.pixelSize: 30
             font.weight: Font.Light
         }
 
         HudLabel {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: 'Your real desktops and apps, with world locations where configured.'
             color: Tokens.muted
             font.pixelSize: 14
@@ -29,7 +36,7 @@ Flickable {
 
         GridLayout {
             width: parent.width
-            columns: 3
+            columns: Math.max(1, Math.floor((width + 20) / 390))
             columnSpacing: 20
             rowSpacing: 20
 
@@ -40,6 +47,9 @@ Flickable {
                     required property var modelData
 
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: 1
+                    Layout.alignment: Qt.AlignTop
                     spacing: 10
                     SurfaceCard { width: parent.width; surface: parent.modelData }
                     Repeater {

@@ -10,6 +10,11 @@ Button {
     implicitHeight: 42
     implicitWidth: Math.max(120, contentItem.implicitWidth + 32)
     focusPolicy: Qt.StrongFocus
+    leftPadding: 16
+    rightPadding: 16
+    ToolTip.visible: hovered && contentItem.truncated
+    ToolTip.text: text
+    ToolTip.delay: 500
 
     contentItem: HudLabel {
         text: root.text

@@ -21,25 +21,29 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 36
-        spacing: 24
+        anchors.margins: root.width < 1100 ? 16 : 28
+        spacing: root.height < 700 ? 12 : 24
 
         RowLayout {
             Layout.fillWidth: true
 
             ColumnLayout {
-                spacing: 10
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                spacing: 8
 
                 HudLabel {
-                    text: 'H Y P R U N E   /   O V E R V I E W'
+                    Layout.fillWidth: true
+                    text: 'HYPRUNE / OVERVIEW'
                     color: Tokens.accent
                     font.pixelSize: 12
                     font.letterSpacing: 1.8
                 }
 
                 HudLabel {
+                    Layout.fillWidth: true
                     text: ShellState.worldName.toUpperCase()
-                    font.pixelSize: 34
+                    font.pixelSize: root.width < 1100 ? 24 : 34
                     font.weight: Font.Light
                     font.letterSpacing: 5
                 }
@@ -51,6 +55,8 @@ Item {
             }
 
             ColumnLayout {
+                visible: root.width >= 1200
+                Layout.maximumWidth: 220
                 spacing: 7
 
                 HudLabel {
@@ -97,14 +103,20 @@ Item {
                     required property string modelData
                     required property int index
 
-                    implicitWidth: Math.max(150, contentItem.implicitWidth + 36)
-                    implicitHeight: 50
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: 1
+                    implicitHeight: 44
+                    leftPadding: 6; rightPadding: 6
+                    ToolTip.visible: hovered && contentItem.truncated
+                    ToolTip.text: modelData
+                    ToolTip.delay: 500
                     onClicked: ShellState.tab = index
 
                     contentItem: HudLabel {
                         text: tabButton.modelData.toUpperCase()
                         font.pixelSize: 13
-                        font.letterSpacing: 3
+                        font.letterSpacing: root.width < 1100 ? 0.5 : 2
                         color: ShellState.tab === tabButton.index ? Tokens.text : Tokens.muted
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -137,6 +149,7 @@ Item {
             }
 
             HudLabel {
+                visible: root.width >= 1100
                 text: '0' + (ShellState.tab + 1) + ' / 07'
                 font.family: Tokens.mono
                 color: Tokens.muted
@@ -175,6 +188,7 @@ Item {
             Layout.fillWidth: true
 
             HudLabel {
+                Layout.fillWidth: true
                 text: ShellState.presentation.dev ? 'MOCK SESSION  /  ' + ShellState.protocol + '  /  PRESENTATION PREVIEW' : 'WORLD SESSION'
                 font.family: Tokens.mono
                 font.pixelSize: 10

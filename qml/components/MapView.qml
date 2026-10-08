@@ -149,13 +149,13 @@ Item {
 
             Rectangle {
                 anchors.centerIn: parent
-                width: mouse.containsMouse ? 22 : 15
+                width: root.compact ? 6 : mouse.containsMouse ? 22 : 15
                 height: width
                 rotation: 45
                 radius: 2
                 color: root.selected && root.selected.id === marker.modelData.id ? Tokens.gold : Tokens.panel
                 border.color: Tokens.accent
-                border.width: 2
+                border.width: root.compact ? 1 : 2
 
                 Behavior on width {
                     NumberAnimation {
@@ -171,6 +171,7 @@ Item {
                 anchors.top: parent.bottom
                 anchors.topMargin: 9
                 anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(160, root.width / 3)
                 text: marker.modelData.name.toUpperCase()
                 font.pixelSize: 11
                 font.letterSpacing: 1.8
@@ -223,6 +224,7 @@ Item {
     }
 
     HudLabel {
+        visible: !root.compact
         text: root.map ? 'WORLD MAP' : 'N ↑'
         font.family: Tokens.mono
         font.pixelSize: 12
@@ -238,6 +240,7 @@ Item {
 
     HudLabel {
         visible: !root.compact
+        width: parent.width - 150
         text: root.map ? 'PACKAGE BLUEPRINT   /   METERS' : 'LOCAL SCHEMATIC   /   METERS'
         font.family: Tokens.mono
         font.pixelSize: 11
@@ -277,8 +280,8 @@ Item {
 
     Rectangle {
         visible: root.hoverName !== ''
-        width: 260
-        height: 60
+        width: Math.min(320, root.width - 32)
+        height: 74
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: 20
@@ -288,15 +291,18 @@ Item {
 
         Column {
             anchors.centerIn: parent
+            width: parent.width - 24
             spacing: 5
 
             HudLabel {
+                width: parent.width
                 text: root.hoverName
                 font.pixelSize: 15
             }
 
             HudLabel {
-                text: 'Spawn location · select to inspect'
+                width: parent.width
+                text: 'Select to inspect location'
                 font.pixelSize: 11
                 color: Tokens.muted
             }

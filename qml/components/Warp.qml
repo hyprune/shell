@@ -160,28 +160,31 @@ Item {
         shown: ShellState.warpActive
 
         Column {
-            spacing: 24
+            width: parent.width
+            spacing: root.height < 700 ? 12 : 24
 
             HudLabel {
+                width: parent.width
                 text: phase === 'arrived' ? 'JUMP COMPLETE' : phase === 'loading' ? 'PREPARING DESTINATION' : 'IN TRANSIT'
                 font.pixelSize: 12
-                font.letterSpacing: 6
+                font.letterSpacing: 2
                 color: "#d7e6fa"
             }
 
             HudLabel {
                 color:"#f1f4fb"
                 text: ShellState.transition.to.name.toUpperCase()
-                font.pixelSize: 56
+                font.pixelSize: root.width < 1200 ? 32 : 56
                 font.weight: Font.Light
-                font.letterSpacing: 8
+                font.letterSpacing: 1.5
                 width: root.width * 0.8
             }
 
             HudLabel {
+                width: parent.width
                 text: ShellState.transition.to.subtitle.toUpperCase()
                 font.pixelSize: 15
-                font.letterSpacing: 4
+                font.letterSpacing: 1.5
                 color: "#afbed1"
             }
 
@@ -205,9 +208,10 @@ Item {
         HudLabel {
             anchors.top: parent.bottom
             anchors.topMargin: 22
+            width: parent.width - 150
             text: phase === 'arrived' ? 'DESTINATION REACHED' : phase === 'loading' ? 'WAITING FOR CORE READINESS' : phase === 'departing' ? 'ESTABLISHING JUMP VECTOR' : phase === 'approach' ? 'APPROACHING DESTINATION' : 'CROSSING THE QUIET'
             font.pixelSize: 10
-            font.letterSpacing: 3
+            font.letterSpacing: 1.5
             color: "#afbed1"
         }
 
@@ -218,7 +222,7 @@ Item {
             text: ShellState.transition.indeterminate ? 'LOADING' : Math.round(root.shownProgress * 100) + ' %'
             font.family: Tokens.mono
             font.pixelSize: 15
-            font.letterSpacing: 3
+            font.letterSpacing: 1.5
             color: "#d7e6fa"
         }
 
@@ -229,7 +233,7 @@ Item {
         y: parent.height * 0.08
         text: 'H Y P R U N E   /   LOCATION TRANSIT'
         font.pixelSize: 11
-        font.letterSpacing: 3
+        font.letterSpacing: 1.5
         color: "#afbed1"
     }
 

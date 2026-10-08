@@ -2,6 +2,8 @@ import QtQuick
 pragma Singleton
 
 QtObject {
+    property bool hudCurved: true
+    property real hudCurvature: 0.6
     property bool light: false
     property bool reducedMotion: false
     property bool warpSoundEnabled: false
@@ -17,6 +19,12 @@ QtObject {
     readonly property color gold: light ? '#925211' : '#dec89a'
     readonly property string sans: 'DejaVu Sans'
     readonly property string mono: 'DejaVu Sans Mono'
+    // Logical pixels: the compositor handles output scale, not a 1080p bitmap.
+    readonly property int caption: 11
+    readonly property int body: 14
+    readonly property int title: 28
     readonly property int space: 8
+    readonly property int gutter: 20
+    readonly property int radius: 4
     readonly property int motion: reducedMotion ? 0 : 180
 }

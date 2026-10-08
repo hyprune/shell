@@ -4,8 +4,19 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+Flickable {
+    id: page
+    clip: true
+    contentWidth: width
+    contentHeight: body.height
+    boundsBehavior: Flickable.StopAtBounds
+    ScrollBar.vertical: ScrollBar {}
 RowLayout {
-    spacing: 56
+    id: body
+    width: page.width - 16
+    height: Math.max(implicitHeight, page.height)
+
+    spacing: 24
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -13,12 +24,16 @@ RowLayout {
         spacing: 20
 
         HudLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: 'A desktop worth exploring.'
             font.pixelSize: 36
             font.weight: Font.Light
         }
 
         HudLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: 'M0  /  FIRST SIGNAL'
             color: Tokens.gold
             font.pixelSize: 11
@@ -26,12 +41,12 @@ RowLayout {
         }
 
         HudLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: 'A small shell. A shared contract.\nRoom for another way to work.'
             font.pixelSize: 23
             color: Tokens.muted
             lineHeight: 1.6
-            Layout.fillWidth: true
-            wrapMode: Text.WordWrap
         }
 
         Item {
@@ -39,6 +54,8 @@ RowLayout {
         }
 
         HudLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: 'HYPRUNE    •    OCTOBER 2026'
             font.family: Tokens.mono
             font.pixelSize: 11
@@ -47,6 +64,8 @@ RowLayout {
         }
 
         HudLabel {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
             text: 'Original interface and schematic graphics. MIT licensed.\nBuilt for alternative shells to have equal footing.'
             font.pixelSize: 12
             color: Tokens.muted
@@ -56,9 +75,9 @@ RowLayout {
     }
 
     ColumnLayout {
-        Layout.preferredWidth: 550
-        Layout.minimumWidth: 550
-        Layout.maximumWidth: 550
+        Layout.preferredWidth: page.width * 0.48
+        Layout.minimumWidth: 0
+        Layout.maximumWidth: page.width * 0.48
         Layout.fillHeight: true
         spacing: 30
 
@@ -84,16 +103,18 @@ RowLayout {
                     spacing: 9
 
                     HudLabel {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
                         text: modelData[1]
                         font.pixelSize: 20
                     }
 
                     HudLabel {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
                         text: modelData[2]
                         font.pixelSize: 14
                         color: Tokens.muted
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
                         lineHeight: 1.5
                     }
 
@@ -108,5 +129,7 @@ RowLayout {
         }
 
     }
+
+}
 
 }

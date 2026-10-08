@@ -13,6 +13,7 @@ QtObject {
     property var missing: []
     property var capabilities: []
     property var state: null
+    property var graphics: null
     property double revision: 0
     property string output: ''
     property string screenName: ''
@@ -29,6 +30,8 @@ QtObject {
     property int tab: 0
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
+    signal browseSettings(int section)
+    signal scrollSettings(real fraction)
     signal saveInputDraft()
     signal inputFeedback(var result)
     signal inputCapture(var result)
@@ -162,7 +165,7 @@ QtObject {
     }
 
     function travel(point) {
-        if ((protocol === '0.2' || (protocol === '0.3' || protocol === '0.4')) && available('travel.start'))
+        if (available('travel.start'))
             action('travel.start', {
                 "to": {"position": point.position},
                 "durationMs": Tokens.reducedMotion ? 0 : 5800
@@ -216,6 +219,7 @@ QtObject {
                 samples = [];
                 projectionSamples = [];
                 markers = [];
+                graphics = null;
                 methods = [];
                 capabilities = [];
             }
@@ -280,6 +284,7 @@ QtObject {
             }]).slice(-12);
             break;
         case 'action':
+            if (msg.method === 'graphics.get' || msg.method === 'graphics.set') graphics = msg.result;
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             break;
         case 'menu.panel':

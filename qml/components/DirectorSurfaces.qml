@@ -6,6 +6,9 @@ import QtQuick.Layouts
 
 Flickable {
     clip: true
+    ScrollBar.vertical: ScrollBar {}
+    boundsBehavior: Flickable.StopAtBounds
+    contentWidth: width
     contentHeight: surfaceColumn.height
 
     Column {
@@ -15,12 +18,16 @@ Flickable {
         spacing: 24
 
         HudLabel {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: 'Windows, with a place in the world'
             font.pixelSize: 30
             font.weight: Font.Light
         }
 
         HudLabel {
+            width: parent.width
+            wrapMode: Text.Wrap
             text: 'Choose a surface to request keyboard focus. Core decides whether it can safely activate it.'
             color: Tokens.muted
             font.pixelSize: 14
@@ -34,7 +41,7 @@ Flickable {
 
         GridLayout {
             width: parent.width
-            columns: 3
+            columns: Math.max(1, Math.floor((width + 20) / 390))
             columnSpacing: 20
             rowSpacing: 20
 
@@ -48,6 +55,9 @@ Flickable {
 
                     surface: modelData
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: 1
+                    Layout.alignment: Qt.AlignTop
                 }
 
             }
