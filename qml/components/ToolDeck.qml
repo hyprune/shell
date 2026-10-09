@@ -1,19 +1,27 @@
 import QtQuick
+import Quickshell
 import ".."
 import "../theme"
 Item {
     id: root
+    property bool compact:false
+    readonly property bool condensed:compact && liveHints.visible
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
-    readonly property int tile: minimal ? 40 : technical ? 51 : 58
+    readonly property int tile: compact ? 40 : minimal ? 40 : technical ? 51 : 58
     readonly property int gridSize: tile*2+5
-    implicitHeight: minimal ? (HudData.climbing ? 174 : 155) : 203
+    // Visibility is inherited from feedbackRows: using the child's effective
+    // visible value here would prevent a scale-only update from opening it.
+    readonly property bool feedback: (HudData.carry.active || scaleFeedback.showing) && HudData.worldPrompts
+    readonly property real detailsBottom: liveHints.visible ? liveHints.y+liveHints.implicitHeight+24 : HudData.placing ? gridSize+90 : minimal ? (HudData.climbing ? 174 : 155) : 203
+    implicitHeight: detailsBottom+(feedback ? 52 : 0)
     property string displayedSubtype: HudData.subtype
     Connections {
         target: HudData
         function onSubtypeChanged() { root.displayedSubtype = HudData.subtype; if (!Tokens.reducedMotion) whoosh.restart(); }
     }
     Grid {
+        visible: !HudData.placing
         columns: 2; spacing: 5
         opacity: HudData.freeCursor ? .55 : 1
         Repeater {
@@ -29,8 +37,27 @@ Item {
             }
         }
     }
+    HudTile {
+        objectName: 'hudPlacementTile'
+        visible: HudData.placing; width:root.gridSize; height:width
+        color:Tokens.hudAccent; opacity:HudData.freeCursor ? .55 : 1
+        ToolGlyph { anchors.centerIn:parent; width:parent.width*.7; height:width; tool:5; tint:'#112c36' }
+        HudText { x:7; y:4; text:'5'; font.pixelSize:12; color:'#112c36'; shadowEnabled:false }
+    }
+    HudTile {
+        objectName:'hudUnplacedBadge'
+        visible:!HudData.placing && HudData.placement.count>0
+        y:-30; height:25; width:Math.min(parent.width,badgeText.implicitWidth+24)
+        color:Tokens.hudScrim; borderColor:Tokens.hudAccent; borderWidth:1
+        HudText { id:badgeText; x:10; anchors.verticalCenter:parent.verticalCenter; width:parent.width-20; text:HudData.placement.count+' IN POCKET'; font.pixelSize:12; color:Tokens.hudAccent }
+    }
+    PlacementInfo {
+        visible:HudData.placing; x:root.gridSize+18; width:parent.width-x; height:root.gridSize
+        technical:root.technical; minimal:root.minimal; opacity:HudData.freeCursor ? .55 : 1
+    }
     Item {
         id: subtypeScene
+        visible: !HudData.placing
         opacity: HudData.freeCursor ? .55 : 1
         x: root.gridSize+18; width: parent.width-x; height: root.gridSize
         Rectangle { anchors.fill: parent; color: Qt.rgba(Tokens.hudScrim.r,Tokens.hudScrim.g,Tokens.hudScrim.b,.5); border.color: root.technical ? '#608dbfc8' : 'transparent' }
@@ -49,13 +76,14 @@ Item {
         }
     }
     Rectangle {
+        visible:!HudData.placing && !root.condensed
         y: root.gridSize+10; width: parent.width; height: root.technical ? 5 : 7; color: '#b013242d'
         Rectangle { width: parent.width*Math.max(0,Math.min(1,HudData.resourceValue)); height: parent.height; color: Tokens.hudAccent; Behavior on width { NumberAnimation { duration: 350 } } }
     }
-    HudText { y: root.gridSize+23; width: parent.width*.65; text: HudData.resourceLabel; font.pixelSize: 12; font.letterSpacing: .9; color: Tokens.hudMuted }
-    HudText { y: root.gridSize+23; width: parent.width*.35; anchors.right: parent.right; text: HudData.resourceText; horizontalAlignment: Text.AlignRight; font.pixelSize: 13; font.family: Tokens.mono }
-    HudText { visible:!HudData.climbing; y: root.gridSize+43; width: parent.width; text: HudData.stats; font.pixelSize: 14; font.family: Tokens.mono }
-    HudText { y: root.gridSize+61; width: parent.width; objectName:"hudToolHint"; visible: !root.minimal && HudData.worldPrompts && !HudData.climbing; text: Tokens.hudResource === 'ram' ? 'RAM unavailable · GPU budget shown' : HudData.activeWindow || 'SCROLL · CHANGE SUB-TYPE'; font.pixelSize: 13; color: Tokens.hudMuted }
+    HudText { visible:!HudData.placing && !root.condensed; y: root.gridSize+23; width: parent.width*.65; text: HudData.resourceLabel; font.pixelSize: 12; font.letterSpacing: .9; color: Tokens.hudMuted }
+    HudText { visible:!HudData.placing && !root.condensed; y: root.gridSize+23; width: parent.width*.35; anchors.right: parent.right; text: HudData.resourceText; horizontalAlignment: Text.AlignRight; font.pixelSize: 13; font.family: Tokens.mono }
+    HudText { visible:!HudData.climbing && !HudData.placing && !root.condensed; y: root.gridSize+43; width: parent.width; text: HudData.stats; font.pixelSize: 14; font.family: Tokens.mono }
+    HudText { y: root.gridSize+61; width: parent.width; objectName:"hudToolHint"; visible: text!=='' && !root.minimal && HudData.worldPrompts && !HudData.climbing && !HudData.placing && !liveHints.visible; text: Tokens.hudResource === 'ram' ? 'RAM unavailable · GPU budget shown' : HudData.activeWindow; font.pixelSize: 13; color: Tokens.hudMuted }
     Item {
         objectName: 'hudClimbPrompt'
         visible: HudData.climbing
@@ -69,4 +97,34 @@ Item {
         }
         HudText { objectName:'hudClimbText'; x:32; y:3; width:parent.width-x-8; text:HudData.climbPrompt; font.pixelSize:12; font.family:root.technical ? Tokens.mono : Tokens.hudFont; maximumLineCount:2; wrapMode:Text.Wrap }
     }
+    ToolHints {
+        id:liveHints; objectName:'hudToolHints'
+        visible:HudData.worldPrompts && !HudData.climbing && actions.length>0
+        y:HudData.placing || root.condensed ? root.gridSize+10 : root.gridSize+65; width:parent.width
+    }
+    HudText {
+        objectName:'hudGhostIndicator'; visible:HudData.placing && HudData.worldPrompts
+        y:liveHints.visible ? liveHints.y+liveHints.implicitHeight+5 : root.gridSize+10; width:parent.width
+        text:HudData.placement.count===0 ? 'POCKET EMPTY' : HudData.placement.ghost ? '◇ GHOST PREVIEW' : '◇ PREVIEW UNAVAILABLE'
+        font.pixelSize:12;color:Tokens.hudAccent
+    }
+    Rectangle { x:0;y:feedbackRows.y-4; width:parent.width; height:feedbackRows.height+8; color:'#c013242d'; visible:root.feedback }
+    Column {
+        id:feedbackRows
+        x:8;y:root.detailsBottom; width:parent.width-16; spacing:5
+        visible:root.feedback
+        HudText { objectName:'hudCarryOrientation'; visible:HudData.carry.active && HudData.worldPrompts; width:parent.width; text:HudData.carry.label+(HudData.carry.toggle ? ' · '+HudData.carry.toggle : ''); font.pixelSize:12; color:Tokens.hudAccent }
+        HudText { id:scaleFeedback; objectName:'hudContentScale'; property var sample:null; property bool showing:false
+            visible:showing && HudData.worldPrompts; width:parent.width; font.pixelSize:12; maximumLineCount:2; wrapMode:Text.Wrap
+            text:sample ? (sample.reset ? 'RESET · ' : '')+'SCALE '+Math.round(sample.scale*100)+'%'+(sample.clientSize ? ' · '+sample.clientSize[0]+'×'+sample.clientSize[1]+' client' : '') : ''
+            Connections { target:ShellState; function onContentFeedback(next) {
+                scaleFeedback.sample=next;scaleFeedback.showing=true;scaleHide.restart();
+            } }
+            Connections { target:HudData; function onContentChanged() {
+                if (!HudData.content) {scaleFeedback.showing=false;scaleFeedback.sample=null;}
+            } }
+            Timer { id:scaleHide; interval:2400; onTriggered:scaleFeedback.showing=false }
+        }
+    }
+
 }

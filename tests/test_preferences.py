@@ -19,6 +19,19 @@ class PreferenceTests(unittest.TestCase):
     def test_corrupt_file_defaults_and_repair(self):
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'shell.json';path.write_text('{broken')
-            p=Preferences(path);self.assertEqual(p.value['concept'],'Vanguard')
+            p=Preferences(path);self.assertEqual(p.value['concept'],'Adventure')
             p.update({'concept':'Minimal'})
             self.assertEqual(json.loads(path.read_text())['concept'],'Minimal')
+    def test_adventure_default_and_legacy_migration_preserve_other_choices(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'shell.json'
+            self.assertEqual(Preferences(path).value['concept'],'Adventure')
+            path.write_text(json.dumps({'concept':'Vanguard','curvature':.35,'resource':'cpu','worldStyles':False}))
+            value=Preferences(path).value
+            self.assertEqual(value['concept'],'Adventure')
+            self.assertEqual(value['curvature'],.35)
+            self.assertEqual(value['resource'],'cpu')
+            self.assertFalse(value['worldStyles'])
+            self.assertEqual(json.loads(path.read_text()),value)
+            p=Preferences(path);p.update({'concept':'Minimal'})
+            self.assertEqual(Preferences(path).value['concept'],'Minimal')

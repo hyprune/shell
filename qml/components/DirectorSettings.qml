@@ -12,7 +12,7 @@ Item {
     property int section: 0
     property string pending: ''
     property string lastCapture: ''
-    readonly property var actions: draft ? Object.keys(draft.modes[mode]) : []
+    readonly property var actions: draft ? Object.keys(draft.modes[mode]).filter(a=>a!=='hud.cycle') : []
     function load() {
         if (ShellState.state && ShellState.state.keymap) {
             draft = JSON.parse(JSON.stringify(ShellState.state.keymap.config));
@@ -106,7 +106,7 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     HudLabel { text: 'HUD concept'; Layout.fillWidth: true }
-                    Choice { Layout.preferredWidth: 250; model: ['Vanguard','Instrument','Minimal']; currentIndex: model.indexOf(Tokens.hudConcept); onActivated: ShellState.setConcept(currentText) }
+                    Choice { Layout.preferredWidth: 250; model: ['Adventure','Instrument','Minimal']; currentIndex: model.indexOf(Tokens.hudConcept); onActivated: ShellState.setConcept(currentText) }
                 }
                 RowLayout {
                     Layout.fillWidth: true

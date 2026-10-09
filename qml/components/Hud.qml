@@ -52,11 +52,11 @@ Item {
         x:root.inset; y:root.height-height-root.inset-46
         width: Math.min(root.width*.55,root.minimal ? 460 : root.technical ? 620 : 590); height: toolDeck.implicitHeight
         edgeX:-1; edgeY:1
-        ToolDeck { id:toolDeck; anchors.fill:parent }
+        ToolDeck { id:toolDeck; anchors.fill:parent; compact:root.compact }
     }
     HudCluster {
         x:root.inset; y:deck.y-height-30; width:Math.min(640,root.width*.65); height:zoneColumn.height
-        edgeX:-1; edgeY:.5; shown:ShellState.zone !== ''
+        edgeX:-1; edgeY:.5; shown:ShellState.zone !== '' && (!root.compact || deck.y-zoneColumn.height-30>root.inset+172)
         Column { id:zoneColumn; width:parent.width; spacing:12
             HudText { smallText:false; width:parent.width; text:ShellState.zone.toUpperCase(); font.pixelSize:root.compact ? 25 : 35; font.letterSpacing:5; maximumLineCount:root.compact ? 1 : 2; wrapMode:root.compact ? Text.NoWrap : Text.Wrap }
             HudText { width:parent.width; text:ShellState.zoneSubtitle.toUpperCase(); font.pixelSize:12; font.letterSpacing:3; color:Tokens.hudMuted }

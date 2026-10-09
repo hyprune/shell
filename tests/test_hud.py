@@ -11,16 +11,16 @@ class HudEvents(unittest.TestCase):
         self.client.hud_subscription='hud';self.client.state={'world':{'id':'world'}}
     def cycle(self,**patch):
         return dict(sessionId='session',leaseId='lease',outputId='output',revision=10,sequence=1,monotonicMs=123,**patch)
-    def test_cycle_scope_duplicates_and_resync(self):
+    def test_legacy_cycle_never_changes_preferences(self):
         p=self.cycle()
         for key,value in [('sessionId','old'),('leaseId','other'),('outputId','other'),('revision',9)]:
             self.client.hud_event('ui.hud.cycle',{**p,key:value})
         self.assertEqual(self.events,[])
         V9_VALIDATOR.validate({'jsonrpc':'2.0','method':'ui.hud.cycle','params':p})
         self.client.hud_event('ui.hud.cycle',p);self.client.hud_event('ui.hud.cycle',p)
-        self.assertEqual(self.events,[{'type':'hud.cycle'}])
+        self.assertEqual(self.events,[])
         self.client.resyncing=True;self.client.hud_event('ui.hud.cycle',{**p,'sequence':2})
-        self.assertEqual(len(self.events),1)
+        self.assertEqual(len(self.events),0)
     def test_telemetry_order_and_subscription(self):
         p={'sessionId':'session','subscriptionId':'hud','revision':10,'monotonicMs':123}
         self.client.hud_event('hud.frame',{**p,'subscriptionId':'old'})

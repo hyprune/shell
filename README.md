@@ -1,7 +1,7 @@
 # Hyprune shell
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.14. The shell launcher defaults to exact 0.14; `--protocol` or
+IPC 0.1–0.15. The shell launcher defaults to exact 0.15; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
 world metadata, safe SVG map, places, output descriptor, projected markers and
@@ -13,6 +13,12 @@ credentials, and the Director maps only after exclusive overlay acceptance.
 Escape closes it; F12 returns to the desktop. HUD/warp remain passive and only
 on the world monitor. Map supports waypoint, travel and collision-checked
 autodrive. Workspaces opens the mapped location using core's loading lifecycle.
+
+Adventure is the default HUD concept; Settings → Appearance also offers
+Instrument and Minimal. In IPC 0.15, tool 5 opens the window pocket. Tool hints
+use core's Primary / Secondary / Alternate / Cycle labels and configured
+bindings, switching to global gestures while Super is held. See
+[the Placement HUD contract](docs/proposals/placement-hud.md).
 
 Older protocols and the development mock retain their explicit limits below.
 The real showcase and verification are documented in

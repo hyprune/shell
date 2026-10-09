@@ -35,6 +35,7 @@ v13_schema = json.loads((ROOT / "v0.13/ipc.schema.json").read_text())
 v13_schema['anyOf'] = v13_schema.pop('oneOf')
 V13_VALIDATOR = Draft202012Validator(v13_schema, registry=registry)
 V14_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.14/ipc.schema.json").read_text()), registry=registry)
+V15_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.15/ipc.schema.json").read_text()), registry=registry)
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
@@ -106,7 +107,7 @@ def frame(obj, validator=VALIDATOR):
         raise ValueError('invalid outgoing frame length')
     return struct.pack('!I', len(data)) + data
 
-SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,15))
+SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,16))
 def at_least(protocol, minor):
     return protocol in SUPPORTED_PROTOCOLS and tuple(map(int,protocol.split("."))) >= (0,minor)
 

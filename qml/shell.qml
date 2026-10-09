@@ -28,7 +28,7 @@ ShellRoot {
             screen: modelData
             visible: modelData.name === root.lastScreen &&
                      ((ShellState.active && !ShellState.director && !ShellState.warpActive) ||
-                      ShellState.status === 'disconnected' || ShellState.status === 'connecting')
+                      ShellState.status === 'disconnected' || ShellState.status === 'connecting' || ShellState.readyText !== '')
             anchors { left: true; right: true; top: true; bottom: true }
             color: 'transparent'
             exclusionMode: ExclusionMode.Ignore
@@ -47,6 +47,16 @@ ShellRoot {
                 scale: uiScale
                 transformOrigin: Item.TopLeft
                 visible: ShellState.active && !ShellState.authoredCamera
+            }
+
+            Item {
+                objectName:'readyNotification'
+                visible:ShellState.live && ShellState.readyText!=='' && !ShellState.active
+                anchors.horizontalCenter:parent.horizontalCenter; y:40
+                width:Math.min(620,parent.width-48); height:readyCaption.implicitHeight+32
+                HudTile { anchors.fill:parent; color:Tokens.panel; borderColor:Tokens.hudAccent; borderWidth:Tokens.hudConcept==='Instrument' ? 1 : 0 }
+                Rectangle { width:Tokens.hudConcept==='Minimal' ? 2 : 4; height:parent.height; color:Tokens.hudAccent }
+                HudText { id:readyCaption; objectName:'readyNotificationText'; x:18;y:16;width:parent.width-36; text:ShellState.readyText; font.pixelSize:14; maximumLineCount:3; wrapMode:Text.Wrap; font.family:Tokens.hudConcept==='Instrument' ? Tokens.mono : Tokens.hudFont }
             }
 
             Rectangle {
@@ -174,7 +184,13 @@ ShellRoot {
             if (ShellState.dev && ShellState.places[index]) ShellState.travel(ShellState.places[index]);
         }
         function worldStyles(enabled: bool): void { if (ShellState.dev) ShellState.preference({worldStyles:enabled}); }
-        function cycleHud(): void { if (ShellState.dev) ShellState.cycleHud(); }
+        function manipulation(json: string): void {
+            if (ShellState.dev) {
+                var before=ShellState.manipulationPreview, next=JSON.parse(json);
+                ShellState.manipulationPreview=next;
+                if (next && next.content && before && (!before.content || next.content.serial!==before.content.serial)) ShellState.contentFeedback(next.content);
+            }
+        }
         function concept(name: string): void { if (ShellState.dev) ShellState.setConcept(name); }
         function resource(name: string): void { if (ShellState.dev) ShellState.preference({resource:name}); }
         function curvature(amount: real): void {
@@ -227,7 +243,7 @@ ShellRoot {
             if (!ShellState.dev) return '{}';
             var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
             var result = {};
-            ['hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint'].forEach(name => {
+            ['hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint','hudPlacementTile','hudPlacementQueue','hudPlacementTitle','hudPlacementClass','hudPlacementSize','hudUnplacedBadge','hudToolHints','hudGhostIndicator','hudCarryOrientation','hudContentScale'].forEach(name => {
                 var item = Audit.find(view,name);
                 result[name] = item ? {visible:true,text:item.text || '',truncated:!!item.truncated} : {visible:false};
             });
@@ -238,7 +254,7 @@ ShellRoot {
                 outline: ShellState.outline,
                 hudVisible: !!root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.visible, camera: ShellState.camera, capabilities: ShellState.capabilities,
                 worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,
-                concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
+                manipulation: HudData.manipulation, readyText:ShellState.readyText, concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
                 graphics: ShellState.graphics,
                 menuHold: ShellState.menuHold,
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,

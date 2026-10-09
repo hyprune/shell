@@ -4,7 +4,7 @@ pragma Singleton
 QtObject {
     property bool hudCurved: true
     property real hudCurvature: 0.8
-    property string hudConcept: "Vanguard"
+    property string hudConcept: "Adventure"
     property string hudResource: "gpu"
     property bool worldStyles: true
     property var worldStyle: ({})

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "theme"
+import "HudManipulation.js" as Manipulation
 pragma Singleton
 
 QtObject {
@@ -16,13 +17,18 @@ QtObject {
     property var hudFrame: null
     property var hudPose: null
     property var hudTool: null
+    property var manipulationPreview: null
+    signal contentFeedback(var sample)
+    property string readyText: ''
+    property string readyWorld: ''
+    property Timer readyTimer: Timer { interval:7000; onTriggered:root.readyText='' }
+    function showReady(text) { if (!state || !state.runtime.active) { readyText=text;readyTimer.restart(); } }
     property string banner: ''
     property Timer bannerTimer: Timer { interval: 2200; onTriggered: root.banner = '' }
     function showBanner(text) { banner = text; if (!warpActive) bannerTimer.restart(); }
     onWarpActiveChanged: { if (warpActive) bannerTimer.stop(); else if (banner) bannerTimer.restart(); }
     function preference(patch) { send({type:'preferences',patch:patch}); }
-    function setConcept(name) { if (['Vanguard','Instrument','Minimal'].indexOf(name) < 0) return; Tokens.hudConcept=name; preference({concept:name}); showBanner(name.toUpperCase()); }
-    function cycleHud() { var names = ['Vanguard','Instrument','Minimal']; setConcept(names[(names.indexOf(Tokens.hudConcept)+1)%3]); }
+    function setConcept(name) { if (['Adventure','Instrument','Minimal'].indexOf(name) < 0) return; Tokens.hudConcept=name; preference({concept:name}); showBanner(name.toUpperCase()); }
     property Timer graphicsPoll: Timer { interval: 1000; running: root.active && root.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: root.action('graphics.get',{}) }
     property var camera: null
     property var outline: null
@@ -222,7 +228,6 @@ QtObject {
         switch (msg.type) {
         case 'world.style': Tokens.worldStyle=msg.value; break;
         case 'hud.bound': applyCoreStyle(); break;
-        case 'hud.cycle': cycleHud(); break;
         case 'hud.frame': hudFrame = msg.value; break;
         case 'hud.pose':
             hudPose = msg.value;
@@ -265,7 +270,7 @@ QtObject {
                 projectionSamples = [];
                 markers = [];
                 camera = null; outline = null; graphics = null; hudFrame = null; hudPose = null; hudTool = null;
-                menuHold = null;
+                menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
                 methods = [];
                 capabilities = [];
             }
@@ -285,7 +290,9 @@ QtObject {
         case 'state':
             if (!state || !state.world || !msg.state || !msg.state.world || state.world.id !== msg.state.world.id) { camera = null; outline = null; }
             if (state && msg.state && state.workspaces && msg.state.workspaces && state.workspaces.currentId !== msg.state.workspaces.currentId) showBanner('WORKSPACE FOCUSED');
+            var contentChange=Manipulation.changedContent(state,msg.state);
             state = msg.state;
+            if (contentChange) contentFeedback(contentChange);
             revision = msg.revision;
             lease = msg.lease || '';
             output = msg.output || '';
@@ -301,6 +308,9 @@ QtObject {
                 pendingArrival = null;
                 arrivalHold.stop();
             }
+            if (state.runtime.active) {readyText='';readyTimer.stop();}
+            else if (state.world && state.world.id!==readyWorld) showReady('HYPRUNE READY · '+worldName+' · Loaded and ready to enter');
+            if (state.world) readyWorld=state.world.id;
             var nextMap = spatial ? spatial.map : null;
             if ((!mapData && nextMap) || (mapData && (!nextMap || mapData.sha256 !== nextMap.sha256))) mapData = nextMap;
             var nextPlaces = spatial && spatial.world ? spatial.world.places : [];
@@ -347,6 +357,8 @@ QtObject {
             director = msg.open;
             break;
         case 'notice':
+            if (msg.code === 'placement.pocketed') {showBanner('POCKETED '+msg.message.replace(/^pocketed\s*/i,''));break;}
+            if (msg.code === 'runtime.ready') {showReady(msg.message);break;}
             notice(msg.message, msg.level);
             break;
         case 'zone':

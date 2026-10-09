@@ -2,16 +2,23 @@ pragma Singleton
 import QtQuick
 import "theme"
 import "HudInteraction.js" as Interaction
+import "HudManipulation.js" as Manipulation
 QtObject {
+    readonly property var manipulation: ShellState.dev && ShellState.manipulationPreview ? ShellState.manipulationPreview : Manipulation.presentation(ShellState.state)
+    readonly property var placement: manipulation.placement
+    readonly property var hints: manipulation.hints || ({context:'',actions:[]})
+    readonly property var carry: manipulation.carry
+    readonly property var content: manipulation.content
+    readonly property bool placing: placement.available && tool === 5
     readonly property bool freeCursor: Interaction.freeCursor(ShellState.state)
     readonly property bool climbing: Interaction.climbing(ShellState.state)
     readonly property string climbPrompt: Interaction.climbPrompt(ShellState.state)
     readonly property bool worldPrompts: !freeCursor
     readonly property var editor: ShellState.state ? ShellState.state.editor : null
-    readonly property int tool: ShellState.hudTool ? ShellState.hudTool.slot : editor && editor.tool <= 4 ? editor.tool : 1
+    readonly property int tool: manipulation.placement.active ? 5 : ShellState.hudTool ? ShellState.hudTool.slot : editor && editor.tool <= 5 ? editor.tool : 1
     readonly property string subtype: ShellState.hudTool ? ShellState.hudTool.subtype : editor && editor.submode !== 'reserved' ? editor.submode : 'normal'
     readonly property var subtypes: tool === 2 ? ['place','lock'] : tool === 3 ? ['open line','open curve','open arc','closed line','closed curve','closed arc'] : tool === 4 ? ['move','rotate','scale'] : ['normal']
-    readonly property string toolName: ['Navigate','Window','Path','Position'][tool-1]
+    readonly property string toolName: ['Navigate','Window','Path','Position','Placement'][tool-1]
     readonly property var timings: ShellState.graphics ? ShellState.graphics.timings : null
     readonly property real fps: ShellState.hudFrame ? (typeof ShellState.hudFrame.fps === 'number' ? ShellState.hudFrame.fps : -1) : timings && typeof timings.deliveredFPS === 'number' ? timings.deliveredFPS : -1
     readonly property real frameMs: ShellState.hudFrame ? (typeof ShellState.hudFrame.frameMs === 'number' ? ShellState.hudFrame.frameMs : -1) : timings && typeof timings.frameMs === 'number' ? timings.frameMs : -1

@@ -1,5 +1,6 @@
 import Quickshell
 import ".."
+import "../HudManipulation.js" as Manipulation
 import "../theme"
 import QtQuick
 import QtQuick.Controls
@@ -41,7 +42,16 @@ RowLayout {
         }
 
         Repeater {
-            model: ['0.6','0.7'].indexOf(ShellState.protocol) >= 0 ? [['MOVEMENT','HJKL / WASD / arrows; Shift boosts, Space jumps/up, Ctrl crouches/down.'],['USE / FOCUS','E uses a window or workspace in place. F zooms to fullscreen. Super+Tab or Back returns.'],['MAP / SETTINGS','Hold Tab to open Map. Settings captures up to three bindings per action, with conflict feedback.'],['TOOLS','1 normal, 2 window place/lock, 3 path, 4 position move/rotate/scale; wheel changes submode.'],['SCOPE / DEBUG','Hold Q and wheel to zoom; F3/Y toggles debug; U saves a state capture.']] : [['OVERVIEW', 'Core owns the hold-to-open binding and timing.'], ['ESCAPE', 'Return to desktop restores ordinary input through core.'], ['MAP', 'Select a spawn to inspect it. Arrive reloads at that spawn.'], ['SURFACES', 'Focus is a request. Hidden-workspace focus may be refused.'], ['KEYBOARD', 'Tab moves focus. Left / Right change view. Esc closes.']]
+            model: ShellState.supportsProtocol(6) ? [
+                ['MOVEMENT','HJKL / WASD / arrows; Shift boosts, Space jumps/up, Ctrl crouches/down.'],
+                ['USE / FOCUS','E uses a window or workspace in place. F zooms to fullscreen. Super+Tab or Back returns.'],
+                ['MAP / SETTINGS','Hold Tab for the Director. Settings → Appearance selects Adventure, Instrument or Minimal.'],
+                ['TOOLS','1–5 select tools. Primary, Secondary, Alternate and Cycle use the actions published by core below. Hold Super or Super+Shift for global gestures.'],
+                ['CARRY ORIENTATION',HudData.placement.available ? Manipulation.binding(ShellState.state,'carry.facing','R')+' toggles Facing you / Keep angle while carrying.' : 'Carry orientation feedback requires the updated core.'],
+                ['ROTATE',Manipulation.binding(ShellState.state,'rotate','Super+Ctrl+Wheel')+' rotates a carried window.'],
+                ['CONTENT SCALE',HudData.placement.available ? Manipulation.binding(ShellState.state,'content.scale','Super+Shift+Wheel')+' adjusts client content scale. '+Manipulation.binding(ShellState.state,'window.reset','Super+Shift+MMB')+' resets it.' : 'Content scale and window reset require the updated core.'],
+                ['SCOPE / DEBUG','Hold Q and wheel to zoom; F3/Y toggles debug; U saves a state capture.']
+            ].concat(Manipulation.toolHelp(ShellState.state)) : [['OVERVIEW','Core owns the hold-to-open binding and timing.'],['ESCAPE','Return to desktop restores ordinary input through core.'],['KEYBOARD','Tab moves focus. Left / Right change view. Esc closes.']]
 
             delegate: RowLayout {
                 required property var modelData
