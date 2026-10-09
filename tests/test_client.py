@@ -6,6 +6,8 @@ import sys
 import tempfile
 import os
 import unittest
+import json
+import struct
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'bridge'))
 from client import Client, GRANTS, REQUIRED
 from protocol import frame, read_frame, VALIDATOR, V2_VALIDATOR
@@ -51,6 +53,11 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                 elif method=='state.snapshot':
                     self.snapshot_requests+=1
                     result={'snapshot':{'sessionId':'session','revision':self.revision,'state':self.state}}
+                    if getattr(self,'bad_snapshots',0):
+                        self.bad_snapshots-=1
+                        bad=copy.deepcopy(result);bad['snapshot']['state']['world']['id']=''
+                        self.raw({'jsonrpc':'2.0','id':msg['id'],'result':bad},writer)
+                        continue
                 elif method=='shell.claim':
                     if self.claim_conflict:
                         writer.write(frame({'jsonrpc':'2.0','id':msg['id'],'error':{'code':-32004,'message':'Output already claimed'}},self.validator));await writer.drain();continue
@@ -78,6 +85,35 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                 writer.write(data);await writer.drain()
         except (asyncio.IncompleteReadError,ConnectionError):pass
         finally:writer.close()
+    def raw(self,message,writer=None):
+        data=message if isinstance(message,bytes) else json.dumps(message).encode()
+        (writer or self.peers[-1]).write(struct.pack('!I',len(data))+data)
+    async def test_invalid_delta_is_quarantined_then_snapshot_recovers_same_connection(self):
+        lease=self.client.lease
+        self.raw(self.delta(self.revision,self.revision+1,{'world':{'id':'','spawnId':'private-secret'}}))
+        await self.until(lambda:self.snapshot_requests>=1 and not self.client.resyncing)
+        self.assertEqual(self.connections,1);self.assertEqual(self.client.lease,lease)
+        self.assertEqual(self.client.state['world']['id'],STATE['world']['id'])
+        event=next(e for e in self.events if e['type']=='protocol.invalid')
+        self.assertEqual(event['method'],'state.delta')
+        self.assertEqual(event['path'],'/params/changes/world/id')
+        self.assertNotIn('private-secret',json.dumps(event))
+    async def test_invalid_snapshot_retries_with_backoff_without_reauthentication(self):
+        self.bad_snapshots=2
+        self.raw(self.delta(self.revision,self.revision+1,{'world':{'id':'','spawnId':'x'}}))
+        await self.until(lambda:self.snapshot_requests>=3 and not self.client.resyncing)
+        self.assertEqual(self.snapshot_requests,3);self.assertEqual(self.connections,1)
+        self.assertTrue(self.client.ready)
+    async def test_complete_malformed_json_does_not_poison_next_frame(self):
+        self.raw(b'{broken-json')
+        await self.until(lambda:self.snapshot_requests and not self.client.resyncing)
+        self.assertEqual((await self.client.call('session.ping',{}))['monotonicMs'],10)
+        self.assertEqual(self.connections,1)
+    async def test_invalid_frames_are_rate_limited_in_logs(self):
+        for _ in range(20):self.raw(b'{broken-json')
+        await self.until(lambda:self.client.invalid_frames==20 and not self.client.resyncing)
+        self.assertEqual(len([e for e in self.events if e['type']=='protocol.invalid']),1)
+        self.assertEqual(self.connections,1)
     async def test_atomic_subscribe_and_exclusive_mapping(self):
         await self.client.overlay(True)
         self.assertTrue(self.client.director)

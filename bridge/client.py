@@ -8,6 +8,8 @@ import random
 import time
 import os
 from pathlib import Path
+from diagnostics import diagnostic
+from protocol import read_packet, decode
 import socket
 import stat
 import struct
@@ -16,6 +18,9 @@ from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDAT
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
             'shell.claim', 'shell.release', 'shell.overlay', 'surface.focus', 'movement.set', 'world.load', 'runtime.exit']
+
+class QuarantinedFrame(RuntimeError):
+    pass
 
 
 class Client:
@@ -57,6 +62,8 @@ class Client:
         self.lease_seen = False
         self.claim_blocked = False
         self.tasks = set()
+        self.invalid_frames = 0
+        self.last_invalid_log = float('-inf')
 
     async def call(self, method, params, bootstrap=False):
         if not self.writer or (not bootstrap and method not in self.hello.get('methods', [])):
@@ -168,11 +175,39 @@ class Client:
         self.publish()
 
     async def resync(self):
+        delay = .25
         try:
-            result = await self.call('state.snapshot', {'subscriptionId': self.subscription})
+            while True:
+                try:
+                    await self.call('state.snapshot', {'subscriptionId': self.subscription})
+                    break
+                except (QuarantinedFrame, asyncio.TimeoutError):
+                    # A persistently bad snapshot must not consume credentials or
+                    # spin. Keep the connection reader alive for a repaired state.
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 2, 5)
         finally:
             self.resyncing = False
         await self.reconcile()
+
+    def request_resync(self):
+        if self.subscription and not self.resyncing:
+            self.resyncing = True
+            self.native_hint = None
+            self.emit({'type':'transition.clear'})
+            self.spawn(self.resync())
+
+    def quarantine(self, msg, error, method):
+        self.invalid_frames += 1
+        now = time.monotonic()
+        if now - self.last_invalid_log >= 5:
+            self.last_invalid_log = now
+            self.emit({**diagnostic(self.validator,msg,error,method),'count':self.invalid_frames})
+        rid = msg.get('id') if isinstance(msg,dict) else None
+        future = self.pending.get(rid) if isinstance(rid,str) else None
+        if future and not future.done():
+            future.set_exception(QuarantinedFrame('Core response quarantined; refreshing state'))
+        self.request_resync()
 
     def reader_finished(self, task):
         if task.cancelled(): return
@@ -184,17 +219,39 @@ class Client:
 
     async def receive(self, reader):
         while True:
-            msg = await read_frame(reader, self.validator)
+            # Length/framing errors still disconnect: their next boundary is
+            # unknown. A complete invalid body is safe to discard independently.
+            data = await read_packet(reader)
+            msg, method = None, None
+            try:
+                msg = decode(data)
+                if isinstance(msg,dict):
+                    rid = msg.get('id')
+                    if isinstance(rid,str):method=self.pending_methods.get(rid)
+                    elif isinstance(msg.get('method'),str) and msg['method']+'.notification' in self.validator.schema.get('$defs',{}):
+                        method=msg['method']
+                if isinstance(msg,dict) and 'id' not in msg and method:
+                    self.validator.evolve(schema={'$ref':self.validator.schema['$id']+'#/$defs/'+method+'.notification'}).validate(msg)
+                elif isinstance(msg,dict) and 'id' in msg and method and 'error' not in msg:
+                    validate_response(msg,method,self.validator)
+                else:
+                    self.validator.validate(msg)
+            except (ValidationError, ValueError) as error:
+                self.quarantine(msg,error,method)
+                continue
             if 'id' in msg:
                 future = self.pending.get(msg['id'])
                 if not future or future.done():
-                    raise ValueError('unexpected response ID')
-                validate_response(msg, self.pending_methods[msg['id']], self.validator)
+                    self.quarantine(msg,ValueError('unexpected response ID'),method)
+                    continue
                 if 'error' in msg:
                     err = msg['error']
                     future.set_exception(RuntimeError(str(err['code']) + ': ' + err['message']))
                 else:
                     method = self.pending_methods[msg['id']]
+                    if method in ('state.subscribe','state.snapshot') and msg['result']['snapshot']['sessionId'] != self.session:
+                        self.quarantine(msg,ValueError('snapshot identity mismatch'),method)
+                        continue
                     if method == 'state.subscribe':
                         self.subscription = msg['result']['subscriptionId']
                         self.snapshot(msg['result']['snapshot'])
@@ -206,7 +263,8 @@ class Client:
                     future.set_result(msg['result'])
                 continue
             if msg['method'] not in self.hello.get('events', []):
-                raise ValueError('unadvertised event')
+                self.quarantine(msg,ValueError('unadvertised event'),method)
+                continue
             p = msg['params']
             if at_least(self.protocol, 2) and msg['method'] in ['location.transition', 'ui.opened', 'ui.closed', 'data.updated']:
                 if p['sessionId'] != self.session or p['revision'] < self.revision:
@@ -232,14 +290,12 @@ class Client:
                 if not self.resyncing: self.present_location(p)
             elif msg['method'] == 'state.delta':
                 if p['subscriptionId'] != self.subscription or p['sessionId'] != self.session:
-                    raise ValueError('delta identity mismatch')
+                    self.quarantine(msg,ValueError('delta identity mismatch'),method)
+                    continue
                 if self.resyncing:
                     continue
                 if p['baseRevision'] != self.revision or p['revision'] <= self.revision:
-                    self.resyncing = True
-                    self.native_hint = None
-                    self.emit({'type': 'transition.clear'})
-                    self.spawn(self.resync())
+                    self.request_resync()
                     continue
                 self.state = {**self.state, **p['changes']}
                 self.revision = p['revision']
@@ -253,8 +309,7 @@ class Client:
             self.tasks.discard(task)
             if not task.cancelled() and task.exception():
                 self.emit({'type': 'notice', 'level': 'warning', 'message': str(task.exception()), 'code': 'shell.operation'})
-                # Resync failure must disconnect; never keep presenting stale state.
-                if self.resyncing or task.get_coro().__name__ == 'resync':
+                if task.get_coro().__name__ == 'resync':
                     if self.writer: self.writer.close()
         task.add_done_callback(done)
         return task
@@ -262,11 +317,14 @@ class Client:
     async def heartbeat(self):
         while True:
             await asyncio.sleep(10)
-            await asyncio.wait_for(self.call('session.ping', {}), 30)
+            try:
+                await asyncio.wait_for(self.call('session.ping', {}), 30)
+            except QuarantinedFrame:
+                continue
 
     async def reconcile(self):
         async with self.ui_lock:
-            if not self.ready or not self.state:
+            if not self.ready or not self.state or self.resyncing:
                 return
             runtime = self.state['runtime']
             if at_least(self.protocol, 3) and self.state.get('spatial', {}).get('output'):
@@ -415,6 +473,7 @@ class Client:
                 self.hud_sequence = -1
                 self.hud_times = {}
                 self.ready = self.director = False
+                self.resyncing = False
                 self.overlay_revision = -1
                 self.ui_epoch += 1
                 self.state = None

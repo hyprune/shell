@@ -84,7 +84,7 @@ async def main(args):
 
     async def token_source():
         if renewal_fd is not None: os.write(renewal_fd, b'renew\n')
-        line = await tokens.readline()
+        line = await asyncio.wait_for(tokens.readline(),10)
         if not line: raise RuntimeError('Supervisor token FD exhausted; relaunch required')
         token = line.decode('ascii').strip()
         if not re.fullmatch('[a-f0-9]{64}', token): raise ValueError('invalid supervisor token')
@@ -92,6 +92,9 @@ async def main(args):
 
     def emit(event):
         nonlocal style_world
+        if event['type'] == 'protocol.invalid':
+            print(json.dumps(event),flush=True)
+            return  # Diagnostics are redacted logs, not presentation data.
         if event['type'] == 'state':
             state = event.get('state')
             world_id = state['world']['id'] if state and state.get('world') and state['runtime']['active'] else None

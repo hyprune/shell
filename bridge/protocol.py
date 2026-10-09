@@ -87,7 +87,7 @@ def validate_response(obj, method, validator=VALIDATOR):
         validator.evolve(schema={'$ref': validator.schema['$id'] + '#/$defs/' + method + '.response'}).validate(obj)
 
 
-async def read_frame(reader, validator=VALIDATOR):
+async def read_packet(reader):
     first = await reader.readexactly(1)
     async with asyncio.timeout(10):
         header = first + await reader.readexactly(3)
@@ -95,7 +95,11 @@ async def read_frame(reader, validator=VALIDATOR):
         if not 1 <= length <= LIMIT:
             raise ValueError('invalid frame length')
         data = await reader.readexactly(length)
-    obj = decode(data)
+    return data
+
+
+async def read_frame(reader, validator=VALIDATOR):
+    obj = decode(await read_packet(reader))
     validator.validate(obj)
     return obj
 
