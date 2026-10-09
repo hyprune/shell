@@ -8,6 +8,8 @@ Item {
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property bool compact: width < 1200 || height < 700
     readonly property real inset: compact ? 26 : 56
+    // Short logical viewports (1080p @ 2x, 1440p @ 2x) stack the Placement deck tightly.
+    readonly property bool denseDeck: compact || height < 800
     readonly property string mode: HudData.freeCursor ? 'cursor' : HudData.editor ? HudData.editor.mode : 'world'
     property string contrastProbe: 'normal'
     Rectangle {
@@ -50,9 +52,9 @@ Item {
     HudCluster {
         id: deck; objectName: 'hudToolDeck'
         x:root.inset; y:root.height-height-root.inset-46
-        width: Math.min(root.width*.55,root.minimal ? 460 : root.technical ? 620 : 590); height: toolDeck.implicitHeight
+        width: Math.min(root.width*(toolDeck.dense ? .44 : .55),root.minimal ? 460 : root.technical ? 620 : 590); height: toolDeck.implicitHeight
         edgeX:-1; edgeY:1
-        ToolDeck { id:toolDeck; anchors.fill:parent; compact:root.compact }
+        ToolDeck { id:toolDeck; anchors.fill:parent; compact:root.compact; dense:HudData.placing && root.denseDeck }
     }
     HudCluster {
         x:root.inset; y:deck.y-height-30; width:Math.min(640,root.width*.65); height:zoneColumn.height

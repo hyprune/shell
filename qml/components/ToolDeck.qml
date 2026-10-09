@@ -5,15 +5,17 @@ import "../theme"
 Item {
     id: root
     property bool compact:false
+    property bool dense:false
     readonly property bool condensed:compact && liveHints.visible
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property int tile: compact ? 40 : minimal ? 40 : technical ? 51 : 58
     readonly property int gridSize: tile*2+5
+    readonly property int placeSize: dense ? 56 : gridSize
     // Visibility is inherited from feedbackRows: using the child's effective
     // visible value here would prevent a scale-only update from opening it.
     readonly property bool feedback: (HudData.carry.active || scaleFeedback.showing) && HudData.worldPrompts
-    readonly property real detailsBottom: liveHints.visible ? liveHints.y+liveHints.implicitHeight+24 : HudData.placing ? gridSize+90 : minimal ? (HudData.climbing ? 174 : 155) : 203
+    readonly property real detailsBottom: liveHints.visible ? liveHints.y+liveHints.implicitHeight+24 : HudData.placing ? placeSize+90 : minimal ? (HudData.climbing ? 174 : 155) : 203
     implicitHeight: detailsBottom+(feedback ? 52 : 0)
     property string displayedSubtype: HudData.subtype
     Connections {
@@ -39,10 +41,10 @@ Item {
     }
     HudTile {
         objectName: 'hudPlacementTile'
-        visible: HudData.placing; width:root.gridSize; height:width
+        visible: HudData.placing; width:root.placeSize; height:width
         color:Tokens.hudAccent; opacity:HudData.freeCursor ? .55 : 1
         ToolGlyph { anchors.centerIn:parent; width:parent.width*.7; height:width; tool:5; tint:'#112c36' }
-        HudText { x:7; y:4; text:'5'; font.pixelSize:12; color:'#112c36'; shadowEnabled:false }
+        HudText { x:root.dense ? 4 : 7; y:root.dense ? 2 : 4; text:'5'; font.pixelSize:root.dense ? 10 : 12; color:'#112c36'; shadowEnabled:false }
     }
     HudTile {
         objectName:'hudUnplacedBadge'
@@ -52,8 +54,8 @@ Item {
         HudText { id:badgeText; x:10; anchors.verticalCenter:parent.verticalCenter; width:parent.width-20; text:HudData.placement.count+' IN POCKET'; font.pixelSize:12; color:Tokens.hudAccent }
     }
     PlacementInfo {
-        visible:HudData.placing; x:root.gridSize+18; width:parent.width-x; height:root.gridSize
-        technical:root.technical; minimal:root.minimal; opacity:HudData.freeCursor ? .55 : 1
+        visible:HudData.placing; x:root.placeSize+(root.dense ? 8 : 18); width:parent.width-x; height:root.placeSize
+        technical:root.technical; minimal:root.minimal; dense:root.dense; opacity:HudData.freeCursor ? .55 : 1
     }
     Item {
         id: subtypeScene
@@ -100,11 +102,11 @@ Item {
     ToolHints {
         id:liveHints; objectName:'hudToolHints'
         visible:HudData.worldPrompts && !HudData.climbing && actions.length>0
-        y:HudData.placing || root.condensed ? root.gridSize+10 : root.gridSize+65; width:parent.width
+        y:HudData.placing ? root.placeSize+(root.dense ? 6 : 10) : root.condensed ? root.gridSize+10 : root.gridSize+65; width:parent.width; dense:root.dense
     }
     HudText {
         objectName:'hudGhostIndicator'; visible:HudData.placing && HudData.worldPrompts
-        y:liveHints.visible ? liveHints.y+liveHints.implicitHeight+5 : root.gridSize+10; width:parent.width
+        y:liveHints.visible ? liveHints.y+liveHints.implicitHeight+5 : root.placeSize+10; width:parent.width
         text:HudData.placement.count===0 ? 'POCKET EMPTY' : HudData.placement.ghost ? '◇ GHOST PREVIEW' : '◇ PREVIEW UNAVAILABLE'
         font.pixelSize:12;color:Tokens.hudAccent
     }
