@@ -11,7 +11,9 @@ ColumnLayout {
     readonly property var effective:graphics ? graphics.effective : ({})
     readonly property var performance: graphics && graphics.performance ? graphics.performance : null
     readonly property var timings:graphics && graphics.timings ? graphics.timings : ({})
-    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : [])
+    // IPC 0.16: FSR 1 / bilinear reconstruction below output size.
+    readonly property bool upscalerSupported:ShellState.supportsProtocol(16) && !!(graphics && graphics.options && graphics.options.upscaler)
+    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : []).concat(upscalerSupported ? ['upscaler'] : [])
     readonly property var labels:({quality:'Preset',sky:'Sky',msaa:'MSAA',bloom:'Bloom',fog:'Fog',reflections:'Reflections',normal_maps:'Normal maps',specular:'Specular highlights',ambient_occlusion:'Ambient occlusion',alpha_haze:'Glass / haze',anisotropy:'Anisotropy',dynamic_resolution:'Dynamic resolution'})
     property var pendingPatch:({})
     spacing:12
@@ -62,6 +64,12 @@ ColumnLayout {
             SettingSlider {objectName:'graphics-'+modelData.key;Layout.fillWidth:true;from:modelData.min;to:modelData.max;stepSize:modelData.step;value:root.config[modelData.key] || from;enabled:ShellState.available('graphics.set');onMoved:root.setValue(modelData.key,modelData.step===1 ? Math.round(value) : value)}
             HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? (root.cost('sharpen') ? ' / '+root.cost('sharpen') : '') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
         }
+    }
+    RowLayout {
+        Layout.fillWidth:true;visible:root.upscalerSupported
+        HudLabel {Layout.fillWidth:true;text:'Upscaler';wrapMode:Text.Wrap}
+        HudLabel {Layout.preferredWidth:180;text:PerformanceText.upscaler(root.timings.upscaler);color:Tokens.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+        Choice {objectName:'graphics-upscaler';Layout.preferredWidth:220;model:root.values('upscaler').map(v=>PerformanceText.upscalerName(v));currentIndex:root.values('upscaler').indexOf(root.config.upscaler === undefined ? null : root.config.upscaler);enabled:ShellState.available('graphics.set');onActivated:root.setValue('upscaler',root.values('upscaler')[currentIndex])}
     }
     Repeater {
         model:['dynamic_resolution','msaa']

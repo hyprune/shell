@@ -286,7 +286,7 @@ async def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
-    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.15'), help='Exact production protocol; never auto-upgrade')
+    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.16'), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')

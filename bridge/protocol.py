@@ -36,6 +36,7 @@ v13_schema['anyOf'] = v13_schema.pop('oneOf')
 V13_VALIDATOR = Draft202012Validator(v13_schema, registry=registry)
 V14_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.14/ipc.schema.json").read_text()), registry=registry)
 V15_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.15/ipc.schema.json").read_text()), registry=registry)
+V16_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.16/ipc.schema.json").read_text()), registry=registry)
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
@@ -111,7 +112,7 @@ def frame(obj, validator=VALIDATOR):
         raise ValueError('invalid outgoing frame length')
     return struct.pack('!I', len(data)) + data
 
-SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,16))
+SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,17))
 def at_least(protocol, minor):
     return protocol in SUPPORTED_PROTOCOLS and tuple(map(int,protocol.split("."))) >= (0,minor)
 
@@ -124,3 +125,7 @@ for path in (ROOT / 'worlds').rglob('*.schema.json'):
 WORLD_VALIDATORS = {"0.1":WORLD_VALIDATOR,"0.2":WORLD_V2_VALIDATOR,**{
     v:Draft202012Validator(json.loads((ROOT / 'worlds' / ('v'+v) / 'world.schema.json').read_text()),registry=world_registry)
     for v in ['0.3','0.4','0.5']}}
+
+
+# One validator per negotiated protocol (0.1 uses the unversioned pin).
+VALIDATORS = {'0.1': VALIDATOR, **{'0.' + str(n): globals()['V%d_VALIDATOR' % n] for n in range(2, 17)}}

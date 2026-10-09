@@ -60,3 +60,15 @@ function stats(fps, frameMs, renderScale, isIdle) {
     if (isIdle) return 'IDLE   /   no changes   /   ' + scale;
     return Math.round(fps) + ' FPS   /   ' + (frameMs >= 0 ? frameMs.toFixed(1) + ' ms' : '—') + '   /   ' + scale;
 }
+
+// IPC 0.16 graphics.upscaler labels; timings.upscaler = {requested, active, error}.
+function upscalerName(value) {
+    return value === null || value === undefined ? 'Preset' : value === 'fsr1' ? 'FSR 1' : value === 'bilinear' ? 'Bilinear' : String(value);
+}
+
+function upscaler(state) {
+    if (!state || !state.active) return 'Active: —';
+    var text = 'Active: ' + upscalerName(state.active);
+    if (state.requested && state.requested !== state.active) text += state.error ? ' (FSR 1 unavailable)' : ' (native scale)';
+    return text;
+}

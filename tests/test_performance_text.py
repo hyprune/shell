@@ -50,3 +50,17 @@ class IdleText(unittest.TestCase):
         self.assertEqual(evaluate("stats(3,850,.5,true)"), 'IDLE   /   no changes   /   50% SCALE')
         self.assertEqual(evaluate("stats(59.6,16.7,.5,false)"), '60 FPS   /   16.7 ms   /   50% SCALE')
         self.assertEqual(evaluate("stats(-1,-1,-1,false)"), 'FRAME TELEMETRY UNAVAILABLE')
+
+
+class UpscalerText(unittest.TestCase):
+    def test_labels_and_fallback(self):
+        self.assertEqual(evaluate("upscalerName(null)"), 'Preset')
+        self.assertEqual(evaluate("upscalerName('fsr1')"), 'FSR 1')
+        self.assertEqual(evaluate("upscaler({requested:'fsr1',active:'fsr1',error:null})"), 'Active: FSR 1')
+        self.assertEqual(evaluate("upscaler({requested:'fsr1',active:'bilinear',error:'GLSL ES 3.1'})"), 'Active: Bilinear (FSR 1 unavailable)')
+        self.assertEqual(evaluate("upscaler(null)"), 'Active: —')
+
+    def test_settings_row_uses_shared_protocol_helper(self):
+        qml = (Path(__file__).resolve().parents[1] / 'qml/components/GraphicsSettings.qml').read_text()
+        self.assertIn("ShellState.supportsProtocol(16)", qml)
+        self.assertIn("objectName:'graphics-upscaler'", qml)
