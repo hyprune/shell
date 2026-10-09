@@ -77,6 +77,8 @@ QtObject {
     property real clockMs: Date.now()
     property string selectedPlace: ''
     property string protocol: '0.2'
+    // Matches VERSION (checked by tests/test_brand.py).
+    readonly property string shellVersion: '0.2.0'
     property var transition: ({
         "id": '',
         "phase": 'idle',

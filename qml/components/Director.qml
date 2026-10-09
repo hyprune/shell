@@ -27,12 +27,36 @@ Item {
         RowLayout {
             Layout.fillWidth: true
 
+            // Placeholder of zero height so the mark never drives the row height.
+            // The ink, not the box, starts on the content edge and spans from the
+            // caption's cap height to the world name's baseline; the rest of the
+            // box is the master's own clear space.
+            Item {
+                id: headerMarkSlot
+                Layout.preferredHeight: 0
+                Layout.alignment: Qt.AlignTop
+                Layout.preferredWidth: headerMark.size - headerMark.inkLeft - headerMark.inkRight + 16
+                TextMetrics { id: captionCap; font: headerCaption.font; text: 'H' }
+                BrandMark {
+                    id: headerMark
+                    objectName: 'brandMark:director'
+                    readonly property real inkStart: headerTitle.y + headerCaption.y + headerCaption.baselineOffset - captionCap.tightBoundingRect.height
+                    readonly property real inkEnd: headerTitle.y + headerName.y + headerName.baselineOffset
+                    size: Math.round(sizeForInkHeight(inkEnd - inkStart))
+                    color: Tokens.accent
+                    x: -inkLeft
+                    y: inkStart - inkTop - headerMarkSlot.y
+                }
+            }
+
             ColumnLayout {
+                id: headerTitle
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 spacing: 8
 
                 HudLabel {
+                    id: headerCaption
                     Layout.fillWidth: true
                     text: 'HYPRUNE / OVERVIEW'
                     color: Tokens.accent
@@ -41,6 +65,7 @@ Item {
                 }
 
                 HudLabel {
+                    id: headerName
                     Layout.fillWidth: true
                     text: ShellState.worldName.toUpperCase()
                     font.pixelSize: root.width < 1100 ? 24 : 34

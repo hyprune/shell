@@ -128,6 +128,19 @@ Item {
                     HudLabel { text: Math.round(Tokens.hudCurvature * 100) + '%'; Layout.preferredWidth: 42 }
                 }
                 HudLabel { Layout.fillWidth: true; text: 'HUD concepts, curvature and resource selection are saved automatically. Perspective applies to the HUD only.'; color: Tokens.muted; wrapMode: Text.Wrap; font.pixelSize: 12 }
+                HudLabel { text: 'ABOUT'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true; Layout.topMargin: 8 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    BrandMark { id: aboutMark; objectName: 'brandMark:about'; size: 48; color: Tokens.accent; Layout.leftMargin: -inkLeft; Layout.alignment: Qt.AlignVCenter }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        spacing: 4
+                        HudLabel { Layout.fillWidth: true; text: 'Hyprune shell ' + ShellState.shellVersion + '  ·  IPC ' + ShellState.protocol }
+                        HudLabel { Layout.fillWidth: true; text: 'Shell MIT licence. Hyprune logo by Hyprune contributors, CC-BY-4.0.'; color: Tokens.muted; wrapMode: Text.Wrap; font.pixelSize: 12 }
+                    }
+                }
                 }
                 ActionButton { visible: root.section === 1; text: 'Open Performance'; onClicked: ShellState.tab = 7 }
                 HudLabel { Layout.fillWidth: true; visible: root.section === 1 && !ShellState.available('graphics.get'); text: 'Graphics controls require a core with graphics settings support.'; wrapMode: Text.Wrap; color: Tokens.muted }
