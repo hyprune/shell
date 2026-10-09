@@ -43,6 +43,16 @@
   gallery `screenshots/placement-sizing-before-after-2026-10-09.png`.
   Not yet re-shot through real core (`HYPRUNE_HUD_PLACEMENT` in hud-concepts.py).
 
+- **Logo mark (2026-10-09).** `qml/components/BrandMark.qml` draws the vendored
+  one-ink masters (meta `ef0ce64`, provenance in `qml/components/brand/BRAND.md`)
+  with QtQuick.Shapes CurveRenderer in `Tokens.accent`, choosing H16/H32/optical/
+  primary by physical pixels (window DPR × ancestor scale; `Screen.devicePixelRatio`
+  reports 2 at output scale 1.25, so it isn't used first). Shown in the Director header
+  (ink spans caption cap height to world-name baseline) and a Settings → Appearance
+  ABOUT row. `dev/sync-brand.py` regenerates `BrandMarks.js`; `tests/test_brand.py`
+  checks hashes, verbatim geometry and the size rule. Captures: `./dev/run brand`;
+  gallery `screenshots/brand-rollout-2026-10/shell-*`.
+
 ## In progress / limits
 
 - Strengthened recovery regression **passed** (core agent, 2026-10-09) with the

@@ -53,6 +53,7 @@ are recorded in `dev/SDK-SOURCE.json`.
 ./dev/run check         # IPC 0.2 + 1080p visual smoke check
 ./dev/run check-window  # visible 1280x720 composition check
 ./dev/run capture       # screenshots, 20–40 s video and recovery checks
+./dev/run brand         # logo mark captures (Director, Settings About, Performance; Night/Paper; scales 1/2/1.25, 4K)
 HYPRUNE_SKIP_RECORD=1 ./dev/run capture
 python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -v
@@ -194,6 +195,7 @@ authentication, while production renewal needs a supervisor contract.
 | `qml/components/MapView.qml` | Shared schematic/minimap and interactions |
 | `qml/components/Hud.qml` | HUD, onboarding, notices, prompts and dev vehicle |
 | `qml/components/Warp.qml` | Passive transition graphics |
+| `qml/components/BrandMark.qml`, `brand/` | Hyprune mark in the theme colour; vendored masters and provenance in `brand/BRAND.md` |
 | `Seal.qml`, `Constellation.qml`, `Reveal.qml` | Original graphics and reveal motion |
 | `dev/` | Locked SDK/core harnesses, scenarios and review capture |
 
@@ -206,6 +208,7 @@ See [VERIFICATION.md](VERIFICATION.md) for results and gallery paths,
 [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md) for deferred contracts and core interop issues.
 Schema provenance is in `protocol/SOURCE.json` and `protocol/v0.2/SOURCE.json`.
 MIT; vendored schemas retain their license. All shell graphics are original.
+The Hyprune logo is CC-BY-4.0 ("Hyprune logo by Hyprune contributors"); see `qml/components/brand/BRAND.md`.
 
 Core M2 additionally negotiates IPC 0.4. The reference Director shows bound
 workspace homes through `workspaces.locations`, and offers Pull out, Place at
