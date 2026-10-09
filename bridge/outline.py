@@ -1,6 +1,7 @@
 """Bounded, live world-ink edits; normal world.control, never camera.author."""
 import copy
 import math
+from protocol import at_least
 
 
 class OutlineController:
@@ -25,15 +26,21 @@ class OutlineController:
             if not ink or not patch or set(patch) - {'widthPx','colour'}:
                 raise ValueError('This world has no editable ink style')
             patch = copy.deepcopy(patch)
+            persistent = at_least(self.client.protocol,14)
             if 'widthPx' in patch:
                 v = patch['widthPx']
-                if type(v) not in [int,float] or not math.isfinite(v) or not 1 <= v <= 4:
+                if not (persistent and v is None) and (type(v) not in [int,float] or not math.isfinite(v) or not 1 <= v <= 4):
                     raise ValueError('Ink width must be 1–4 logical pixels')
             if 'colour' in patch:
-                if patch['colour'] is None: patch['colour'] = self.loaded_colour
+                if patch['colour'] is None and not persistent: patch['colour'] = self.loaded_colour
                 v = patch['colour']
-                if not isinstance(v,list) or len(v)!=3 or any(type(c) not in [int,float] or not math.isfinite(c) or not 0<=c<=1 for c in v):
+                if not (persistent and v is None) and (not isinstance(v,list) or len(v)!=3 or any(type(c) not in [int,float] or not math.isfinite(c) or not 0<=c<=1 for c in v)):
                     raise ValueError('Ink colour must be display RGB in 0–1')
+            if persistent:
+                if current() != world_id: raise ValueError('World changed; ink edit cancelled')
+                await self.client.call('graphics.set', {'patch':{
+                    {'widthPx':'outline_width_px','colour':'outline_colour'}[k]:v for k,v in patch.items()}})
+                return await self.update(world_id)
             # Merge into a fresh profile; retain current sky, thresholds and all
             # unrelated settings. Never reuse a stale QML copy of the atmosphere.
             profile = copy.deepcopy(profile)

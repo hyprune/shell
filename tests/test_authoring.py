@@ -43,6 +43,7 @@ class Contract(unittest.TestCase):
 
 class OutlineEdits(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        self.protocol='0.13'
         self.state={'world':{'id':'world'}}
         self.profile={'sky':{'type':'gradient'},'exposure':2,'outline':{'enabled':True,'colour':[.1,.2,.3],'widthPx':2,'depthThreshold':.02,'normalThreshold':.2}}
         self.calls=[];self.controller=OutlineController(self)

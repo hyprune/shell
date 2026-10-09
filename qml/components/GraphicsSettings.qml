@@ -11,7 +11,7 @@ ColumnLayout {
     readonly property var effective:graphics ? graphics.effective : ({})
     readonly property var performance: graphics && graphics.performance ? graphics.performance : null
     readonly property var timings:graphics && graphics.timings ? graphics.timings : ({})
-    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : [])
+    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : [])
     readonly property var labels:({quality:'Preset',sky:'Sky',msaa:'MSAA',bloom:'Bloom',fog:'Fog',reflections:'Reflections',normal_maps:'Normal maps',specular:'Specular highlights',ambient_occlusion:'Ambient occlusion',alpha_haze:'Glass / haze',anisotropy:'Anisotropy',dynamic_resolution:'Dynamic resolution'})
     property var pendingPatch:({})
     spacing:12

@@ -12,7 +12,7 @@ import m3b
 from ctl import verified
 from m2 import wait, keys, pose
 GALLERY=pathlib.Path.home()/'hyprune-gallery'
-PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13')
+PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13' if os.environ.get('HYPRUNE_HUD_AUTHORING') and not os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.14')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
@@ -291,4 +291,7 @@ if __name__=='__main__':
     if os.environ.get('HYPRUNE_HUD_AUTHORING'):
         import authoring
         authoring.acceptance=acceptance
-    s.run(argparse.Namespace(authoring=bool(os.environ.get("HYPRUNE_HUD_AUTHORING")),m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))
+    if os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE'):
+        import ink
+        ink.acceptance=acceptance
+    s.run(argparse.Namespace(ink=bool(os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE')),authoring=bool(os.environ.get("HYPRUNE_HUD_AUTHORING")),m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))

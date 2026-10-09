@@ -26,9 +26,10 @@ QtObject {
     property Timer graphicsPoll: Timer { interval: 1000; running: root.active && root.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: root.action('graphics.get',{}) }
     property var camera: null
     property var outline: null
-    readonly property bool authoredCamera: protocol === '0.13' && (!camera || camera.held)
-    property Timer cameraPoll: Timer { interval:250; running:root.active && root.protocol === '0.13' && root.available('camera.get'); repeat:true; triggeredOnStart:true; onTriggered:root.action('camera.get',{}) }
-    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === 7 && root.protocol === '0.13' && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
+    function supportsProtocol(minor) { var v=protocol.split('.'); return v[0]==='0' && Number(v[1])>=minor; }
+    readonly property bool authoredCamera: supportsProtocol(13) && (!camera || camera.held)
+    property Timer cameraPoll: Timer { interval:250; running:root.active && root.supportsProtocol(13) && root.available('camera.get'); repeat:true; triggeredOnStart:true; onTriggered:root.action('camera.get',{}) }
+    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === 7 && root.supportsProtocol(13) && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
     function refreshOutline() { if (state && state.world) send({type:'outline.get',worldId:state.world.id}); }
     function patchOutline(patch) { if (state && state.world) send({type:'outline.patch',worldId:state.world.id,patch:patch}); }
     property var graphics: null

@@ -302,3 +302,41 @@ Integration note: that core revision's `dev/live/live.py` still explicitly picks
 **0.12**. Its launcher must select 0.13 to expose these additions in the owner's
 session; the shell respects an explicit older version. No live-session commands
 were run for this work.
+
+## Persistent ink quality and overrides (IPC 0.14)
+
+The shell now defaults to **0.14** and advertises it to core's newest-common
+launcher negotiation. The canonical 0.14 schema fixes the response-envelope
+ambiguity itself; the older 0.13 adapter remains scoped to that version.
+Camera holds and outline polling use a feature floor, retaining authored-camera
+HUD hiding on 0.14 without requesting `camera.author`.
+
+Performance → Ink & visibility offers **Preset / Fast · 1 px / Smooth · authored
+width**. Fast disables the width slider and reports its effective 1 px stroke;
+Smooth permits 1–4 px widths. Width/colour now write `graphics.set` overrides,
+persisted by core across worlds and restarts. The section displays one shared
+ink cost, without counting the same timer again for quality, width or colour.
+**Reset to world default** clears outline permission, quality, width and colour
+with null in one patch. This restores preset permission/quality and the active
+world's original width/colour; visibility culling is independent. Global preset
+selection also clears these ink overrides. Worlds without authored enabled ink
+still acquire no invented style. On 0.13 the fixed quality and clearly labelled
+transient atmosphere controls remain available; earlier protocols get no new keys.
+
+```sh
+HYPRUNE_HUD_INK_PERSISTENCE=1 HYPRUNE_HUD_AUTHORING=1 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+Real-core `8bfade6` checks exercise keyboard selection of Fast/Smooth, disabled
+Fast width, live width/colour changes, saved `graphics.json`, world reload
+precedence, reset to immutable package defaults and global preset reset.
+The camera hold/release/author-disconnect checks also run at 0.14. Gallery
+`screenshots/hud-concepts/performance-ink-*-ipc014.png` includes Fast, overrides,
+world-default reset, 1080p/1440p/4K and compact 1080p at scale 2. See
+`docs/evidence/hud-authoring-014.json` for recorded results. Tests verify durable
+writes and world reloads; they do not restart the compositor to retest core's
+settings-file loader.
+
+Validation completed: **80 unit tests**, SDK mock HUD/Appearance checks, and real
+core **0.13 and 0.14** menu/camera acceptance all passed. Every compositor test
+held `/tmp/worldshell-nested.lock`; no owner-session commands were used.

@@ -1,0 +1,10 @@
+{
+  "protocol": "0.14",
+  "coreCommit": "8bfade627437e039c8b79ab5e34ab5a66d7f6e5f",
+  "outlineGpuMs": 0.6933849999999999,
+  "controls": "Actual nested keyboard: preset/off/on, Fast/Smooth, width 4px, #336699, reset to world default, visibility off/on; saved graphics.json and world reload verified",
+  "photo": "Roll 90\u00b0, FOV 15\u00b0, shifted lens and fixed scale: HUD hidden; release/disconnect restore same lease; no author grant in shell",
+  "world": "Visibility laboratory 0.5 accepted by shell catalog",
+  "quality": "Fast/Smooth live; persistent graphics width/colour and reset verified",
+  "validation": "All screenshot layout audits and QML/schema logs passed"
+}
