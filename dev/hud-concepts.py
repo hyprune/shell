@@ -12,7 +12,7 @@ import m3b
 from ctl import verified
 from m2 import wait, keys, pose
 GALLERY=pathlib.Path.home()/'hyprune-gallery'
-PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13' if os.environ.get('HYPRUNE_HUD_AUTHORING') and not os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.14')
+PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13' if os.environ.get('HYPRUNE_HUD_AUTHORING') and not os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.14' if os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.15')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
@@ -32,6 +32,12 @@ def acceptance(client,children,args,shell_token,socketpath):
     def state():return client.call('state.snapshot',{'subscriptionId':sub})['snapshot']['state']
     s.ctl('eval','hl.plugin.hyprune.toggle("HEADLESS-1")')
     wait(lambda:state()['runtime']['active'])
+    if os.environ.get('HYPRUNE_HUD_PLACEMENT'):
+        # Diagnose a moving core contract before starting the real shell.
+        sys.path.insert(0,str(ROOT/'bridge'))
+        from protocol import V15_VALIDATOR, validate_response
+        validate_response({'jsonrpc':'2.0','id':'preflight','result':client.hello},'session.hello',V15_VALIDATOR)
+        V15_VALIDATOR.evolve(schema={'$ref':V15_VALIDATOR.schema['$id']+'#/$defs/state'}).validate(state())
     # Install original sample assets into this harness's private package only.
     import shutil
     package=s.STATE/'worlds/com.hyprune.lumen-reach/world.json'
@@ -39,6 +45,9 @@ def acceptance(client,children,args,shell_token,socketpath):
     package.write_text(json.dumps(manifest))
     shutil.copytree(ROOT/'dev/styles/signal-amber/hud',package.parent/'hud',dirs_exist_ok=True)
     r,w=os.pipe();os.write(w,(shell_token+'\n').encode());os.close(w)
+    if os.environ.get('HYPRUNE_HUD_PLACEMENT'):
+        # Test the first-launch default with preferences scoped to this fixture.
+        (s.STATE/'hud-preferences.json').unlink(missing_ok=True)
     _,env=verified();env.update(HYPRUNE_TOKEN_FD=str(r),HYPRUNE_PROTOCOL=PROTOCOL,HYPRUNE_SOCKET=str(socketpath),HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',HYPRUNE_DEV_AUTOMATION='1',HYPRUNE_SHELL_PREFERENCES=str(s.STATE/'hud-preferences.json'))
     log=open(s.STATE/'shell.log','w')
     world_args=['--world-package',str(s.STATE/'worlds/org.hyprune.visibility/world.json')] if os.environ.get('HYPRUNE_HUD_AUTHORING') else []
@@ -75,6 +84,10 @@ def acceptance(client,children,args,shell_token,socketpath):
         s.ctl('eval',f'hl.monitor({{output="HEADLESS-1",mode="{w}x{h}@60",position="1600x0",scale={scale}}})');time.sleep(1)
     evidence = {'protocol':PROTOCOL, 'captures':[]}
     homes={'sun-court':[-8,2,12],'array-hall':[8,2,-34],'rime-vault':[38,-4.3,-79],'signal-rise':[54,2,-125]}
+    if os.environ.get('HYPRUNE_HUD_PLACEMENT'):
+        from hud_placement_check import check
+        check(client,children,ui,status,state,shot,resolution,opened,closed)
+        return
     if os.environ.get('HYPRUNE_HUD_GRAPHICS_COMPAT'):
         from hud_authoring_check import check_compat
         check_compat(client,ui,status,shot,opened)
@@ -99,15 +112,15 @@ def acceptance(client,children,args,shell_token,socketpath):
         ui('curvature',.8);ui('worldStyles','false');keys('-k','2')
         for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
             resolution(width,height,scale)
-            for concept in ['Vanguard','Instrument','Minimal']:
+            for concept in ['Adventure','Instrument','Minimal']:
                 ui('concept',concept)
                 for home in ['sun-court','rime-vault']:
                     pose(client,homes[home]);time.sleep(.5)
                     name=f'{concept.lower()}-{home}-{height}p-s{scale}-{version}'
                     shot(name);evidence['captures'].append(name)
-                    if contrast_review and concept=='Vanguard':
+                    if contrast_review and concept=='Adventure':
                         contrast_results.append(hud_contrast.capture(ui,raw_shot,SHOTS/(name+'.png')))
-                if contrast_review and concept=='Vanguard':
+                if contrast_review and concept=='Adventure':
                     ui('contrastProbe','white')
                     name=f'vanguard-white-{height}p-s{scale}-{version}'
                     shot(name);evidence['captures'].append(name)
@@ -117,14 +130,14 @@ def acceptance(client,children,args,shell_token,socketpath):
             print('PASS convex resolution',height,scale,flush=True)
             if os.environ.get('HYPRUNE_HUD_QUICK'): break
         resolution(1920,1080,1);pose(client,homes['sun-court'])
-        for concept in ['Vanguard','Instrument','Minimal']:
+        for concept in ['Adventure','Instrument','Minimal']:
             ui('concept',concept);time.sleep(2)
             comparisons=[(0,'flat'),(.8,'curved')] + ([] if text_review else [(1,'maximum')])
             for strength,suffix in comparisons:
                 ui('curvature',strength);name=f'{concept.lower()}-sun-court-{suffix}-{version}'
                 shot(name);evidence['captures'].append(name)
         if text_review:
-            ui('concept','Vanguard');ui('worldStyles','true');time.sleep(1)
+            ui('concept','Adventure');ui('worldStyles','true');time.sleep(1)
             assert status()['worldStyle']=='com.hyprune.lumen-reach'
             shot(f'vanguard-world-outline-{version}');evidence['captures'].append(f'vanguard-world-outline-{version}')
             ui('worldStyles','false');time.sleep(1)
@@ -142,7 +155,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         ui('curvature',.8);ui('worldStyles','false');keys('-k','2')
         for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
             resolution(width,height,scale)
-            for concept in ['Vanguard','Instrument','Minimal']:
+            for concept in ['Adventure','Instrument','Minimal']:
                 ui('concept',concept)
                 for home in ['sun-court','rime-vault']:
                     pose(client,homes[home]);time.sleep(.5)
@@ -151,7 +164,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             ui('scrollPage',1);shot(f'performance-effects-{height}p-s{scale}-v2');closed()
             print('PASS review resolution',height,scale,flush=True)
             if os.environ.get('HYPRUNE_HUD_QUICK'): break
-        resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Vanguard')
+        resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Adventure')
         ui('curvature',0);shot('vanguard-sun-court-flat-v2');ui('curvature',.8);shot('vanguard-sun-court-curved-v2')
         # Auto exercises the blocked USB-C policy without requesting offload On.
         client.call('graphics.set',{'patch':{'offload':'auto'}})
@@ -163,7 +176,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         print('PASS HUD review v2',flush=True)
         return
     if os.environ.get('HYPRUNE_HUD_EVENTS_ONLY'):
-        ui('concept','Vanguard');ui('worldStyles','true')
+        ui('concept','Adventure');ui('worldStyles','true')
         ui('select',1);wait(lambda:status()['banner']=='WAYPOINT SET');shot('waypoint-set-banner')
         client.call('workspace.bind',{'id':11,'worldId':'com.hyprune.lumen-reach','areaId':'array-hall'})
         ui('workspace',11);wait(lambda:state()['workspaces']['currentId']==11);wait(lambda:not status()['warp'],timeout=20)
@@ -195,7 +208,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
             resolution(width,height,scale);ui('scrollPage',0);shot(f'performance-{height}p-s{scale}')
         resolution(1920,1080,1)
-        closed();ui('worldStyles','true');ui('concept','Vanguard')
+        closed();ui('worldStyles','true');ui('concept','Adventure')
         client.call('travel.start',{'to':{'position':[54,2,-125]},'durationMs':1600});wait(lambda:status()['warp']);shot('world-style-warp-ribbons');wait(lambda:not status()['warp'])
         assert state()['runtime']['active']
         print('PASS Performance renderer live control',changed['status'],changed['reason'],flush=True)
@@ -211,13 +224,13 @@ def acceptance(client,children,args,shell_token,socketpath):
     ui('curvature',.8);ui('worldStyles','false')
     keys('-k','2')
     if tuple(map(int,PROTOCOL.split('.'))) >= (0,9):
-        ui('concept','Vanguard');wait(lambda:status()['concept']=='Vanguard');time.sleep(.5)
-        keys('-P','5','-s','900','-p','5');wait(lambda:status()['concept']=='Instrument')
-        assert state()['editor']['tool']==2
-        evidence['key5']='Physical hold advances exactly once; tool unchanged'
+        ui('concept','Adventure');wait(lambda:status()['concept']=='Adventure');time.sleep(.5)
+        keys('-P','5','-s','900','-p','5');time.sleep(.3)
+        assert status()['concept']=='Adventure'
+        evidence['key5']='Physical 5 leaves the Settings concept unchanged'
     for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2),(2560,1440,2),(3840,2160,2)]:
         resolution(width,height,scale)
-        for concept in ['Vanguard','Instrument','Minimal']:
+        for concept in ['Adventure','Instrument','Minimal']:
             ui('concept',concept);wait(lambda:status()['concept']==concept)
             for home,position in homes.items():
                 pose(client,position);time.sleep(.5)
@@ -228,7 +241,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         ui('tab',6);ui('settingsSection',0);shot(f'appearance-{height}p-s{scale}');closed()
         print('PASS resolution',height,scale,flush=True)
         if os.environ.get('HYPRUNE_HUD_QUICK'): break
-    resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Vanguard')
+    resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Adventure')
     ui('curvature',0);shot('vanguard-sun-court-flat');ui('curvature',.8);shot('vanguard-sun-court-curved')
     from m2 import pointer
     for slot in [2,3,4]:
@@ -244,10 +257,10 @@ def acceptance(client,children,args,shell_token,socketpath):
     evidence['graphics']=client.call('graphics.get',{});shot('performance-custom');closed()
     keys('-k','F3');shot('performance-f3-verification');keys('-k','F3')
     client.call('graphics.set',{'patch':{'quality':'auto','bloom':None}})
-    keys('-k','2');ui('concept','Vanguard');ui('cycleHud');wait(lambda:status()['concept']=='Instrument')
+    keys('-k','2');ui('concept','Instrument');wait(lambda:status()['concept']=='Instrument')
     saved=json.loads((s.STATE/'hud-preferences.json').read_text());assert saved['concept']=='Instrument'
     evidence['persisted']=saved
-    ui('concept','Vanguard')
+    ui('concept','Adventure')
     if not os.environ.get('HYPRUNE_HUD_QUICK'):
         with tempfile.TemporaryDirectory(prefix='hyprune-hud-') as temp:
             raw=pathlib.Path(temp)/'raw.mkv';encoded=pathlib.Path(temp)/'hud-concepts.mp4'
@@ -258,8 +271,8 @@ def acceptance(client,children,args,shell_token,socketpath):
                 for slot in [2,3,4]:
                     keys('-k',str(slot));time.sleep(1)
                     for i in range(2):pointer('scroll',1);time.sleep(1.1)
-                keys('-k','5');time.sleep(3);pose(client,homes['rime-vault']);time.sleep(4)
-                keys('-k','5');time.sleep(3);keys('-k','3');pointer('scroll',1);time.sleep(3)
+                ui('concept','Instrument');time.sleep(3);pose(client,homes['rime-vault']);time.sleep(4)
+                ui('concept','Minimal');time.sleep(3);keys('-k','3');pointer('scroll',1);time.sleep(3)
                 opened();ui('tab',6);ui('settingsSection',0);time.sleep(3)
                 ui('tab',7);ui('scrollPage',0);time.sleep(3);ui('scrollPage',1);time.sleep(3)
                 closed();pose(client,homes['sun-court']);keys('-k','5');time.sleep(max(1,53-(time.monotonic()-start)))
@@ -269,10 +282,10 @@ def acceptance(client,children,args,shell_token,socketpath):
             assert 45<=float(probe['format']['duration'])<=60
             import shutil
             destination=GALLERY/'videos/hud-concepts.mp4';shutil.move(str(encoded),destination)
-            destination.with_suffix('.json').write_text(json.dumps({'title':'Hyprune · three HUD concepts','tag':'shell','notes':'Vanguard, Instrument and Minimal. Real core tools and wheel subtypes, HUD-only perspective, Sun Court and Rime Vault, Appearance and Performance. Concept cycling uses core’s rebindable 5 action (IPC 0.9); the equivalent preview IPC fallback is also tested. Native Quickshell rendering inside the locked isolated nested compositor. Original geometric icons; no private reference asset included.','duration':probe['format']['duration']},indent=2)+'\n')
+            destination.with_suffix('.json').write_text(json.dumps({'title':'Hyprune · three HUD concepts','tag':'shell','notes':'Adventure, Instrument and Minimal. Real core tools and wheel subtypes, HUD-only perspective, Sun Court and Rime Vault, Appearance and Performance. Concept selection is Settings/config only; key 5 never changes it. Native Quickshell rendering inside the locked isolated nested compositor. Original geometric icons; no private reference asset included.','duration':probe['format']['duration']},indent=2)+'\n')
             evidence['videoSeconds']=probe['format']['duration']
     pose(client,homes['signal-rise'])
-    for concept in ['Vanguard','Instrument','Minimal']:
+    for concept in ['Adventure','Instrument','Minimal']:
         ui('concept',concept);ui('worldStyles','false');shot('style-'+concept.lower()+'-base')
         ui('worldStyles','true');wait(lambda:status()['worldStyle']=='com.hyprune.lumen-reach');shot('style-'+concept.lower()+'-signal-amber')
     client.call('world.load',{'worldId':'com.hyprune.switchyard'});wait(lambda:status()['world']=='com.hyprune.switchyard');wait(lambda:status()['worldStyle'] is None)
@@ -294,4 +307,7 @@ if __name__=='__main__':
     if os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE'):
         import ink
         ink.acceptance=acceptance
+    if os.environ.get('HYPRUNE_HUD_PLACEMENT'):
+        # Like core's Placement acceptance, start with no saved fixture placements.
+        (s.HERE/'.m3b-state/layout.json').unlink(missing_ok=True)
     s.run(argparse.Namespace(ink=bool(os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE')),authoring=bool(os.environ.get("HYPRUNE_HUD_AUTHORING")),m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))

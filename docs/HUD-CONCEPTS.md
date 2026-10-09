@@ -1,11 +1,12 @@
 # HUD concepts and package styles
 
 Hold TAB for the Director. **Settings → Appearance → HUD concept** selects
-Vanguard, Instrument or Minimal. **5** cycles them in world mode on IPC 0.9+;
-Input bindings exposes `hud.cycle`. Changes show a centre banner and save
-immediately. Application and Director text input retain ordinary key 5.
+**Adventure** (default), Instrument or Minimal. Saved Vanguard preferences migrate
+to Adventure without changing other choices. Changes show a centre banner and
+save immediately. **5 selects Placement** on the updated core; legacy HUD-cycle
+events are ignored. Concept selection is Settings/config only.
 
-Vanguard has large accent tiles and a spacious subtype plane; Instrument adds
+Adventure has large accent tiles and a spacious subtype plane; Instrument adds
 coordinates, denser geometry and cyan accents; Minimal reduces radar, tiles and
 secondary text. Shared components show actual core tools/subtypes, circular local
 radar, transparent compass rails, zone titles and the core-timed TAB ring.
@@ -56,7 +57,7 @@ optional assets fall back by role. Original sample: `dev/styles/signal-amber`.
 python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -q
 ./dev/run hud-check
-HYPRUNE_NESTED_PROTOCOL=0.13 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
 ```
 
 The harness verifies its own child compositor/headless output and owns teardown;
@@ -138,7 +139,7 @@ Downloaded images, pixel endpoints, source metadata and reference crop sheets
 are private gallery files under `reference/hud-curve-v3/`, locally excluded from
 Git before download. No reference artwork is included in the shell or docs.
 
-Development-only `preview cycleHud` uses the same persistence/banner path.
+Development-only `preview concept NAME` uses the Settings persistence/banner path.
 `concept`, `resource`, `curvature`, `worldStyles` support capture automation;
 always target the verified nested Quickshell PID. Mutations require explicit
 `HYPRUNE_DEV_AUTOMATION=1` or a development fixture.
@@ -340,3 +341,42 @@ settings-file loader.
 Validation completed: **80 unit tests**, SDK mock HUD/Appearance checks, and real
 core **0.13 and 0.14** menu/camera acceptance all passed. Every compositor test
 held `/tmp/worldshell-nested.lock`; no owner-session commands were used.
+
+## IPC 0.15: Adventure, Placement and live tool hints
+
+Adventure is the new default and the migrated name for Vanguard. Key 5 selects
+Placement; old HUD-cycle events have no effect. Choose concepts in Appearance.
+
+Placement collapses the tool grid into one window tile beside the selected
+pocket entry's app icon, elided title/class, client size and queue position.
+Other tools show a count badge when the pocket is nonempty. Core selects the
+entry tool and reports the ghost preview; successful pocket notices show a
+POCKETED banner. No thumbnail is available over IPC, so the card uses the app's
+local theme icon.
+
+All five tools share a generic hint panel. Labels come from `editor.toolSlots`,
+bindings from the configured Primary / Secondary / Alternate / Cycle actions.
+Unassigned slots are omitted. `editor.toolInput` replaces those hints with the
+eligible global gestures while Super is held, including Super+Shift and
+Super+Ctrl chords. No local key grab is installed. Help uses the same core tool
+definitions. Carry orientation and content-scale/reset feedback use core state
+and its sequence number; free cursor hides world-interaction hints.
+
+```sh
+HYPRUNE_HUD_PLACEMENT=1 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+The acceptance uses real tool keys and mouse events, remaps Alternate to F8,
+checks all five label sets and held-modifier overrides, and captures all three
+concepts at 1080p/1440p/4K with scales 1 and 2. It also checks first entry,
+pocketing, cursor suppression, both carry orientations, content scale, repeated
+reset, Help, Appearance and loaded/inactive readiness. Gallery filenames end
+in `-ipc015.png`; see `docs/evidence/placement-hud-015.json` for the result and
+core binary hash. Test preferences and saved placements are private to nested.
+
+Validation: **90 unit tests**, the SDK 0.2 mock (including a scale-only feedback
+regression), and the full real-core 0.15 acceptance passed. Real-core 0.14
+Performance/persistence and authored-camera compatibility also passed. The 0.15
+run used core's in-progress build on the recorded base commit; the exact loaded
+binary hash is retained. All compositor checks held the nested flock, and the
+captured layouts and QML logs were clean.

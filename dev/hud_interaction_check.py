@@ -35,7 +35,7 @@ def check(client,children,ui,status,state,shot,resolution):
     results=[]
     for width,height,scale in [(1920,1080,1),(2560,1440,1),(3840,2160,1),(1920,1080,2)]:
         resolution(width,height,scale)
-        for concept,mechanic in [('Vanguard','grab'),('Instrument','look-to-climb'),('Minimal','auto-traverse')]:
+        for concept,mechanic in [('Adventure','grab'),('Instrument','look-to-climb'),('Minimal','auto-traverse')]:
             ui('concept',concept)
             s.ctl('eval',f'hl.plugin.hyprune.config({{movement={{climb_mode="{mechanic}"}},player={{move_inertia=0,look_inertia=0}}}})')
             # Falling into the climb volume catches and holds in every mechanic.

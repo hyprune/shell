@@ -1,0 +1,31 @@
+{
+  "protocol": "0.15",
+  "coreBaseCommit": "8bfade627437e039c8b79ab5e34ab5a66d7f6e5f",
+  "coreBinarySha256": "5cc56936da8f9c016f3b1f24a78d3b4cca89b731b482292d6106fc30a284edf1",
+  "checks": [
+    "physical tool 5 preserves Adventure",
+    "core labels for all five tools",
+    "Super / Super+Shift / Super+Ctrl gesture overrides",
+    "Alternate remapped to F8 and physically used",
+    "stash and pocketed banner",
+    "MMB pockets and LMB places ahead",
+    "entry reflects core tool 5",
+    "free-cursor prompts hidden",
+    "carry facing/keep-angle with Super still held",
+    "live content scale and repeated reset",
+    "readiness notification",
+    "Help and Appearance",
+    "three concepts at three resolutions and scales 1/2"
+  ],
+  "contentScale": {
+    "logicalSize": [
+      1054,
+      584
+    ],
+    "reset": false,
+    "scale": 0.8927893738140418,
+    "sequence": 1,
+    "surfaceId": "surface-3"
+  },
+  "validation": "QML logs and layout audits passed"
+}
