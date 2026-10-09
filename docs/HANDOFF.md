@@ -45,14 +45,14 @@
 
 ## In progress / limits
 
-- A stronger regression requiring two explicitly unzoned mount instances is
-  unfinished. First, recall produced no instances; then tool-5 clicks timed out
-  waiting for two unzoned instances. Neither attempt proved the specific mount
-  projection end to end. The failed fixture additions were removed from the
-  checkpoint harness; do not call this strengthened check passed.
-- The final schema pin has unit coverage but still needs the real nested rerun
-  with a deterministic unzoned-window fixture. Core's agent is also implementing
-  this replay; read `../core/docs/CHANGES-FOR-SDK-AND-SHELL.md` before duplicating it.
+- Strengthened recovery regression **passed** (core agent, 2026-10-09) with the
+  final schema pin: `dev/recovery-core.py` defaults to the generic visibility
+  fixture, mounts real clients by tool-5 placement on the unbound world workspace,
+  and asserts nonempty unzoned instances (areaId omitted) after each warp, after
+  invalid-frame recovery and after both forced disconnects; only the injected
+  frame is invalid and no reconnect occurs through the warps. Earlier attempts
+  produced no instances because recall and free spawn poses do not survive a
+  world load for unbound clients; only saved free-space placements do.
 - Placement sizing at 1080p @ 2× is **fixed** (see Done → Placement sizing).
 
 ## Exact next steps

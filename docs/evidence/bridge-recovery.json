@@ -1,15 +1,20 @@
 {
   "protocol": "0.15",
   "nestedOnly": true,
-  "privatePackage": "local only; no identifiers or assets retained",
+  "package": "generic core visibility fixture with HUD style",
   "checks": [
     "styled world 0.5 with visibility regions",
+    "real clients mounted by tool-5 placement on unbound world workspace",
+    "nonempty unzoned mount instances with areaId omitted after each warp",
+    "no reconnect or invalid frame through warps",
     "invalid delta discarded",
     "redacted schema path and excerpt",
     "snapshot recovery on same session",
     "two forced socket disconnects",
     "renewed one-shot credentials",
-    "HUD lease restored"
+    "HUD lease restored",
+    "unzoned instances valid after recovery and each reconnect",
+    "no invalid frame other than the injected one"
   ],
   "invalidFrameDiagnostic": {
     "type": "protocol.invalid",
@@ -21,6 +26,5 @@
       "spawnId": "<string:16>"
     },
     "count": 1
-  },
-  "scope": "Passing recovery run before final schema repin; explicit unzoned-window follow-up incomplete. See HANDOFF.md."
+  }
 }

@@ -45,13 +45,16 @@ snapshot recovery, fresh authentication, restored HUD lease and no QML errors.
 The test-only launcher preserves the actual bridge PID and inherited token FD;
 production exposes no fault-injection endpoint.
 
-The supplied source package had changed and failed core's UV validation, so the
-nested test reads the installed package snapshot from the original live run.
-No private identifiers, assets or captures are retained in this repository.
+By default the nested test now generates the generic core visibility fixture with
+a HUD style; `HYPRUNE_RECOVERY_WORLD` may name a local package instead. No private
+identifiers, assets or captures are retained in this repository.
 Redacted results are in [bridge-recovery.json](evidence/bridge-recovery.json).
 The owner's live compositor was never controlled or restarted.
 
-The passing nested result predates the final schema repin. A subsequent attempt
-to strengthen the fixture with two explicitly unzoned windows timed out waiting
-for mount instances; it did not complete. The checked-in harness retains the
-passing recovery scenario. See [HANDOFF.md](HANDOFF.md) for the remaining check.
+With the final 0.15 schema pin, the nested run adopts two real clients on the
+unbound world workspace and mounts one per world with tool-5 placement. After
+each warp, after invalid-frame snapshot recovery and after each of two forced
+disconnects, the received state carries nonempty mount instances whose areaId is
+omitted (never empty). No reconnect or invalid frame occurs through the warps;
+the injected delta is the only quarantined frame. A test-only observer in
+`dev/recovery-launch.py` records counts only.

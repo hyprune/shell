@@ -6,8 +6,27 @@ sys.path.insert(0,str(Path(os.environ['HYPRUNE_RECOVERY_SHELL'])/'bridge'))
 import client,launch
 control=Path(os.environ['HYPRUNE_RECOVERY_CONTROL'])
 original=client.read_packet
+def observe(data):
+    # Redacted shapes only: counts, never identifiers, titles or package data.
+    try:obj=json.loads(data)
+    except ValueError:return
+    result=obj.get('result')
+    state=result.get('snapshot',{}).get('state') if isinstance(result,dict) else None
+    snapshot=state is not None
+    if state is None and obj.get('method')=='state.delta':state=obj['params']['changes']
+    if not isinstance(state,dict) or not ('mounts' in state or 'editor' in state):return
+    path=control/'observed.json'
+    seen=json.loads(path.read_text()) if path.exists() else {'frames':0,'snapshots':0}
+    seen['frames']+=1
+    if 'mounts' in state:
+        live=state['mounts']['instances']
+        seen.update(instances=len(live),unzoned=sum('areaId' not in v for v in live),emptyArea=sum(v.get('areaId')=='' for v in live))
+        if snapshot:seen['snapshots']+=1;seen['lastSnapshot']={k:seen[k] for k in ['instances','unzoned','emptyArea']}
+    if 'editor' in state:seen.update(queue=state['editor']['unplaced']['count'],tool=state['editor']['tool'])
+    (control/'observed.tmp').write_text(json.dumps(seen));(control/'observed.tmp').replace(path)
 async def read_packet(reader):
     data=await original(reader)
+    observe(data)
     if (control/'invalid').exists():
         obj=json.loads(data)
         if obj.get('method')=='state.delta':
