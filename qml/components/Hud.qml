@@ -48,7 +48,7 @@ Item {
         }
     }
     HudCluster {
-        id: deck
+        id: deck; objectName: 'hudToolDeck'
         x:root.inset; y:root.height-height-root.inset-46
         width: Math.min(root.width*.55,root.minimal ? 460 : root.technical ? 620 : 590); height: toolDeck.implicitHeight
         edgeX:-1; edgeY:1

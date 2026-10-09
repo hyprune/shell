@@ -242,10 +242,11 @@ ShellRoot {
         function interactionHud(): string {
             if (!ShellState.dev) return '{}';
             var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
-            var result = {};
-            ['hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint','hudPlacementTile','hudPlacementQueue','hudPlacementTitle','hudPlacementClass','hudPlacementSize','hudUnplacedBadge','hudToolHints','hudGhostIndicator','hudCarryOrientation','hudContentScale'].forEach(name => {
+            var result = {view:{width:view.width,height:view.height}};
+            ['hudToolDeck','hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint','hudPlacementTile','hudPlacementQueue','hudPlacementTitle','hudPlacementClass','hudPlacementSize','hudUnplacedBadge','hudToolHints','hudGhostIndicator','hudCarryOrientation','hudContentScale'].forEach(name => {
                 var item = Audit.find(view,name);
-                result[name] = item ? {visible:true,text:item.text || '',truncated:!!item.truncated} : {visible:false};
+                var at = item ? item.mapToItem(view,0,0) : null;
+                result[name] = item ? {visible:true,text:item.text || '',truncated:!!item.truncated,x:at.x,y:at.y,width:item.width,height:item.height} : {visible:false};
             });
             return JSON.stringify(result);
         }
