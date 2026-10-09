@@ -11,6 +11,7 @@ LIMIT = 1_048_576
 ROOT = Path(__file__).resolve().parents[1] / 'protocol'
 registry = Registry()
 for path in ROOT.rglob('*.schema.json'):
+    if 'worlds' in path.relative_to(ROOT).parts: continue
     schema = json.loads(path.read_text())
     registry = registry.with_resource(schema['$id'], Resource.from_contents(schema))
 SCHEMA = json.loads((ROOT / 'ipc.schema.json').read_text())
@@ -26,6 +27,13 @@ V9_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.9/ipc.schema.json").r
 V10_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.10/ipc.schema.json").read_text()), registry=registry)
 V11_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.11/ipc.schema.json").read_text()), registry=registry)
 V12_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.12/ipc.schema.json").read_text()), registry=registry)
+# Canonical 0.13 adds camera revision responses beside the generic response
+# branch, making top-level oneOf ambiguous for every {revision:...} reply.
+# Preserve the pin, accept the union at the envelope, and still validate each
+# response against the originating method in validate_response().
+v13_schema = json.loads((ROOT / "v0.13/ipc.schema.json").read_text())
+v13_schema['anyOf'] = v13_schema.pop('oneOf')
+V13_VALIDATOR = Draft202012Validator(v13_schema, registry=registry)
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
@@ -97,6 +105,16 @@ def frame(obj, validator=VALIDATOR):
         raise ValueError('invalid outgoing frame length')
     return struct.pack('!I', len(data)) + data
 
-SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,13))
+SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,14))
 def at_least(protocol, minor):
     return protocol in SUPPORTED_PROTOCOLS and tuple(map(int,protocol.split("."))) >= (0,minor)
+
+# New world common schemas contain authoring definitions absent from frozen IPC
+# pins. Keep a separate registry so older IPC validation cannot be widened.
+world_registry = registry
+for path in (ROOT / 'worlds').rglob('*.schema.json'):
+    schema = json.loads(path.read_text())
+    world_registry = world_registry.with_resource(schema['$id'], Resource.from_contents(schema))
+WORLD_VALIDATORS = {"0.1":WORLD_VALIDATOR,"0.2":WORLD_V2_VALIDATOR,**{
+    v:Draft202012Validator(json.loads((ROOT / 'worlds' / ('v'+v) / 'world.schema.json').read_text()),registry=world_registry)
+    for v in ['0.3','0.4','0.5']}}

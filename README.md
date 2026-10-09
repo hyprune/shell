@@ -1,7 +1,7 @@
 # Hyprune shell
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.12. The shell launcher defaults to exact 0.12; `--protocol` or
+IPC 0.1–0.13. The shell launcher defaults to exact 0.13; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
 world metadata, safe SVG map, places, output descriptor, projected markers and

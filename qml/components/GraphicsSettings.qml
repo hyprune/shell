@@ -11,7 +11,7 @@ ColumnLayout {
     readonly property var effective:graphics ? graphics.effective : ({})
     readonly property var performance: graphics && graphics.performance ? graphics.performance : null
     readonly property var timings:graphics && graphics.timings ? graphics.timings : ({})
-    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy']
+    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : [])
     readonly property var labels:({quality:'Preset',sky:'Sky',msaa:'MSAA',bloom:'Bloom',fog:'Fog',reflections:'Reflections',normal_maps:'Normal maps',specular:'Specular highlights',ambient_occlusion:'Ambient occlusion',alpha_haze:'Glass / haze',anisotropy:'Anisotropy',dynamic_resolution:'Dynamic resolution'})
     property var pendingPatch:({})
     spacing:12
@@ -107,6 +107,7 @@ ColumnLayout {
             Choice {objectName:'graphics-'+modelData;Layout.preferredWidth:220;model:root.values(modelData).map(root.label);currentIndex:root.values(modelData).indexOf(root.config[modelData]);enabled:ShellState.available('graphics.set');onActivated:root.setValue(modelData,root.values(modelData)[currentIndex])}
         }
     }
+    InkSettings { Layout.fillWidth:true; graphics:root.graphics; onGraphicsPatch:patch => { Object.keys(patch).forEach(k=>root.setValue(k,patch[k])); } }
     HudLabel {Layout.fillWidth:true;text:'Per-effect costs appear only for separately measured effects. World shading is one shared pass; its cost is not additive.';wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}
         }
     }

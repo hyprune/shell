@@ -56,7 +56,7 @@ optional assets fall back by role. Original sample: `dev/styles/signal-amber`.
 python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -q
 ./dev/run hud-check
-HYPRUNE_NESTED_PROTOCOL=0.12 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+HYPRUNE_NESTED_PROTOCOL=0.13 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
 ```
 
 The harness verifies its own child compositor/headless output and owns teardown;
@@ -194,7 +194,7 @@ fill, soft shadows and explicit world outlines are retained. The gallery has
 
 ## Cursor and climbing (IPC 0.12)
 
-The launcher now defaults to exact **0.12**; explicit older selections remain
+This follow-up introduced exact **0.12**; explicit older selections remain
 supported. Canonical 0.11/0.12 schemas are pinned separately with their hashes;
 climbing comes from 0.11, and cursor mode from 0.12. Recording/replay contracts
 are validated without adding automatic recording or replay actions.
@@ -239,3 +239,66 @@ Validation: **67 shell tests**, the SDK 0.2 mock compatibility check, and **12
 real-core 0.12 concept/resolution cases** passed. The locked run captured 25
 screenshots with no QML/schema/layout errors. [Recorded results and core
 follow-ups](evidence/hud-interaction-012.json).
+
+
+## Ink, visibility and authored cameras (IPC 0.13)
+
+The launcher defaults to exact **0.13**. Performance → **Ink & visibility** adds
+Preset/Off/On ink permission, an independent GPU cost covering geometry
+normals/depth plus edge ink, authored-visibility culling and submitted/culled/total
+batch counts. Worlds without an authored outline stay unoutlined when On is
+selected. Older protocols show an unavailable message and never receive either
+new graphics patch key; selecting a preset clears the outline override only on
+0.13.
+
+Width (1–4 logical pixels) and `#RRGGBB` colour edit the loaded world's existing
+ink profile through `atmosphere.get/set`; the bridge merges only those fields
+into a fresh profile. They apply live **until world reload**. Reset colour restores
+the colour first loaded in this shell session. No style is invented for worlds
+without one. Core 0.13 has **one fixed native geometry-edge quality**, so the
+quality row is disabled and says so; a genuine quality selector still needs a
+core contract. There are no persisted graphics width/colour override fields in
+0.13, and the UI does not promise persistence for these atmosphere edits.
+
+World packages 0.3, 0.4 and 0.5 now validate through a separate canonical world
+registry, including 0.5 ink and visibility metadata. Frozen IPC common-schema
+pins are unchanged. The exact 0.13 IPC pin is also unchanged: its top-level
+`oneOf` has overlapping generic/photo/release revision-response branches, so the
+shell uses their union at the envelope. Each response is still validated against
+its originating method. The schema repository should correct this overlap.
+
+The shell never requests `camera.author`, `camera.photo` or `camera.release`.
+On 0.13 it polls the read-only `camera.get` at 4 Hz while active. HUD content stays
+hidden until the first lens sample and during `held:true`; the transparent
+Wayland HUD window remains mapped to preserve verified shell association and
+its lease. Release, author disconnect or a world change restores the normal HUD
+after a fresh lens sample. Director controls remain independent. Capture tools
+should wait for this poll (up to 250 ms plus response/render latency) before
+capturing a held camera. The dev `preview.status` reports `hudVisible` and camera
+state for deterministic waits.
+
+```sh
+HYPRUNE_HUD_AUTHORING=1 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+This uses core's authoring grant for the **test client only**, launches the real
+shell with normal grants, loads the 0.5 visibility laboratory, and exercises
+actual keyboard controls for ink, width, colour/reset and culling. It captures
+Performance at 1080p/1440p/4K and compact 1080p scale 2, then holds a 90° rolled,
+15° FOV, shifted-lens camera. HUD hiding, fixed pose, same-lease restoration on
+release and author disconnect are asserted. Evidence:
+`docs/evidence/hud-authoring-013.json`; gallery `performance-ink-*-ipc013.png`,
+`photo-held-ipc013.png` and `photo-released-ipc013.png`.
+
+Validation against core `2494c13`: **74 unit tests**, the SDK mock HUD check,
+and locked real-core **0.12 and 0.13** acceptance runs passed. The older-core run
+selects a preset through the actual menu and verifies no 0.13-only keys are sent:
+
+```sh
+HYPRUNE_HUD_GRAPHICS_COMPAT=1 HYPRUNE_FOLLOWUP_PROTOCOL=0.12 flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
+```
+
+Integration note: that core revision's `dev/live/live.py` still explicitly picks
+**0.12**. Its launcher must select 0.13 to expose these additions in the owner's
+session; the shell respects an explicit older version. No live-session commands
+were run for this work.

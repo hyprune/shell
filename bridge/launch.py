@@ -17,8 +17,9 @@ from client import Client
 from preferences import Preferences
 from world_style import load as load_world_style
 from protocol import SUPPORTED_PROTOCOLS, at_least
+from outline import OutlineController
 from jsonschema.exceptions import ValidationError
-from protocol import decode, WORLD_VALIDATOR, WORLD_V2_VALIDATOR
+from protocol import decode, WORLD_VALIDATORS
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,7 +56,9 @@ def catalog(paths):
     for path in paths:
         manifest = Path(path)
         obj = decode(manifest.read_bytes())
-        (WORLD_V2_VALIDATOR if obj.get('formatVersion') == '0.2' else WORLD_VALIDATOR).validate(obj)
+        version = obj.get('formatVersion')
+        if version not in WORLD_VALIDATORS: raise ValueError('Unsupported world format')
+        WORLD_VALIDATORS[version].validate(obj)
         result.append(obj)
     return result
 
@@ -98,7 +101,7 @@ async def main(args):
                 emit({'type':'world.style','value':style})
                 if style.get('warning'): emit({'type':'notice','level':'warning','message':style['warning'],'code':'style.asset'})
         if event["type"] in ["connection", "notice"]: print(json.dumps(event), flush=True)
-        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata', 'preferences', 'world.style']:
+        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata', 'preferences', 'world.style', 'outline']:
             cache[event['type']] = event
         line = (json.dumps(event, ensure_ascii=False, allow_nan=False) + '\n').encode()
         for writer in tuple(peers):
@@ -110,6 +113,7 @@ async def main(args):
     emit({'type':'preferences', 'value':preferences.value})
     bindings = dict(pair.split('=', 1) for pair in args.output)
     client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.protocol, args.client_id)
+    outline = OutlineController(client)
     worlds = catalog(args.world_package)
     for manifest in args.world_package:
         try:
@@ -141,10 +145,14 @@ async def main(args):
             elif cmd['type'] == 'drive' and at_least(args.protocol, 3):
                 await client.call('route.set', {'points':[{'position':cmd['position']}]})
                 await client.call('autodrive.start', {})
+            elif cmd['type'] in ['outline.get','outline.patch'] and at_least(args.protocol,13):
+                result = await outline.update(cmd.get('worldId'),cmd.get('patch'))
+                emit({'type':'outline','value':result})
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
                 if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
                         (['graphics.get','graphics.set'] if at_least(args.protocol, 7) else []) +
+                        (['camera.get'] if at_least(args.protocol,13) else []) +
                         (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if at_least(args.protocol, 6) else []) +
                         (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if at_least(args.protocol, 4) else []) +
                         (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if at_least(args.protocol, 2) else [])):
@@ -275,7 +283,7 @@ async def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
-    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.12'), help='Exact production protocol; never auto-upgrade')
+    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.13'), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')

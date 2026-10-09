@@ -12,7 +12,7 @@ import m3b
 from ctl import verified
 from m2 import wait, keys, pose
 GALLERY=pathlib.Path.home()/'hyprune-gallery'
-PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12')
+PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
@@ -41,7 +41,8 @@ def acceptance(client,children,args,shell_token,socketpath):
     r,w=os.pipe();os.write(w,(shell_token+'\n').encode());os.close(w)
     _,env=verified();env.update(HYPRUNE_TOKEN_FD=str(r),HYPRUNE_PROTOCOL=PROTOCOL,HYPRUNE_SOCKET=str(socketpath),HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',HYPRUNE_DEV_AUTOMATION='1',HYPRUNE_SHELL_PREFERENCES=str(s.STATE/'hud-preferences.json'))
     log=open(s.STATE/'shell.log','w')
-    shell=subprocess.Popen(['python3',str(ROOT/'bridge/launch.py'),'--protocol',PROTOCOL,'--world-package',str(package)],env=env,pass_fds=(r,),stdout=log,stderr=subprocess.STDOUT)
+    world_args=['--world-package',str(s.STATE/'worlds/org.hyprune.visibility/world.json')] if os.environ.get('HYPRUNE_HUD_AUTHORING') else []
+    shell=subprocess.Popen(['python3',str(ROOT/'bridge/launch.py'),'--protocol',PROTOCOL,'--world-package',str(package),*world_args],env=env,pass_fds=(r,),stdout=log,stderr=subprocess.STDOUT)
     os.close(r);children.append(shell)
     def child():
         assert shell.poll() is None
@@ -55,7 +56,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         except (subprocess.CalledProcessError,json.JSONDecodeError):return {}
     wait(lambda:status().get('lease'))
     wait(lambda:not status().get('warp'))
-    assert any('Arbeitsplatzorganisation' in w['title'] for w in status()['workspaces'])
+    wait(lambda:any('Arbeitsplatzorganisation' in w['title'] for w in status().get('workspaces',[])))
     client.call('movement.set',{'modeId':'com.hyprune.fly'})
     pose(client,[-8,2,12])
     def shot(name):
@@ -74,6 +75,14 @@ def acceptance(client,children,args,shell_token,socketpath):
         s.ctl('eval',f'hl.monitor({{output="HEADLESS-1",mode="{w}x{h}@60",position="1600x0",scale={scale}}})');time.sleep(1)
     evidence = {'protocol':PROTOCOL, 'captures':[]}
     homes={'sun-court':[-8,2,12],'array-hall':[8,2,-34],'rime-vault':[38,-4.3,-79],'signal-rise':[54,2,-125]}
+    if os.environ.get('HYPRUNE_HUD_GRAPHICS_COMPAT'):
+        from hud_authoring_check import check_compat
+        check_compat(client,ui,status,shot,opened)
+        return
+    if os.environ.get('HYPRUNE_HUD_AUTHORING'):
+        from hud_authoring_check import check
+        check(client,children,ui,status,state,shot,resolution,opened,closed)
+        return
     if os.environ.get('HYPRUNE_HUD_INTERACTION'):
         from hud_interaction_check import check
         check(client,children,ui,status,state,shot,resolution)
@@ -279,4 +288,7 @@ if __name__=='__main__':
         subprocess.run([sys.executable,str(CORE/'tests/fixtures/climbing.py')],check=True)
         os.environ['HYPRUNE_M2_PACKAGE']=str(CORE/'tests/fixtures/climbing')
     m3b.acceptance=acceptance
-    s.run(argparse.Namespace(m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))
+    if os.environ.get('HYPRUNE_HUD_AUTHORING'):
+        import authoring
+        authoring.acceptance=acceptance
+    s.run(argparse.Namespace(authoring=bool(os.environ.get("HYPRUNE_HUD_AUTHORING")),m3b=True,m3a=False,m2=False,m1=False,integration=False,live=False,serve=False,record=False,visible=False))

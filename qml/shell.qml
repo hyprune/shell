@@ -46,7 +46,7 @@ ShellRoot {
                 height: parent.height / uiScale
                 scale: uiScale
                 transformOrigin: Item.TopLeft
-                visible: ShellState.active
+                visible: ShellState.active && !ShellState.authoredCamera
             }
 
             Rectangle {
@@ -199,7 +199,7 @@ ShellRoot {
         function graphicsFocus(key: string): bool {
             if (!ShellState.dev || !ShellState.director) return false;
             var choice = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'graphics-' + key);
-            if (!choice) return false;
+            if (!choice || !choice.enabled) return false;
             choice.forceActiveFocus();
             return true;
         }
@@ -235,6 +235,8 @@ ShellRoot {
         }
         function status(): string {
             return JSON.stringify({
+                outline: ShellState.outline,
+                hudVisible: !!root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.visible, camera: ShellState.camera, capabilities: ShellState.capabilities,
                 worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,
                 concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
                 graphics: ShellState.graphics,

@@ -20,6 +20,9 @@ class PerformanceText(unittest.TestCase):
         self.assertEqual(evaluate("effectCost(null,{gpuEffectsMs:{bloom:.125}},'bloom')"), '0.13 ms')
         self.assertEqual(evaluate("effectCost(null,{},'fog')"), '')
 
+    def test_ink_cost_includes_its_measured_geometry_pass(self):
+        self.assertEqual(evaluate("effectCost({controls:{outline:{gpuMs:1.25,sharedPass:'outline',passGpuMs:1.25}}},{},'outline')"),'1.25 ms')
+
     def test_shared_summary_follows_core_membership_and_handles_missing_timers(self):
         self.assertEqual(evaluate("worldShading({controls:{fog:{sharedPass:'world_shading_shared',passGpuMs:3.92},anisotropy:{sharedPass:null}}},{},{fog:'Fog'})"), 'World shading 3.92 ms, shared by:\nFog')
         self.assertIn('timing unavailable', evaluate("worldShading(null,{},{})"))

@@ -24,6 +24,13 @@ QtObject {
     function setConcept(name) { if (['Vanguard','Instrument','Minimal'].indexOf(name) < 0) return; Tokens.hudConcept=name; preference({concept:name}); showBanner(name.toUpperCase()); }
     function cycleHud() { var names = ['Vanguard','Instrument','Minimal']; setConcept(names[(names.indexOf(Tokens.hudConcept)+1)%3]); }
     property Timer graphicsPoll: Timer { interval: 1000; running: root.active && root.available('graphics.get'); repeat: true; triggeredOnStart: true; onTriggered: root.action('graphics.get',{}) }
+    property var camera: null
+    property var outline: null
+    readonly property bool authoredCamera: protocol === '0.13' && (!camera || camera.held)
+    property Timer cameraPoll: Timer { interval:250; running:root.active && root.protocol === '0.13' && root.available('camera.get'); repeat:true; triggeredOnStart:true; onTriggered:root.action('camera.get',{}) }
+    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === 7 && root.protocol === '0.13' && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
+    function refreshOutline() { if (state && state.world) send({type:'outline.get',worldId:state.world.id}); }
+    function patchOutline(patch) { if (state && state.world) send({type:'outline.patch',worldId:state.world.id,patch:patch}); }
     property var graphics: null
     property var menuHold: null
     property double revision: 0
@@ -256,7 +263,7 @@ QtObject {
                 samples = [];
                 projectionSamples = [];
                 markers = [];
-                graphics = null; hudFrame = null; hudPose = null; hudTool = null;
+                camera = null; outline = null; graphics = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null;
                 methods = [];
                 capabilities = [];
@@ -275,6 +282,7 @@ QtObject {
             presentation = msg;
             break;
         case 'state':
+            if (!state || !state.world || !msg.state || !msg.state.world || state.world.id !== msg.state.world.id) { camera = null; outline = null; }
             if (state && msg.state && state.workspaces && msg.state.workspaces && state.workspaces.currentId !== msg.state.workspaces.currentId) showBanner('WORKSPACE FOCUSED');
             state = msg.state;
             revision = msg.revision;
@@ -322,7 +330,11 @@ QtObject {
                 "heading": angle
             }]).slice(-12);
             break;
+        case 'outline':
+            if (state && state.world && msg.value.worldId === state.world.id) outline = msg.value;
+            break;
         case 'action':
+            if (msg.method === 'camera.get') camera = msg.result;
             if (msg.method === 'waypoint.set') showBanner('WAYPOINT SET');
             if (msg.method === 'graphics.get' || msg.method === 'graphics.set') graphics = msg.result;
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);

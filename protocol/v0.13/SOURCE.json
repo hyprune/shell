@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/hyprune/schema",
+  "commit": "2c030cb0297d5645fe3aa2f556b4726b9ebab530",
+  "file": "ipc.schema.json",
+  "sha256": "221ba19d7eebb95ee021a04fc4f042e2ebdf76ba5599fd8f7209158e0cc64561",
+  "protocol": "0.13",
+  "adapter": "Canonical bytes retained. bridge/protocol.py uses a union for the overlapping top-level response envelope; per-method response validation remains strict."
+}
