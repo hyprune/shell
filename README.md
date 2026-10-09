@@ -239,6 +239,9 @@ The launcher owns the authenticated bridge across QML restarts; same-UID owned
 replacement children reconnect and bind their actual Wayland PID. No credentials
 are exposed to QML. Back in world control gives a real cursor for native layers;
 Back/Super+Tab returns. The full live cursor checklist remains in core/docs/M3B.md.
+Invalid complete core frames are quarantined with redacted diagnostics and a
+fresh snapshot. The updated core supervisor renews one-use credentials after
+bridge disconnects; see [recovery and nested verification](docs/bridge-recovery.md).
 
 World-anchored waypoint labels, the active route and E/F prompts are drawn by
 core with the camera of the current frame. IPC 0.6 hides its projected HUD marker
