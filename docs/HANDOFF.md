@@ -18,7 +18,7 @@
   is vendored with its hash: areaId is optional for unzoned instances, nonempty
   when supplied. Older shell protocol pins remain unchanged. Core removes
   unzoned mount metadata for older negotiated protocols.
-- **100 unit tests pass**, including repeated invalid snapshots, malformed JSON,
+- **100 unit tests pass** (rechecked after the Placement sizing fix), including repeated invalid snapshots, malformed JSON,
   redaction, burst throttling, and optional/nonempty areaId validation.
 - **Real-core nested recovery run passed under the flock**: Lumen → local styled
   format-0.5 world with visibility regions; injected invalid delta recovered by
@@ -31,6 +31,18 @@
 - Earlier Adventure/Placement/generic gesture work is already committed through
   `ba67da2`; no additional HUD changes were made during this recovery task.
 
+- **Placement sizing (step 6) fixed** in `2eeb691` (captures harness `15154ad`).
+  Logical viewports under 800 px high (1080p @ 2×, 1440p @ 2×) use a dense
+  tool-5 deck: 56 px tile, 3-row window card (title, class + client size on one
+  row, both elided), hints on one row only when binding and label fit whole,
+  otherwise stacked so chords never split. 960×540: deck 528×211 → 422×150
+  (55%×39% → 44%×28%; six-action gesture overlay 52% → 39% high). 1080-logical
+  and larger layouts are geometrically unchanged. Verified in nested via
+  `dev/run placement-sizes` (SDK mock; 1080p/1440p/4K × scales 1/2 × three
+  concepts; no layout-audit failures, no QML warnings). Before/after sheet:
+  gallery `screenshots/placement-sizing-before-after-2026-10-09.png`.
+  Not yet re-shot through real core (`HYPRUNE_HUD_PLACEMENT` in hud-concepts.py).
+
 ## In progress / limits
 
 - A stronger regression requiring two explicitly unzoned mount instances is
@@ -41,8 +53,7 @@
 - The final schema pin has unit coverage but still needs the real nested rerun
   with a deterministic unzoned-window fixture. Core's agent is also implementing
   this replay; read `../core/docs/CHANGES-FOR-SDK-AND-SHELL.md` before duplicating it.
-- The **1080p @ 2× Placement panel is too large**. This is an open visual issue,
-  not fixed in this checkpoint.
+- Placement sizing at 1080p @ 2× is **fixed** (see Done → Placement sizing).
 
 ## Exact next steps
 
@@ -65,11 +76,10 @@
    strengthened attempt), `/tmp/hyprune-recovery-shell.log`, and
    `/tmp/hyprune-recovery-unit.log` (100 tests passed). They may contain private
    runtime details; do not copy them wholesale into a repo or gallery.
-6. Separately fix Placement sizing at 1920×1080, output scale 2 (960×540 logical).
-   Inspect the tile, window-info card, hints and count badge together; constrain
-   cluster dimensions to available logical viewport, elide long titles/classes,
-   and retain readable configured hints. Capture all three concepts at scales
-   1/2 and 1080p/1440p/4K in nested; keep this separate from recovery changes.
+6. ~~Placement sizing at 1080p @ 2×~~ done (`2eeb691`). Optional follow-up: rerun
+   the real-core placement acceptance (`HYPRUNE_HUD_PLACEMENT=1 flock
+   /tmp/worldshell-nested.lock python3 dev/hud-concepts.py`) to refresh the
+   gallery's `*-pocket-*-s2-ipc015.png` shots with the dense deck.
 
 ## Safety / open coordination
 
