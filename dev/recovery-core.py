@@ -84,7 +84,7 @@ def acceptance(identity,children):
             def pointer(*args):
                 device.stdin.write(' '.join(map(str,args))+'\n');device.stdin.flush();assert device.stdout.readline().strip()=='ok';time.sleep(.1)
             def place():
-                # Tool 5 LMB mounts a pocketed client in free space; workspace 8 is unbound.
+                # Tool 5 LMB mounts a pocketed client in free space; room workspace 20 is unbound.
                 keys('-k','5');wait(lambda:observed().get('tool')==5)
                 before=observed()['queue']
                 for turn in range(4):
@@ -94,7 +94,7 @@ def acceptance(identity,children):
                     except AssertionError:print('placement retry',json.dumps(observed()),flush=True)
                 raise AssertionError('tool-5 placement did not mount: '+json.dumps(observed()))
             s.ctl('eval','hl.dispatch(hl.dsp.focus({monitor="HEADLESS-1"}))')
-            s.ctl('eval','hl.dispatch(hl.dsp.focus({workspace="8"}))')
+            s.ctl('eval','hl.dispatch(hl.dsp.focus({workspace="20"}))')
             for n in range(2):children.append(s.envrun('kitty','--class','recovery-fixture-'+str(n),'--title','Recovery fixture '+str(n),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL))
             wait(lambda:sum(w['title'].startswith('Recovery fixture') for w in json.loads(s.ctl('clients','-j')))==2);time.sleep(.5)
             s.ctl('eval','hl.dispatch(hl.dsp.focus({workspace="91"}))')

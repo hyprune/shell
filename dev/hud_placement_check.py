@@ -31,9 +31,9 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
     def click(button):pointer('button',button,1);pointer('button',button,0)
     client.call('runtime.exit',{});wait(lambda:not state()['runtime']['active'])
     client.call('world.load',{'worldId':'org.hyprune.m3b'})
-    client.call('workspace.bind',{'id':8,'worldId':'org.hyprune.m3b','areaId':'sun-court'})
+    client.call('workspace.bind',{'id':20,'worldId':'org.hyprune.m3b','areaId':'sun-court'})
     s.ctl('eval','hl.dispatch(hl.dsp.focus({monitor="HEADLESS-1"}))')
-    s.ctl('eval','hl.dispatch(hl.dsp.focus({workspace="8"}))')
+    s.ctl('eval','hl.dispatch(hl.dsp.focus({workspace="20"}))')
     for i in range(3):
         title='Pocket '+str(i)+' — engineering notes, localisation review and extended workspace planning'
         children.append(s.envrun('kitty','--class','hyprune-pocket-'+str(i),'--title',title,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL))
