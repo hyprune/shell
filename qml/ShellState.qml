@@ -39,6 +39,7 @@ QtObject {
     function refreshOutline() { if (state && state.world) send({type:'outline.get',worldId:state.world.id}); }
     function patchOutline(patch) { if (state && state.world) send({type:'outline.patch',worldId:state.world.id,patch:patch}); }
     property var graphics: null
+    property var previousTimings: null // prior graphics.get sample (idle detection)
     property var menuHold: null
     property double revision: 0
     property string output: ''
@@ -269,7 +270,7 @@ QtObject {
                 samples = [];
                 projectionSamples = [];
                 markers = [];
-                camera = null; outline = null; graphics = null; hudFrame = null; hudPose = null; hudTool = null;
+                camera = null; outline = null; graphics = null; previousTimings = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
                 methods = [];
                 capabilities = [];
@@ -347,7 +348,10 @@ QtObject {
         case 'action':
             if (msg.method === 'camera.get') camera = msg.result;
             if (msg.method === 'waypoint.set') showBanner('WAYPOINT SET');
-            if (msg.method === 'graphics.get' || msg.method === 'graphics.set') graphics = msg.result;
+            if (msg.method === 'graphics.get' || msg.method === 'graphics.set') {
+                previousTimings = graphics ? graphics.timings : null;
+                graphics = msg.result;
+            }
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             break;
         case 'menu.panel':

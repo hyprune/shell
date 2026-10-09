@@ -3,6 +3,7 @@ import QtQuick
 import "theme"
 import "HudInteraction.js" as Interaction
 import "HudManipulation.js" as Manipulation
+import "components/PerformanceText.js" as PerformanceText
 QtObject {
     readonly property var manipulation: ShellState.dev && ShellState.manipulationPreview ? ShellState.manipulationPreview : Manipulation.presentation(ShellState.state)
     readonly property var placement: manipulation.placement
@@ -39,5 +40,6 @@ QtObject {
     readonly property bool resourceAvailable: resourceValue >= 0
     readonly property string resourceLabel: Tokens.hudResource === 'tool' ? (tool === 3 ? 'PATH POINT CAPACITY' : tool === 2 ? 'WINDOWS LOCKED' : 'NO TOOL CAPACITY') : Tokens.hudResource === 'cpu' ? 'CPU RENDER / FRAME BUDGET' : 'GPU / FRAME BUDGET'
     readonly property string resourceText: Tokens.hudResource === 'tool' ? (tool === 3 ? pathPoints+' / 2048' : tool === 2 ? locked+' LOCKED' : '—') : (Tokens.hudResource === 'cpu' ? cpuMs : gpuMs) >= 0 ? (Tokens.hudResource === 'cpu' ? cpuMs : gpuMs).toFixed(1)+' / '+budget.toFixed(1)+' ms' : 'UNAVAILABLE'
-    readonly property string stats: fps >= 0 ? Math.round(fps)+' FPS   /   '+(frameMs >= 0 ? frameMs.toFixed(1)+' ms' : '—')+'   /   '+(renderScale >= 0 ? Math.round(renderScale*100)+'% SCALE' : '—') : 'FRAME TELEMETRY UNAVAILABLE'
+    readonly property bool idle: PerformanceText.idle(ShellState.previousTimings, timings)
+    readonly property string stats: PerformanceText.stats(fps, frameMs, renderScale, idle)
 }

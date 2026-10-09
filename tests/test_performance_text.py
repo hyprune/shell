@@ -33,3 +33,20 @@ class PerformanceText(unittest.TestCase):
         self.assertEqual(evaluate("policy({status:'warming'})"), 'Switching renderer…')
         self.assertNotIn('undefined', evaluate("policy({profile:'unknown'})"))
         self.assertIn('unavailable', evaluate('policy(null)'))
+
+
+class IdleText(unittest.TestCase):
+    def test_no_new_rendered_frames_reads_idle(self):
+        self.assertTrue(evaluate("idle({renderedFrames:10,idleFrames:3},{renderedFrames:10,idleFrames:9})"))
+        # No compositor repaint at all: idleFrames flat, still idle.
+        self.assertTrue(evaluate("idle({renderedFrames:10,idleFrames:3},{renderedFrames:10,idleFrames:3})"))
+
+    def test_rendering_or_old_core_is_not_idle(self):
+        self.assertFalse(evaluate("idle({renderedFrames:10,idleFrames:3},{renderedFrames:17,idleFrames:3})"))
+        self.assertFalse(evaluate("idle({renderedFrames:10},{renderedFrames:10})"))  # pre-on-demand core
+        self.assertFalse(evaluate("idle(null,{renderedFrames:10,idleFrames:0})"))
+
+    def test_stats_text(self):
+        self.assertEqual(evaluate("stats(3,850,.5,true)"), 'IDLE   /   no changes   /   50% SCALE')
+        self.assertEqual(evaluate("stats(59.6,16.7,.5,false)"), '60 FPS   /   16.7 ms   /   50% SCALE')
+        self.assertEqual(evaluate("stats(-1,-1,-1,false)"), 'FRAME TELEMETRY UNAVAILABLE')

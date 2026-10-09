@@ -44,3 +44,19 @@ function policy(performance) {
         sentence += ' Offload unavailable: ' + performance.reason + '.';
     return sentence;
 }
+
+// Core renders on demand: while nothing changes it renders no new world frames
+// (timings.idleFrames counts cached re-presentations). Idle means two successive
+// graphics.get samples saw no new rendered frame, so FPS would read near zero.
+function idle(previous, current) {
+    return !!(previous && current && typeof current.idleFrames === 'number' &&
+              typeof previous.renderedFrames === 'number' && typeof current.renderedFrames === 'number' &&
+              current.renderedFrames === previous.renderedFrames && current.idleFrames >= (previous.idleFrames || 0));
+}
+
+function stats(fps, frameMs, renderScale, isIdle) {
+    if (fps < 0 && !isIdle) return 'FRAME TELEMETRY UNAVAILABLE';
+    var scale = renderScale >= 0 ? Math.round(renderScale * 100) + '% SCALE' : '—';
+    if (isIdle) return 'IDLE   /   no changes   /   ' + scale;
+    return Math.round(fps) + ' FPS   /   ' + (frameMs >= 0 ? frameMs.toFixed(1) + ' ms' : '—') + '   /   ' + scale;
+}
