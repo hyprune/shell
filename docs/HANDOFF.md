@@ -44,7 +44,7 @@
   Not yet re-shot through real core (`HYPRUNE_HUD_PLACEMENT` in hud-concepts.py).
 
 - **Logo mark (2026-10-09).** `qml/components/BrandMark.qml` draws the vendored
-  one-ink masters (meta `ef0ce64`, provenance in `qml/components/brand/BRAND.md`)
+  one-ink masters (meta `352e777`, provenance in `qml/components/brand/BRAND.md`)
   with QtQuick.Shapes CurveRenderer in `Tokens.accent`, choosing H16/H32/optical/
   primary by physical pixels (window DPR × ancestor scale; `Screen.devicePixelRatio`
   reports 2 at output scale 1.25, so it isn't used first). Shown in the Director header

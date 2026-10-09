@@ -1,7 +1,7 @@
 # Vendored Hyprune logo
 
 Copied unchanged from the meta repository `hyprune/hyprune`, folder `brand/`, at
-commit **ef0ce64** ("Add the brand folder: approved logo SVGs, exports and usage
+commit **352e777** ("Add the brand folder: approved logo SVGs, exports and usage
 rules"). Hashes are the ones listed in that commit's `brand/SHA256SUMS`.
 
 | Vendored file | Source path | SHA-256 |

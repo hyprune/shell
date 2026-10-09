@@ -33,7 +33,7 @@ def evaluate(expression):
 
 class Provenance(unittest.TestCase):
     def test_brand_note_cites_commit_and_lists_every_vendored_svg(self):
-        self.assertIn('ef0ce64', (BRAND / 'BRAND.md').read_text())
+        self.assertIn('352e777', (BRAND / 'BRAND.md').read_text())
         self.assertEqual(set(recorded()), {p.name for p in BRAND.glob('*.svg')})
 
     def test_vendored_bytes_match_recorded_hashes(self):
