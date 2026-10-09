@@ -232,6 +232,15 @@ ShellRoot {
             var view = views.find(v => v.outputScreenName === ShellState.screenName);
             return ShellState.dev ? JSON.stringify(Audit.inspect(view)) : '{}';
         }
+        function brandMarks(): string {
+            if (!ShellState.dev || !ShellState.director) return '[]';
+            var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+            return JSON.stringify(['brandMark:director','brandMark:about'].map(name => Audit.find(view,name)).filter(m => m).map(function(m) {
+                var p = m.mapToItem(null, 0, 0), q = m.mapToItem(null, m.width, m.height);
+                return {name:m.objectName, size:m.size, pixelRatio:m.pixelRatio, physicalSize:m.physicalSize, variant:m.variant,
+                        color:m.color.toString(), sceneBox:[p.x,p.y,q.x,q.y], inkLeft:m.inkLeft, inkRight:m.inkRight, inkTop:m.inkTop, inkBottom:m.inkBottom};
+            }));
+        }
         function contrastProbe(mode: string): string {
             if (!ShellState.dev || ['normal','background','mask','white','white-background'].indexOf(mode) < 0) return '{}';
             var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
