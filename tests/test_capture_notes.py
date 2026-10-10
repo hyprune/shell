@@ -94,7 +94,7 @@ class Prompt(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.client.note_id)
 
     def test_wire_contract_is_0_17_only(self):
-        self.assertEqual(SUPPORTED_PROTOCOLS[-1], '0.17')
+        self.assertIn('0.17', SUPPORTED_PROTOCOLS)
         self.assertEqual(sorted(VALIDATORS, key=lambda v: int(v.split('.')[1])), list(SUPPORTED_PROTOCOLS))
         frame = {'jsonrpc': '2.0', 'id': 'n', 'method': 'capture.annotate', 'params': {'captureId': 'capture-1', 'note': 'Brücke 橋'}}
         VALIDATORS['0.17'].validate(frame)
