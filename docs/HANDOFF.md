@@ -1,5 +1,25 @@
 # Shell handoff — 2026-10-09
 
+## IPC 0.19 player settings, view bob, reticle (2026-10-10, branch ipc19/player-reticle)
+
+- Pins: `protocol/v0.18` (schema 53c86f4, offload device) and `protocol/v0.19`
+  (schema f76922b). The launcher default follows the newest pin (0.19), so it
+  needs a 0.19 core; select older contracts with `--protocol`.
+- Bridge: `shell_actions(protocol)` allows `player.get`/`player.set` from 0.19.
+- Settings → Movement / Reticle (`MovementSettings.qml`, `ReticleSettings.qml`,
+  `ReticlePreview.qml`, helpers in `qml/PlayerSettings.js`). They appear only when
+  core negotiates 0.19 with `player.get`. Patches coalesce in 120 ms. FOV goes
+  through `graphics.set`. Reset sends null patches. A custom `reticle_colour` from
+  Lua or the SDK shows as "Custom".
+- `overlay.style` with 0.19 adds reticleColor = HUD foreground, validColor =
+  `Tokens.hudPositive`, invalidColor = `Tokens.hudWarning` (per HUD concept).
+  Director `Tokens.positive`/`warning` cover Paper and Night. World HUD styles
+  can't override positive/warning yet: hud-style 1 (vendored from the schema
+  repo) has no such keys.
+- Tests: `tests/test_ipc19.py`. Captures: `./dev/run player` writes to
+  `docs/evidence/ipc18/`, using the dev-only `playerPreview` hook because the SDK
+  mock speaks 0.2. Not yet checked against a real 0.19 core.
+
 ## Done
 
 - Recovery fix committed as `72a75a9` (not pushed). Complete invalid JSON/schema

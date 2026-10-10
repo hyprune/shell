@@ -1,7 +1,8 @@
 # Hyprune shell
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.15. The shell launcher defaults to exact 0.15; `--protocol` or
+IPC 0.1–0.19 (one vendored pin per version under `protocol/`). The shell launcher
+defaults to the newest pin; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
 world metadata, safe SVG map, places, output descriptor, projected markers and
@@ -19,6 +20,14 @@ Instrument and Minimal. In IPC 0.15, tool 5 opens the window pocket. Tool hints
 use core's Primary / Secondary / Alternate / Cycle labels and configured
 bindings, switching to global gestures while Super is held. See
 [the Placement HUD contract](docs/proposals/placement-hud.md).
+
+IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
+grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,
+gap, opacity, outline, dynamic, with a preview), backed by core's `player.get` /
+`player.set`. The shell sends the reticle, valid and invalid colours from the HUD
+theme with `overlay.style`, and dims the primary tool hint while the reticle is out
+of range or invalid. `./dev/run player` captures both sections from the mock using
+dev preview data.
 
 Older protocols and the development mock retain their explicit limits below.
 The real showcase and verification are documented in
