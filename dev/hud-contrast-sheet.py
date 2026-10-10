@@ -3,10 +3,11 @@
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import json
+import os
 import re
 import subprocess
 
-P=Path.home()/'hyprune-gallery/screenshots/hud-concepts'
+P=(Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else Path(__file__).resolve().parent/'.run/gallery')/'screenshots/hud-concepts'
 font=subprocess.check_output(['fc-match','-f','%{file}','DejaVu Sans'],text=True)
 def f(n):return ImageFont.truetype(font,n)
 def crops(path):

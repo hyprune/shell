@@ -11,7 +11,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys, pose
-GALLERY=pathlib.Path.home()/'hyprune-gallery'
+GALLERY=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')
 PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13' if os.environ.get('HYPRUNE_HUD_AUTHORING') and not os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.14' if os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.15')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)

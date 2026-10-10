@@ -44,8 +44,10 @@ This launches the SDK's actual IPC 0.2 `MockDaemon` with
 [dev/scenario.json](dev/scenario.json), plus this shell in a visible nested Wayland
 window. `preview` is an alias. The SDK owns the 350 ms hold timer; a supervisor
 trigger feeds its `hold` API and the shell receives `ui.opened`. Ctrl+C stops the
-run. `HYPRUNE_SDK_DIR` selects another checkout; the tested pin and adapter hooks
-are recorded in `dev/SDK-SOURCE.json`.
+run. `HYPRUNE_SDK_DIR` selects another checkout (default: the sibling `../sdk`);
+the tested pin and adapter hooks are recorded in `dev/SDK-SOURCE.json`. Capture
+harnesses write screenshots and videos under `$HYPRUNE_GALLERY_DIR` (default:
+the ignored `dev/.run/gallery/`).
 
 ```sh
 ./dev/run tour          # six views, then a native world load

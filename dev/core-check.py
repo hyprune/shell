@@ -173,7 +173,7 @@ async def main():
         await probe.call('travel.start', {'to': {'zoneId': 'gallery'}, 'durationMs': 5800})
         await until(lambda: ui()['warp'])
         await asyncio.sleep(2)
-        shots = Path(os.environ.get('HYPRUNE_GALLERY_DIR', str(Path.home() / 'hyprune-gallery'))) / 'screenshots/hyprune-shell-m0'
+        shots = Path(os.environ.get('HYPRUNE_GALLERY_DIR', str(Path(__file__).resolve().parent / '.run/gallery'))) / 'screenshots/hyprune-shell-m0'
         shots.mkdir(parents=True, exist_ok=True)
         nested('grim', '-o', 'HYPRUNE-PREVIEW', str(shots / 'native-core-warp.png'))
         await until(lambda: probe.state['location']['transition']['phase'] == 'arrived')

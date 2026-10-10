@@ -11,7 +11,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys, pose
-GALLERY=pathlib.Path.home()/'hyprune-gallery'
+GALLERY=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')
 SHOTS=GALLERY/'screenshots/hyprune-shell-polish'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
