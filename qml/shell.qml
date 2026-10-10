@@ -122,6 +122,28 @@ ShellRoot {
         }
     }
 
+    // Capture note prompt (IPC 0.17). Same namespace as the Director, so core gives it the
+    // keyboard while the shell holds exclusive input; never shown with the Director.
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            required property var modelData
+            screen: modelData
+            visible: ShellState.active && ShellState.notePrompt !== '' && !ShellState.director && !ShellState.warpActive &&
+                     modelData.name === ShellState.screenName
+            anchors { bottom: true }
+            margins.bottom: 96
+            implicitWidth: notePrompt.implicitWidth
+            implicitHeight: notePrompt.implicitHeight
+            color: 'transparent'
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: 'hyprune-director'
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            NotePrompt { id: notePrompt; anchors.fill: parent }
+        }
+    }
+
     // A jump is presentation only: it cannot intercept emergency input.
     Variants {
         model: Quickshell.screens
@@ -270,7 +292,7 @@ ShellRoot {
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
-                lease: ShellState.lease, director: ShellState.director,
+                lease: ShellState.lease, director: ShellState.director, notePrompt: ShellState.notePrompt, noteText: ShellState.noteText,
                 revision: ShellState.revision, tab: ShellState.tab,
                 warp: ShellState.warpActive, phase: ShellState.transition.phase,
                 world: ShellState.state && ShellState.state.world ? ShellState.state.world.id : null,

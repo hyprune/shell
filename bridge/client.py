@@ -53,6 +53,7 @@ class Client:
         self.session = self.subscription = self.lease = self.output = None
         self.resyncing = False
         self.director = False
+        self.note_id = None  # capture awaiting a note (IPC 0.17 prompt); owns exclusive input
         self.overlay_revision = -1
         self.ui_epoch = 0
         self.ready = False
@@ -275,13 +276,17 @@ class Client:
                 raise RuntimeError('Session revoked: ' + p['reason'])
             if msg['method'] == 'runtime.notice':
                 self.emit({'type': 'notice', **p})
+            elif msg['method'] == 'capture.taken':
+                self.spawn(self.capture_taken(p))
             elif msg['method'] == 'ui.opened':
+                self.end_note('director')
                 if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] in ['director', 'overview', 'map'] and (not at_least(self.protocol, 2) or p['revision'] >= self.overlay_revision):
                     self.emit({'type':'menu.panel','panel':p['panel']})
                     self.ui_epoch += 1
                     self.spawn(self.overlay(True, self.ui_epoch))
             elif msg['method'] == 'ui.closed':
                 if p['leaseId'] == self.lease and p['outputId'] == self.output and p['revision'] >= self.overlay_revision:
+                    self.end_note('dismissed')  # core's Escape (menu exit): no note
                     self.ui_epoch += 1
                     self.overlay_revision = p['revision']
                     self.director = False
@@ -343,6 +348,7 @@ class Client:
                                       (self.lease_seen and not own) or
                                       (own and self.output not in own['outputs']))
             if invalid or not runtime['active']:
+                self.end_note('lost')
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
                 if self.lease and 'shell.release' in self.hello['methods']:
@@ -353,6 +359,8 @@ class Client:
                 self.publish()
                 return
             # A cleared exclusive flag means lock/exit/lease loss: unmap immediately.
+            if self.note_id and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
+                self.end_note('lost')
             if self.director and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
@@ -399,6 +407,7 @@ class Client:
             if not self.lease or not self.ready:
                 raise RuntimeError('Overview unavailable: no authenticated output lease')
             if not visible:
+                self.end_note('lost')
                 self.ui_epoch += 1
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
@@ -423,6 +432,53 @@ class Client:
                 self.emit({'type': 'director', 'open': True, 'revision': result['revision']})
             elif visible and epoch != self.ui_epoch:
                 self.spawn(self.overlay(False))
+
+    def end_note(self, reason):
+        """Close the note prompt (no note is written here)."""
+        if self.note_id:
+            self.note_id = None
+            self.emit({'type': 'capture.prompt', 'captureId': None, 'reason': reason})
+
+    async def capture_taken(self, p):
+        """U in navigation opens a note prompt with exclusive keyboard; U again (the
+        mode's capture binding) while it is open moves the prompt to the new capture."""
+        async with self.ui_lock:
+            if not self.lease or not self.ready or not self.state or not self.state['runtime']['active']:
+                return
+            previous = self.note_id
+            if previous is None and (p['mode'] != 'world' or self.director):
+                return  # Busy in an app, focus, free cursor or the Director: capture only.
+            self.note_id = p['captureId']
+            # QML saves the previous capture's text as-is before clearing the field.
+            self.emit({'type': 'capture.prompt', 'captureId': p['captureId'], 'previous': previous})
+            if previous is not None:
+                return
+            try:
+                if not self.wayland_pid: raise RuntimeError('Wayland child unavailable')
+                await self.call('shell.bind', {'leaseId': self.lease, 'pid': self.wayland_pid})
+                result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                           'visible': True, 'exclusiveInput': True})
+                self.overlay_revision = max(self.overlay_revision, result['revision'])
+            except Exception:
+                self.end_note('lost')
+                raise
+
+    async def capture_note(self, capture_id, note, release=True):
+        """Enter: write the note (empty allowed); release=False keeps input for the next prompt."""
+        if note is not None:
+            await self.call('capture.annotate', {'captureId': capture_id, 'note': note})
+        if release:
+            await self.capture_release(capture_id)
+
+    async def capture_release(self, capture_id):
+        async with self.ui_lock:
+            if self.note_id != capture_id:
+                return  # Superseded by a newer capture or already closed.
+            self.end_note('closed')
+            if self.lease and self.ready and not self.director:
+                result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                           'visible': False, 'exclusiveInput': False})
+                self.overlay_revision = max(self.overlay_revision, result['revision'])
 
     async def run(self):
         backoff = .25
@@ -473,6 +529,7 @@ class Client:
                 self.hud_sequence = -1
                 self.hud_times = {}
                 self.ready = self.director = False
+                self.end_note('lost')
                 self.resyncing = False
                 self.overlay_revision = -1
                 self.ui_epoch += 1

@@ -54,6 +54,12 @@ QtObject {
         function onLightChanged() { root.applyCoreStyle(); }
     }
     property bool director: false
+    // IPC 0.17 debug capture note: the capture awaiting a note ('' = no prompt).
+    property string notePrompt: ''
+    property string noteText: ''
+    function cleanNote(text) { return String(text).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 1000); }
+    function submitNote() { if (notePrompt) send({type: 'capture.note', captureId: notePrompt, note: cleanNote(noteText), release: true}); }
+    function dismissNote() { if (notePrompt) send({type: 'capture.dismiss', captureId: notePrompt}); }
     property int tab: 0
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
@@ -361,6 +367,20 @@ QtObject {
             break;
         case 'director':
             director = msg.open;
+            break;
+        case 'capture.prompt':
+            if (msg.captureId) {
+                // U again while the prompt is open: the previous capture keeps its text as-is.
+                if (msg.previous) send({type: 'capture.note', captureId: msg.previous, note: cleanNote(noteText), release: false});
+                noteText = '';
+                notePrompt = msg.captureId;
+            } else {
+                // The Director replacing the prompt keeps typed text; Esc and loss keep nothing.
+                if (msg.reason === 'director' && notePrompt && noteText !== '')
+                    send({type: 'capture.note', captureId: notePrompt, note: cleanNote(noteText), release: false});
+                notePrompt = '';
+                noteText = '';
+            }
             break;
         case 'notice':
             if (msg.code === 'placement.pocketed') {showBanner('POCKETED '+msg.message.replace(/^pocketed\s*/i,''));break;}

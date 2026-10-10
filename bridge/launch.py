@@ -164,6 +164,13 @@ async def main(args):
                 if cmd['method']=='overlay.style':params={**params,'leaseId':client.lease}
                 result = await client.call(cmd['method'], params)
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
+            elif cmd['type'] == 'capture.note' and at_least(args.protocol, 17):
+                # Enter (note may be ''); release=False when U moved the prompt on.
+                note = cmd.get('note')
+                if note is not None and not isinstance(note, str): raise ValueError('note must be text')
+                await client.capture_note(cmd['captureId'], note, bool(cmd.get('release', True)))
+            elif cmd['type'] == 'capture.dismiss' and at_least(args.protocol, 17):
+                await client.capture_release(cmd['captureId'])
             elif cmd['type'] == 'dev.warp' and fixture and at_least(args.protocol, 2):
                 await client.call('world.load', {'worldId': cmd['worldId']})
             elif cmd['type'] == 'dev.open' and fixture:
@@ -286,7 +293,7 @@ async def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--socket', default=os.environ.get('HYPRUNE_SOCKET'))
-    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', '0.16'), help='Exact production protocol; never auto-upgrade')
+    parser.add_argument('--protocol', choices=SUPPORTED_PROTOCOLS, default=os.environ.get('HYPRUNE_PROTOCOL', SUPPORTED_PROTOCOLS[-1]), help='Exact production protocol; never auto-upgrade')
     parser.add_argument('--token-fd', type=int, default=int(os.environ['HYPRUNE_TOKEN_FD']) if 'HYPRUNE_TOKEN_FD' in os.environ else None)
     parser.add_argument('--output', action='append', default=[], metavar='OPAQUE_ID=WAYLAND_NAME')
     parser.add_argument('--world-package', action='append', default=[], metavar='WORLD_JSON')
