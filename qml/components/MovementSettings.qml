@@ -73,7 +73,7 @@ ColumnLayout {
         }
     }
     HudLabel { Layout.fillWidth: true; text: 'Beyond reach, the reticle dims and shows the distance; the action does nothing.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
-    ActionButton { objectName: 'player-reset_movement'; text: 'Reset movement'; Layout.fillWidth: true; enabled: root.editable; onClicked: ShellState.patchPlayer(Player.resetPatch(Player.MOVEMENT_KEYS)) }
-    HudLabel { Layout.fillWidth: true; text: 'Reset restores speeds, view bob and reach to their defaults. Field of view is a graphics setting.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
+    ActionButton { objectName: 'player-reset_movement'; text: 'Reset movement'; Layout.fillWidth: true; enabled: root.editable; onClicked: { ShellState.patchPlayer(Player.resetPatch(Player.MOVEMENT_KEYS)); if (root.fov !== Player.FOV_DEFAULT && ShellState.available('graphics.set')) ShellState.action('graphics.set', {patch: {fov: Player.FOV_DEFAULT}}); } }
+    HudLabel { Layout.fillWidth: true; text: 'Reset restores field of view, speeds, view bob and reach to their defaults.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
     HudLabel { Layout.fillWidth: true; visible: text !== ''; text: root.settings ? root.settings.error || '' : ''; color: Tokens.gold; font.pixelSize: 12; wrapMode: Text.Wrap }
 }
