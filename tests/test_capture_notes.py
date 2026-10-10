@@ -37,6 +37,12 @@ class Prompt(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls[-1][1]['visible'], True)
         self.assertEqual(self.calls[-1][1]['exclusiveInput'], True)
 
+    async def test_prompt_is_shown_only_after_the_keyboard_grab(self):
+        seen = []
+        self.client.emit = lambda e: seen.append([m for m, _ in self.calls]) if e['type'] == 'capture.prompt' else None
+        await self.client.capture_taken(self.taken(1))
+        self.assertEqual(seen, [['shell.bind', 'shell.overlay']])  # keys typed once visible reach the prompt
+
     async def test_enter_writes_note_then_releases_input(self):
         await self.client.capture_taken(self.taken(1))
         await self.client.capture_note('capture-1', 'rail clips the stair')

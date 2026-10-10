@@ -51,7 +51,8 @@ def acceptance(client,children,args,shell_token,socketpath):
     def index():
         p=captures/'index.jsonl';return [json.loads(l) for l in p.read_text().splitlines()] if p.exists() else []
     def press_u():
-        before=prompt();keys('-k','u');return wait(lambda:prompt() not in ('',before) and prompt())
+        before=prompt();keys('-k','u');id=wait(lambda:prompt() not in ('',before) and prompt())
+        time.sleep(.2);return id  # a person starts typing once the prompt is visible
     def shot(name):
         time.sleep(.6);subprocess.run([str(s.HERE/'ctl.py'),'shot',str(SHOTS/(name+'.png'))],check=True)
 
@@ -83,7 +84,7 @@ def acceptance(client,children,args,shell_token,socketpath):
     check('empty Enter writes an empty note',capture(third)['note']=='' and index()[-1]['note']=='')
 
     # 4. U, then Super+U while the prompt is open: the pending note is saved as-is, next capture taken.
-    a=press_u();keys('first of two');wait(lambda:status().get('noteText')=='first of two')
+    a=press_u();keys('first of two');wait(lambda:status().get('noteText')=='first of two')  # starts with F: a world binding
     keys('-M','logo','-P','Super_L','-s','40','-k','u','-p','Super_L','-m','logo')
     b=wait(lambda:prompt() not in ('',a) and prompt())
     check('Super+U in the prompt takes the next capture and keeps the prompt',b!=a and status().get('noteText')=='',{'a':a,'b':b})
@@ -94,6 +95,12 @@ def acceptance(client,children,args,shell_token,socketpath):
     # 5. Day theme still.
     ui('theme','true');time.sleep(.4);press_u();keys('missing handrail on the court stair');time.sleep(.3);shot('capture-note-day')
     keys('-k','Escape');wait(lambda:prompt()=='');ui('theme','false')
+
+    # 6. Last (it leaves wtype's virtual keyboard state behind): W held down while the prompt still has the keyboard, then Enter: walking starts without a re-press.
+    held=press_u();here=position()
+    keys('-P','w','-s','150','-k','Return','-s','900','-p','w');wait(lambda:prompt()=='')
+    check('a movement key held across Enter walks without a re-press',math.dist(position(),here)>.3,{'before':here,'after':position()})
+    wait(lambda:'note' in capture(held))
 
     errors=(s.STATE/'shell.log').read_text()
     check('shell log clean',not any(x in errors for x in ['ReferenceError','TypeError','Binding loop','Unable to assign','Traceback']),errors[-3000:])

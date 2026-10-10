@@ -449,19 +449,22 @@ class Client:
             if previous is None and (p['mode'] != 'world' or self.director):
                 return  # Busy in an app, focus, free cursor or the Director: capture only.
             self.note_id = p['captureId']
+            if previous is None:
+                # Hold the keyboard before the prompt is shown: anything typed once it is
+                # visible goes to the prompt, never to world bindings (F, E, X, 1-5).
+                try:
+                    if not self.wayland_pid: raise RuntimeError('Wayland child unavailable')
+                    await self.call('shell.bind', {'leaseId': self.lease, 'pid': self.wayland_pid})
+                    result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                               'visible': True, 'exclusiveInput': True})
+                    self.overlay_revision = max(self.overlay_revision, result['revision'])
+                except Exception:
+                    self.note_id = None
+                    raise
+                if self.note_id != p['captureId']:
+                    return  # Closed meanwhile (lease loss, Director).
             # QML saves the previous capture's text as-is before clearing the field.
             self.emit({'type': 'capture.prompt', 'captureId': p['captureId'], 'previous': previous})
-            if previous is not None:
-                return
-            try:
-                if not self.wayland_pid: raise RuntimeError('Wayland child unavailable')
-                await self.call('shell.bind', {'leaseId': self.lease, 'pid': self.wayland_pid})
-                result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
-                                                           'visible': True, 'exclusiveInput': True})
-                self.overlay_revision = max(self.overlay_revision, result['revision'])
-            except Exception:
-                self.end_note('lost')
-                raise
 
     async def capture_note(self, capture_id, note, release=True):
         """Enter: write the note (empty allowed); release=False keeps input for the next prompt."""
