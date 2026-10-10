@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/hyprune/schema",
+  "commit": "1ae2ed165893990536e592ed3ab7695477376309",
+  "version": "0.6",
+  "sha256": {
+    "world.schema.json": "a698ee90d77f75ce06e5976edb3773f50bf124925614b83e78be34f26b38eda4",
+    "common.schema.json": "3ac1521713e46a50ddd1d8b5a914718af5f5c28d82c718a65d6465af35d31dd8"
+  }
+}

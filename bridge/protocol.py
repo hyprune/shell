@@ -124,7 +124,9 @@ for path in (ROOT / 'worlds').rglob('*.schema.json'):
     world_registry = world_registry.with_resource(schema['$id'], Resource.from_contents(schema))
 WORLD_VALIDATORS = {"0.1":WORLD_VALIDATOR,"0.2":WORLD_V2_VALIDATOR,**{
     v:Draft202012Validator(json.loads((ROOT / 'worlds' / ('v'+v) / 'world.schema.json').read_text()),registry=world_registry)
-    for v in ['0.3','0.4','0.5']}}
+    # Every vendored worlds/vX.Y pin is accepted; no hand-kept version list.
+    for v in sorted((d.name[1:] for d in (ROOT / 'worlds').iterdir() if (d / 'world.schema.json').exists()),
+                    key=lambda s: tuple(map(int, s.split('.'))))}}
 
 
 # One validator per negotiated protocol (0.1 uses the unversioned pin).
