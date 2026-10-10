@@ -241,6 +241,7 @@ ShellRoot {
             choice.forceActiveFocus();
             return true;
         }
+        function playerPreview(json: string): void { if (ShellState.dev) ShellState.playerPreview = json ? JSON.parse(json) : null; }
         function graphicsPatch(patch: string): void { if (ShellState.dev) ShellState.action("graphics.set", {patch:JSON.parse(patch)}); }
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
         function overlayStyle(): void { if(ShellState.dev) ShellState.action("overlay.style",{style:{waypointColor:[1,0,0],fontFamily:"DejaVu Sans Mono"}}); }
@@ -287,7 +288,7 @@ ShellRoot {
                 hudVisible: !!root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.visible, camera: ShellState.camera, capabilities: ShellState.capabilities,
                 worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,
                 manipulation: HudData.manipulation, readyText:ShellState.readyText, concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
-                graphics: ShellState.graphics,
+                graphics: ShellState.graphics, player: ShellState.playerSettings, playerSupported: ShellState.playerSupported,
                 menuHold: ShellState.menuHold,
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,

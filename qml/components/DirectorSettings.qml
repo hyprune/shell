@@ -33,7 +33,9 @@ Item {
         var steals = (feedback.steals || []).filter(c => c.mode === mode && c.action === action).map(c => c.binding + ' — steals Hyprland: ' + c.description);
         return conflicts.concat(steals).join('   ·   ');
     }
-    onVisibleChanged: { if (visible) load(); else if (pending) pending = ''; }
+    readonly property bool playerSection: section === 3 || section === 4
+    onVisibleChanged: { if (visible) { load(); if (playerSection) ShellState.refreshPlayer(); } else if (pending) pending = ''; }
+    onPlayerSectionChanged: { if (playerSection && visible) ShellState.refreshPlayer(); }
     Component.onCompleted: load()
     Connections {
         target: ShellState
@@ -83,13 +85,15 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             Repeater {
-                model: ['Appearance', 'Performance', 'Input bindings']
+                // Movement and Reticle need IPC 0.19 player settings.
+                model: [{name:'Appearance',section:0},{name:'Performance',section:1},{name:'Input bindings',section:2}]
+                       .concat(ShellState.playerSupported ? [{name:'Movement',section:3},{name:'Reticle',section:4}] : [])
                 ActionButton {
-                    required property string modelData
-                    required property int index
+                    required property var modelData
+                    objectName: 'settings-section-' + modelData.section
                     Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
-                    text: modelData; primary: root.section === index
-                    onClicked: { if (index === 1) ShellState.tab = 7; else root.section = index; }
+                    text: modelData.name; primary: root.section === modelData.section
+                    onClicked: { if (modelData.section === 1) ShellState.tab = 7; else root.section = modelData.section; }
                 }
             }
         }
@@ -144,6 +148,9 @@ Item {
                 }
                 ActionButton { visible: root.section === 1; text: 'Open Performance'; onClicked: ShellState.tab = 7 }
                 HudLabel { Layout.fillWidth: true; visible: root.section === 1 && !ShellState.available('graphics.get'); text: 'Graphics controls require a core with graphics settings support.'; wrapMode: Text.Wrap; color: Tokens.muted }
+                HudLabel { Layout.fillWidth: true; visible: root.playerSection && !ShellState.playerSupported; text: 'Movement and reticle settings require core IPC 0.19.'; wrapMode: Text.Wrap; color: Tokens.muted }
+                MovementSettings { Layout.fillWidth: true; visible: root.section === 3 && ShellState.playerSupported }
+                ReticleSettings { Layout.fillWidth: true; visible: root.section === 4 && ShellState.playerSupported }
                 ColumnLayout {
                 Layout.fillWidth: true; spacing: 16; visible: root.section === 2
                 HudLabel { text: 'INPUT'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }
