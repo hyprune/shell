@@ -16,27 +16,24 @@ for path in ROOT.rglob('*.schema.json'):
     registry = registry.with_resource(schema['$id'], Resource.from_contents(schema))
 SCHEMA = json.loads((ROOT / 'ipc.schema.json').read_text())
 VALIDATOR = Draft202012Validator(SCHEMA, registry=registry)
-V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/ipc.schema.json').read_text()), registry=registry)
-V3_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.3/ipc.schema.json").read_text()), registry=registry)
-V4_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.4/ipc.schema.json").read_text()), registry=registry)
-V5_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.5/ipc.schema.json").read_text()), registry=registry)
-V6_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.6/ipc.schema.json").read_text()), registry=registry)
-V7_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.7/ipc.schema.json").read_text()), registry=registry)
-V8_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.8/ipc.schema.json").read_text()), registry=registry)
-V9_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.9/ipc.schema.json").read_text()), registry=registry)
-V10_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.10/ipc.schema.json").read_text()), registry=registry)
-V11_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.11/ipc.schema.json").read_text()), registry=registry)
-V12_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.12/ipc.schema.json").read_text()), registry=registry)
-# Canonical 0.13 adds camera revision responses beside the generic response
-# branch, making top-level oneOf ambiguous for every {revision:...} reply.
-# Preserve the pin, accept the union at the envelope, and still validate each
-# response against the originating method in validate_response().
-v13_schema = json.loads((ROOT / "v0.13/ipc.schema.json").read_text())
-v13_schema['anyOf'] = v13_schema.pop('oneOf')
-V13_VALIDATOR = Draft202012Validator(v13_schema, registry=registry)
-V14_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.14/ipc.schema.json").read_text()), registry=registry)
-V15_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.15/ipc.schema.json").read_text()), registry=registry)
-V16_VALIDATOR = Draft202012Validator(json.loads((ROOT / "v0.16/ipc.schema.json").read_text()), registry=registry)
+def _minor(version):
+    return int(version.split('.')[1])
+# Vendored IPC pins: every protocol/v0.N with an IPC schema; 0.1 is the
+# unversioned pin. Derived, never a hand-kept list (AGENTS rule 6).
+IPC_PINS = sorted((d.name[1:] for d in ROOT.iterdir() if d.name.startswith('v0.') and (d / 'ipc.schema.json').exists()),
+                  key=_minor)
+def _ipc_schema(version):
+    schema = json.loads((ROOT / ('v' + version) / 'ipc.schema.json').read_text())
+    if version == '0.13':
+        # Canonical 0.13 adds camera revision responses beside the generic response
+        # branch, making top-level oneOf ambiguous for every {revision:...} reply.
+        # Preserve the pin, accept the union at the envelope, and still validate each
+        # response against the originating method in validate_response().
+        schema['anyOf'] = schema.pop('oneOf')
+    return schema
+# One validator per negotiated protocol; V<n>_VALIDATOR names stay importable.
+VALIDATORS = {'0.1': VALIDATOR, **{v: Draft202012Validator(_ipc_schema(v), registry=registry) for v in IPC_PINS}}
+globals().update({'V%d_VALIDATOR' % _minor(v): VALIDATORS[v] for v in IPC_PINS})
 WORLD_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'world.schema.json').read_text()), registry=registry)
 WORLD_V2_VALIDATOR = Draft202012Validator(json.loads((ROOT / 'v0.2/world.schema.json').read_text()), registry=registry)
 
@@ -112,7 +109,8 @@ def frame(obj, validator=VALIDATOR):
         raise ValueError('invalid outgoing frame length')
     return struct.pack('!I', len(data)) + data
 
-SUPPORTED_PROTOCOLS = tuple("0." + str(n) for n in range(1,17))
+# The shell speaks exactly the protocols it has vendored pins for.
+SUPPORTED_PROTOCOLS = tuple(VALIDATORS)
 def at_least(protocol, minor):
     return protocol in SUPPORTED_PROTOCOLS and tuple(map(int,protocol.split("."))) >= (0,minor)
 
@@ -128,6 +126,3 @@ WORLD_VALIDATORS = {"0.1":WORLD_VALIDATOR,"0.2":WORLD_V2_VALIDATOR,**{
     for v in sorted((d.name[1:] for d in (ROOT / 'worlds').iterdir() if (d / 'world.schema.json').exists()),
                     key=lambda s: tuple(map(int, s.split('.'))))}}
 
-
-# One validator per negotiated protocol (0.1 uses the unversioned pin).
-VALIDATORS = {'0.1': VALIDATOR, **{'0.' + str(n): globals()['V%d_VALIDATOR' % n] for n in range(2, 17)}}

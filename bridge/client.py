@@ -13,7 +13,7 @@ from protocol import read_packet, decode
 import socket
 import stat
 import struct
-from protocol import frame, read_frame, validate_response, VALIDATOR, V2_VALIDATOR, V3_VALIDATOR, V4_VALIDATOR, V5_VALIDATOR, V6_VALIDATOR, V7_VALIDATOR, V8_VALIDATOR, V9_VALIDATOR, V10_VALIDATOR, V11_VALIDATOR, V12_VALIDATOR, V13_VALIDATOR, V14_VALIDATOR, V15_VALIDATOR, VALIDATORS, SUPPORTED_PROTOCOLS, at_least
+from protocol import frame, read_frame, validate_response, VALIDATORS, SUPPORTED_PROTOCOLS, at_least
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
