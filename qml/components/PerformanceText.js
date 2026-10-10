@@ -33,6 +33,17 @@ function policy(performance) {
     if (performance.capW > 0) limits.push(performance.capW + ' W');
     if (performance.targetFPS > 0) limits.push(performance.targetFPS + ' FPS');
     var sentence = source + (limits.length ? ': offload capped at ' + limits.join(' / ') : '') + '.';
+    // IPC 0.18: where the cap comes from, and which GPU runs the offload renderer.
+    var device = performance.device;
+    var limit = device && typeof device.enforcedLimitW === 'number' ? Math.round(device.enforcedLimitW) + ' W' : '';
+    var sources = {
+        'device': limit ? 'Cap is 75 % of the GPU\'s ' + limit + ' limit.' : 'Cap follows the GPU\'s power limit.',
+        'configured': 'Cap set in Settings.',
+        'fallback': 'GPU power limit unknown; default cap.'
+    };
+    if (performance.capW > 0 && sources[performance.capSource]) sentence += ' ' + sources[performance.capSource];
+    if (device) sentence += ' Offload GPU: ' + (device.name || device.pci) + (device.drivesCompositor ? ' (also drives the display)' : '')
+        + (device.selection === 'explicit' ? ', pinned' : '') + '.';
     var reasons = {
         'auto requires qualified full AC':'Automatic offload needs full AC power.',
         'power supply unknown':'Offload is paused until the power source is known.',

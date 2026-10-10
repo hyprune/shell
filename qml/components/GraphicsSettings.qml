@@ -11,6 +11,11 @@ ColumnLayout {
     readonly property var effective:graphics ? graphics.effective : ({})
     readonly property var performance: graphics && graphics.performance ? graphics.performance : null
     readonly property var timings:graphics && graphics.timings ? graphics.timings : ({})
+    // IPC 0.18: null cap = automatic (profile ceiling, or a share of the GPU's limit) and an
+    // offload_device; older cores keep the 20-100 W slider.
+    readonly property bool deviceAware: config.offload_device !== undefined
+    readonly property var offloadDevice: performance && performance.device ? performance.device : null
+    readonly property real capMax: deviceAware ? Math.max(100, Math.min(1000, (offloadDevice && offloadDevice.enforcedLimitW) || 350)) : 100
     // IPC 0.16: FSR 1 / bilinear reconstruction below output size.
     readonly property bool upscalerSupported:ShellState.supportsProtocol(16) && !!(graphics && graphics.options && graphics.options.upscaler)
     readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : []).concat(upscalerSupported ? ['upscaler'] : [])
@@ -51,8 +56,16 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth:true;visible:root.config.offload_power_cap_w!==undefined
         HudLabel {Layout.preferredWidth:190;text:'Power cap';wrapMode:Text.Wrap}
-        SettingSlider {objectName:'graphics-offload_power_cap_w';Layout.fillWidth:true;from:20;to:100;stepSize:1;value:root.config.offload_power_cap_w || 80;enabled:ShellState.available('graphics.set');onMoved:root.setValue('offload_power_cap_w',Math.round(value))}
-        HudLabel {Layout.preferredWidth:180;text:(root.config.offload_power_cap_w || 80)+' W requested'+(root.performance ? ' / '+root.performance.capW+' W policy' : '');font.pixelSize:12;wrapMode:Text.Wrap}
+        Choice {objectName:'graphics-offload_power_cap_mode';Layout.preferredWidth:180;visible:root.deviceAware;model:['Cap · Automatic','Cap · Custom'];enabled:ShellState.available('graphics.set');currentIndex:root.config.offload_power_cap_w===null ? 0 : 1;onActivated:root.setValue('offload_power_cap_w',currentIndex===0 ? null : Math.round(Math.max(20,Math.min(root.capMax,(root.performance && root.performance.capW) || 80))))}
+        SettingSlider {objectName:'graphics-offload_power_cap_w';Layout.fillWidth:true;visible:!root.deviceAware || root.config.offload_power_cap_w!==null;from:20;to:root.capMax;stepSize:root.capMax>100 ? 5 : 1;value:root.config.offload_power_cap_w || 80;enabled:ShellState.available('graphics.set');onMoved:root.setValue('offload_power_cap_w',Math.round(value))}
+        Item {Layout.fillWidth:true;visible:root.deviceAware && root.config.offload_power_cap_w===null}
+        HudLabel {Layout.preferredWidth:180;text:(root.config.offload_power_cap_w===null ? 'Automatic' : (root.config.offload_power_cap_w || 80)+' W requested')+(root.performance ? ' / '+root.performance.capW+' W policy' : '');font.pixelSize:12;wrapMode:Text.Wrap}
+    }
+    RowLayout {
+        Layout.fillWidth:true;visible:root.deviceAware && root.offloadDevice!==null
+        HudLabel {Layout.preferredWidth:190;text:'Offload GPU';wrapMode:Text.Wrap}
+        HudLabel {Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:12;color:Tokens.muted;text:root.offloadDevice ? (root.offloadDevice.name || 'GPU')+' · '+root.offloadDevice.pci+(root.offloadDevice.drivesCompositor ? ' · also drives the display' : '')+(typeof root.offloadDevice.enforcedLimitW==='number' ? ' · '+Math.round(root.offloadDevice.enforcedLimitW)+' W limit' : '') : ''}
+        Choice {objectName:'graphics-offload_device';Layout.preferredWidth:180;model:['GPU · Automatic','GPU · Pin this one'];enabled:ShellState.available('graphics.set');currentIndex:root.config.offload_device==='auto' ? 0 : 1;onActivated:root.setValue('offload_device',currentIndex===0 || !root.offloadDevice ? 'auto' : root.offloadDevice.pci)}
     }
     HudLabel {text:'FRAME RATE & RESOLUTION';color:Tokens.gold;font.pixelSize:Tokens.caption;Layout.fillWidth:true;font.letterSpacing:1.5}
     Repeater {

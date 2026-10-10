@@ -36,6 +36,16 @@ class PerformanceText(unittest.TestCase):
 
 
 class IdleText(unittest.TestCase):
+    def test_ipc_018_cap_source_and_offload_gpu(self):
+        gpu = "{pci:'0000:02:00.0',node:'renderD129',name:'RTX 5090 Laptop',enforcedLimitW:135,selection:'auto',drivesCompositor:false}"
+        self.assertEqual(evaluate("policy({profile:'usb-c',capW:50,targetFPS:45,reason:'auto requires qualified full AC',capSource:'profile',device:" + gpu + "})"),
+                         'On USB-C power: offload capped at 50 W / 45 FPS. Offload GPU: RTX 5090 Laptop. Automatic offload needs full AC power.')
+        self.assertEqual(evaluate("policy({profile:'full-ac',capW:101,targetFPS:60,reason:'ready',capSource:'device',device:" + gpu + "})"),
+                         "On AC power: offload capped at 101 W / 60 FPS. Cap is 75 % of the GPU's 135 W limit. Offload GPU: RTX 5090 Laptop.")
+        self.assertIn('pinned', evaluate("policy({profile:'full-ac',capW:80,reason:'ready',capSource:'configured',device:{pci:'0000:65:00.0',name:null,enforcedLimitW:null,selection:'explicit',drivesCompositor:true}})"))
+        self.assertIn('default cap', evaluate("policy({profile:'full-ac',capW:80,reason:'ready',capSource:'fallback',device:null})"))
+        self.assertNotIn('undefined', evaluate("policy({profile:'full-ac',capW:80,reason:'ready'})"))  # pre-0.18 cores
+
     def test_no_new_rendered_frames_reads_idle(self):
         self.assertTrue(evaluate("idle({renderedFrames:10,idleFrames:3},{renderedFrames:10,idleFrames:9})"))
         # No compositor repaint at all: idleFrames flat, still idle.
