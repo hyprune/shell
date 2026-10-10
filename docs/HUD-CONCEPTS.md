@@ -115,10 +115,8 @@ copied for this regression check.
 
 ## Convex calibration
 
-The supplied private reference, widescreen reference captures
-([source](https://example.invalid/reference)), and the HUD designer's gameplay
-captures ([source](https://elsamadisy.com/game_ux.html)) were reviewed before
-tuning. Native-pixel endpoints on four lower-left box borders give
+Private curved-HUD reference captures (16:9 and 21:9; not included here) were
+reviewed before tuning. Native-pixel endpoints on four lower-left HUD box borders give
 apparent slopes of approximately 2.4°, 2.9°, 3.2° and 3.0° upward toward centre.
 The upper-left objective rule slopes about 2.4° down toward centre; the supplied
 upper-right notice rule slopes about 2.8° in the opposite horizontal direction.
@@ -135,9 +133,8 @@ The existing slider value and saved preferences remain valid; its geometry is
 recalibrated. Upper-right supersampling/reduced curvature and the upright radar
 caption remain in effect. Tests assert visible corner geometry and angle bands.
 
-Downloaded images, pixel endpoints, source metadata and reference crop sheets
-are private gallery files under `reference/hud-curve-v3/`, locally excluded from
-Git before download. No reference artwork is included in the shell or docs.
+Reference images, pixel endpoints, source metadata and crop sheets are kept
+outside this repository. No reference artwork is included in the shell or docs.
 
 Development-only `preview concept NAME` uses the Settings persistence/banner path.
 `concept`, `resource`, `curvature`, `worldStyles` support capture automation;
@@ -168,18 +165,15 @@ sides, monotonic strength, measured default angle bands and identity when off),
 the SDK mock and locked core 0.10 capture run passed. All 45 `-v3` captures passed
 layout audits without QML errors: 36 concept/home/resolution/scale shots and nine
 flat/default/maximum comparisons. Evidence: gallery
-`screenshots/hud-concepts/convex-v3-verification.json`. Private comparison sheet:
-`reference/hud-curve-v3/flat-curved-reference-v3.png`; endpoints and uncertainty:
-`reference/hud-curve-v3/measurements.json`; download attribution: `sources.json`
-in the same private directory.
+`screenshots/hud-concepts/convex-v3-verification.json`. The reference comparison
+sheet, endpoints/uncertainty and source attribution are kept outside this repository.
 
 Text follow-up: 61 shell tests, the SDK mock, and the locked core 0.10 run passed.
 All 44 `-v4` captures passed layout audits with no QML errors, including the
 explicit world-outline and opt-out pair. The gallery includes 24 separate status
 and radar-caption crops and `screenshots/hud-concepts/hud-status-crops-v4.png`
-(v3/v4 comparisons in both homes at three resolutions). The private reference
-sheet is updated at `reference/hud-curve-v3/flat-curved-reference-v4.png` and
-remains excluded from Git.
+(v3/v4 comparisons in both homes at three resolutions). The reference comparison
+sheet was updated outside this repository.
 
 
 Bright-background follow-up: 65 shell tests, the SDK mock, and the locked core

@@ -92,7 +92,7 @@
   "limits": [
     "Installed package discovery currently needs launcher-authorised --world-package.",
     "RAM and system-wide CPU utilisation are not published; explicit render-budget fallbacks.",
-    "Personal-world format reconciled; private package assets not yet available."
+    "Author-proposed style format reconciled; author package assets not yet available."
   ],
   "legacyCore": "IPC 0.8 follow-up passed: core-timed hold/cancel/fire, real graphics dropdown persistence and long workspace/app cards.",
   "performanceCaption": "Native frame statistics are distinct from the admitted offload FPS ceiling; six display configurations passed layout audit."
