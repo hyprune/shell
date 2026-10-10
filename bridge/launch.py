@@ -51,6 +51,17 @@ def socket_path(explicit=None):
     return str(path)
 
 
+def shell_actions(protocol):
+    """The published intent methods QML may request at the negotiated protocol."""
+    return (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
+            (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if at_least(protocol, 2) else []) +
+            (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if at_least(protocol, 4) else []) +
+            (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if at_least(protocol, 6) else []) +
+            (['graphics.get','graphics.set'] if at_least(protocol, 7) else []) +
+            (['camera.get'] if at_least(protocol, 13) else []) +
+            (['player.get', 'player.set'] if at_least(protocol, 19) else []))
+
+
 def catalog(paths):
     result = []
     for path in paths:
@@ -153,12 +164,7 @@ async def main(args):
                 emit({'type':'outline','value':result})
             elif cmd['type'] == 'action':
                 # QML can request only the published intent methods.
-                if cmd['method'] not in (['world.load', 'surface.focus', 'movement.set', 'runtime.exit'] +
-                        (['graphics.get','graphics.set'] if at_least(args.protocol, 7) else []) +
-                        (['camera.get'] if at_least(args.protocol,13) else []) +
-                        (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if at_least(args.protocol, 6) else []) +
-                        (['surfaces.recall', 'surface.pull', 'surface.place', 'surface.return', 'workspace.focus', 'workspace.unfocus'] if at_least(args.protocol, 4) else []) +
-                        (['waypoint.set', 'travel.start', 'travel.cancel', 'route.set', 'autodrive.start', 'autodrive.stop', 'workspace.activate'] if at_least(args.protocol, 2) else [])):
+                if cmd['method'] not in shell_actions(args.protocol):
                     raise ValueError('Unknown shell action')
                 params=cmd['params']
                 if cmd['method']=='overlay.style':params={**params,'leaseId':client.lease}
