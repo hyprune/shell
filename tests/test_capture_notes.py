@@ -93,11 +93,12 @@ class Prompt(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.prompts()[-1]['reason'], 'director')
         self.assertIsNone(self.client.note_id)
 
-    def test_wire_contract_is_0_17_only(self):
+    def test_wire_contract_starts_at_0_17(self):
         self.assertIn('0.17', SUPPORTED_PROTOCOLS)
         self.assertEqual(sorted(VALIDATORS, key=lambda v: int(v.split('.')[1])), list(SUPPORTED_PROTOCOLS))
         frame = {'jsonrpc': '2.0', 'id': 'n', 'method': 'capture.annotate', 'params': {'captureId': 'capture-1', 'note': 'Brücke 橋'}}
-        VALIDATORS['0.17'].validate(frame)
+        for newer in SUPPORTED_PROTOCOLS[SUPPORTED_PROTOCOLS.index('0.17'):]:
+            VALIDATORS[newer].validate(frame)  # inherited by later pins
         for old in ['0.16', '0.2']:
             with self.assertRaises(Exception):
                 VALIDATORS[old].validate(frame)
