@@ -13,7 +13,12 @@ QtObject {
     property color hudAccent: skinColor('accent',hudConcept === 'Instrument' ? '#8be0df' : hudConcept === 'Minimal' ? '#ecede4' : '#dfbd68')
     property color hudTile: skinColor('tile',hudConcept === 'Instrument' ? '#207e91' : hudConcept === 'Minimal' ? '#506773' : '#177e88')
     property color hudWhite: skinColor('foreground','#f6f5ea')
+    readonly property color hudForeground: skinColor('foreground','#f6f5ea') // unanimated target of hudWhite
     property color hudMuted: skinColor('muted','#c5d2d2')
+    // In-world action feedback (core reticle valid/invalid via overlay.style, IPC 0.19).
+    // World HUD styles can't override these yet (hud-style 1 has no such keys).
+    readonly property color hudPositive: hudConcept === 'Instrument' ? '#74eec4' : hudConcept === 'Minimal' ? '#9fe3ad' : '#59f299'
+    readonly property color hudWarning: hudConcept === 'Instrument' ? '#ffb35c' : hudConcept === 'Minimal' ? '#f2a777' : '#ff9e59'
     readonly property color hudOutline: skinColor('outline','#081118')
     readonly property color hudScrim: skinColor('scrim','#101820')
     readonly property string hudCorners: skin.corners || 'square'
@@ -38,6 +43,8 @@ QtObject {
     readonly property color muted: light ? '#455d59' : '#afbed1'
     readonly property color accent: light ? '#006957' : '#d7e6fa'
     readonly property color gold: light ? '#925211' : '#dec89a'
+    readonly property color positive: light ? '#1d6b3a' : '#8fdcaa'
+    readonly property color warning: light ? '#a63c06' : '#f3a46b'
     readonly property string sans: 'DejaVu Sans'
     readonly property string mono: 'DejaVu Sans Mono'
     // Logical pixels: the compositor handles output scale, not a 1080p bitmap.

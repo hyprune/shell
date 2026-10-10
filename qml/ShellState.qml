@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "theme"
 import "HudManipulation.js" as Manipulation
+import "PlayerSettings.js" as PlayerSettings
 pragma Singleton
 
 QtObject {
@@ -46,13 +47,38 @@ QtObject {
     property string screenName: ''
     property string lease: ''
     onLeaseChanged: { if (lease && !available('hud.subscribe')) Qt.callLater(applyCoreStyle); }
-    function applyCoreStyle() {
-        action('overlay.style', {style:{fontFamily:Tokens.mono,waypointColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],routeColor:[Tokens.accent.r,Tokens.accent.g,Tokens.accent.b],labelColor:[Tokens.text.r,Tokens.text.g,Tokens.text.b],promptColor:[Tokens.gold.r,Tokens.gold.g,Tokens.gold.b]}});
+    function protocolMinor() { var v=protocol.split('.'); return v[0]==='0' ? Number(v[1]) : 0; }
+    // IPC 0.19 adds the core reticle colours (HUD foreground, positive, warning).
+    function coreStyle() {
+        return PlayerSettings.overlayStyle({mono:Tokens.mono,accent:Tokens.accent,text:Tokens.text,gold:Tokens.gold,
+                                            reticle:Tokens.hudForeground,positive:Tokens.hudPositive,warning:Tokens.hudWarning}, protocolMinor());
     }
+    function applyCoreStyle() { action('overlay.style', {style:coreStyle()}); }
     property Connections coreThemeConnection: Connections {
         target: Tokens
         function onLightChanged() { root.applyCoreStyle(); }
+        function onHudConceptChanged() { if (root.supportsProtocol(19) && root.lease) Qt.callLater(root.applyCoreStyle); }
+        function onSkinChanged() { if (root.supportsProtocol(19) && root.lease) Qt.callLater(root.applyCoreStyle); }
     }
+    // IPC 0.19 player settings: player.get result (config/defaults/overrides/options/ranges).
+    property var player: null
+    property var playerPreview: null // DEV ONLY (preview IPC): settings shown without a 0.19 core
+    readonly property bool playerSupported: (supportsProtocol(19) && available('player.get')) || (dev && !!playerPreview)
+    readonly property var playerSettings: dev && playerPreview ? playerPreview : player
+    property var playerPending: ({})
+    function refreshPlayer() { if (supportsProtocol(19)) action('player.get', {}); }
+    // Slider drags coalesce into one player.set per 120 ms; nulls remove overrides.
+    readonly property bool playerEditable: available('player.set') || (dev && !!playerPreview)
+    function patchPlayer(patch) {
+        if (dev && playerPreview) { // DEV ONLY: preview applies locally (nulls restore defaults)
+            var next = JSON.parse(JSON.stringify(playerPreview));
+            Object.keys(patch).forEach(k => { next.config[k] = patch[k] === null ? next.defaults[k] : patch[k]; });
+            playerPreview = next;
+            return;
+        }
+        playerPending = Object.assign({}, playerPending, patch); playerCommit.restart();
+    }
+    property Timer playerCommit: Timer { interval: 120; onTriggered: { if (Object.keys(root.playerPending).length && root.supportsProtocol(19)) root.action('player.set', {patch:root.playerPending}); root.playerPending = ({}); } }
     property bool director: false
     // IPC 0.17 debug capture note: the capture awaiting a note ('' = no prompt).
     property string notePrompt: ''
@@ -278,7 +304,7 @@ QtObject {
                 samples = [];
                 projectionSamples = [];
                 markers = [];
-                camera = null; outline = null; graphics = null; previousTimings = null; hudFrame = null; hudPose = null; hudTool = null;
+                camera = null; outline = null; graphics = null; player = null; previousTimings = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
                 methods = [];
                 capabilities = [];
@@ -361,6 +387,7 @@ QtObject {
                 graphics = msg.result;
             }
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
+            if (msg.method === 'player.get' || msg.method === 'player.set') player = msg.result;
             break;
         case 'menu.panel':
             if (msg.panel === 'map') tab = 0;

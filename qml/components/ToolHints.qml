@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../theme"
+import "../PlayerSettings.js" as Player
 Column {
     id:root
     spacing:5
@@ -9,6 +10,8 @@ Column {
     // Dense keeps binding and label on one row; bindings wrap rather than elide.
     property bool dense:false
     readonly property var actions:HudData.hints.actions || []
+    // IPC 0.19: the primary action can't land (beyond reach or invalid target).
+    readonly property bool primaryBlocked:Player.reticleBlocked(ShellState.state)
     readonly property string text:actions.map(a=>(a.bindings.length ? a.bindings.join(' / ') : 'Unbound')+' · '+a.label).join(' | ')
     HudText { visible:HudData.hints.context!==''; width:parent.width; text:HudData.hints.context; color:Tokens.hudAccent; font.pixelSize:11; font.letterSpacing:.7 }
     GridLayout {
@@ -19,6 +22,7 @@ Column {
                 required property var modelData
                 objectName:'hudToolAction'
                 Layout.fillWidth:true; Layout.minimumWidth:0
+                opacity:root.primaryBlocked && modelData.slot==='primary' ? .45 : 1
                 readonly property string bindingText:modelData.bindings.length ? modelData.bindings.join(' / ') : 'Unbound'
                 // One row only when both fit whole; otherwise stack (never split a chord).
                 readonly property bool oneRow:root.dense && bindingMetrics.advanceWidth+labelMetrics.advanceWidth+26 <= width
