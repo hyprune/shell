@@ -106,7 +106,7 @@ def acceptance(client, children, args, shell_token, socketpath):
         vb = [float(v) for v in re.search(r'viewBox="([^"]+)"', levels[0]['svg']).group(1).split()]
         for i, level in enumerate(levels):
             # Fly over the first floor point of this level at a feet height inside its band.
-            m = re.search(r'class="floor" d="M([-\d.]+)[ ,]([-\d.]+)', level['svg'])
+            m = re.search(r'class="floor"[^>]*? d="M([-\d.]+)[ ,]([-\d.]+)', level['svg'])
             u, v = (float(m.group(1)) - vb[0]) / vb[2], (float(m.group(2)) - vb[1]) / vb[3]
             x, z = (u - t[4]) / t[0], (v - t[5]) / t[3]
             feet = (level['minY'] + min(level['maxY'], level['minY'] + 6)) / 2
