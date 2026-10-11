@@ -35,6 +35,36 @@ ColumnLayout {
                           + (root.session.target && root.session.target.label ? '  ·  ' + root.session.target.label : '')
         color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
     }
+    // What counts: any focused window, or windows on one workspace (default: the current one).
+    RowLayout {
+        Layout.fillWidth: true
+        visible: root.idle
+        spacing: 8
+        Segmented {
+            objectName: 'focus-target'
+            Layout.fillWidth: true
+            model: [{id: 'any', label: 'Any window'}, {id: 'workspace', label: 'Workspace'}]
+            current: ShellState.focusTargetChoice.kind
+            onPicked: (kind) => ShellState.focusTargetChoice = Object.assign({}, ShellState.focusTargetChoice, {kind: kind})
+        }
+        TextField {
+            id: workspaceField
+            objectName: 'focus-target-workspace'
+            visible: ShellState.focusTargetChoice.kind === 'workspace'
+            Layout.preferredWidth: 72
+            implicitHeight: 42
+            color: Tokens.text
+            placeholderText: ShellState.currentWorkspace ? String(ShellState.currentWorkspace) : 'No.'
+            placeholderTextColor: Tokens.muted
+            font.family: Tokens.sans; font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter
+            validator: IntValidator { bottom: 1; top: 2147483647 }
+            text: ShellState.focusTargetChoice.workspaceId ? String(ShellState.focusTargetChoice.workspaceId) : ''
+            onTextEdited: ShellState.focusTargetChoice = Object.assign({}, ShellState.focusTargetChoice, {workspaceId: Number(text) || 0})
+            background: Rectangle { radius: Tokens.radius; color: Tokens.panel; border.width: parent.activeFocus ? 2 : 1; border.color: parent.activeFocus ? Tokens.gold : Tokens.line }
+            ToolTip.text: 'Workspace number; empty = the current one'; ToolTip.visible: hovered
+        }
+    }
     Flow {
         Layout.fillWidth: true
         spacing: 8
@@ -44,7 +74,11 @@ ColumnLayout {
             visible: root.idle
             text: 'Start focus session'
             enabled: ShellState.available('focus.start')
-            onClicked: ShellState.questAction('focus.start', {})
+            onClicked: {
+                var target = ShellState.focusTarget();
+                if (target) ShellState.questAction('focus.start', {target: target});
+                else { ShellState.questFeedback = 'Choose a workspace number for the focus session.'; ShellState.questFeedbackTimer.restart(); }
+            }
         }
         ActionButton {
             implicitWidth: Math.max(84, contentItem.implicitWidth + 34)

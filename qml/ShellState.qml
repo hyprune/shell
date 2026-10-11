@@ -127,7 +127,11 @@ QtObject {
     property Timer questFeedbackTimer: Timer { interval: 8000; onTriggered: root.questFeedback = '' }
     property var guidance: null            // guidance.get / guidance.set result
     property bool guidanceRequested: false
-    property var mapFocus: null            // {position, label, at}: Quests > Show on map
+    property var mapFocus: null
+    // Focus session target picker: {kind: 'any' | 'workspace', workspaceId (0 = current)}.
+    property var focusTargetChoice: ({kind: 'any', workspaceId: 0})
+    readonly property int currentWorkspace: state && state.workspaces && state.workspaces.currentId ? state.workspaces.currentId : 0
+    function focusTarget() { return Quests.focusTargetInput(focusTargetChoice, currentWorkspace); }            // {position, label, at}: Quests > Show on map
     property var questPreview: null        // DEV ONLY: quests.list/get and guidance.get answers
     readonly property var guidanceConfig: guidance && guidance.config ? guidance.config : null
     readonly property string questNotifications: guidanceConfig && guidanceConfig['quests.notifications'] ? guidanceConfig['quests.notifications'] : 'all'

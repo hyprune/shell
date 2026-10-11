@@ -86,7 +86,9 @@ FocusScope {
         if (!focusIdle) { say('A focus session is already running.'); return; }
         if (detail.state !== 'active') { say('Accept or resume the quest first.'); return; }
         var pick = objectiveId ? {objectiveId: objectiveId} : Quests.firstObjective(detail, 'focus');
-        var params = {questRef: ref};
+        var target = ShellState.focusTarget();
+        if (!target) { say('Choose a workspace number for the focus session.'); return; }
+        var params = {questRef: ref, target: target};
         if (pick) params.objectiveId = pick.objectiveId;
         ShellState.questAction('focus.start', params);
     }
