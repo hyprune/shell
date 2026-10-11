@@ -252,6 +252,10 @@ ShellRoot {
             page.openForm(json ? JSON.parse(json) : null);
             return true;
         }
+        function mapMarkers(): string {
+            if (!ShellState.dev || !ShellState.director) return '[]';
+            return JSON.stringify(Audit.findAll(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'mapMarker:'));
+        }
         function clockOffset(offset: real): void { if (ShellState.dev) ShellState.receive({type: 'clock', offsetMs: offset}); }
         function monotonicNow(): real { return ShellState.monotonicNow() || 0; }
         function select(index: int): void {

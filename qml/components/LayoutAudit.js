@@ -49,3 +49,11 @@ function find(root, name) {
     }
     return null;
 }
+
+function findAll(root, prefix, out) {
+    out = out || [];
+    if (!root || !root.visible) return out;
+    if (typeof root.objectName === 'string' && root.objectName.indexOf(prefix) === 0) out.push(root.objectName.slice(prefix.length));
+    if (root.children) for (var i = 0; i < root.children.length; i++) findAll(root.children[i], prefix, out);
+    return out;
+}

@@ -516,6 +516,32 @@ class Helpers(unittest.TestCase):
         self.assertEqual(js('holdView(%s, 100, 0).visible' % json.dumps(hold)), True)  # delay 0: legacy behaviour
         self.assertEqual(js('HOLD_RING_DELAY_MS'), 180)
 
+    def test_focus_target_picker(self):
+        cases = [("{kind:'any'}", 7, {'kind': 'any'}), ("{kind:'workspace',workspaceId:0}", 7, {'kind': 'workspace', 'workspaceId': 7}),
+                 ("{kind:'workspace',workspaceId:21}", 7, {'kind': 'workspace', 'workspaceId': 21}), ("null", 7, {'kind': 'any'}),
+                 ("{kind:'workspace',workspaceId:0}", 0, None)]
+        for choice, current, want in cases:
+            got = js('focusTargetInput(%s, %d)' % (choice, current))
+            self.assertEqual(got, want, choice)
+            if got: frame(request('focus.start', {'target': got, 'questRef': REF}), V21)
+
+    def test_map_markers(self):
+        markers = dict(MARKERS, list=MARKERS['list'] + [
+            {**MARKERS['list'][1], 'id': 'place:lookout', 'kind': 'place', 'tier': 4},
+            {**MARKERS['list'][1], 'id': 'home:sun-court', 'kind': 'home', 'tier': 3, 'position': [0, 14.9, 0], 'label': 'Sun Court'},
+            {**MARKERS['list'][1], 'id': 'workspace:9', 'position': None}])
+        all_ = js('mapMarkers(%s, -1, null)' % json.dumps(markers))
+        self.assertEqual([m['id'] for m in all_], ['workspace:21', 'home:sun-court', 'quest:personal/release-notes/write/done'])  # tracked last (on top)
+        tracked = all_[-1]
+        self.assertEqual((tracked['ring'], tracked['role'], tracked['shape'], tracked['showLabel']), (True, 'quest', 'diamond', True))
+        self.assertEqual((all_[1]['shape'], all_[1]['role'], all_[1]['showLabel']), ('square', 'muted', True))
+        stacked = dict(MARKERS, list=[{**MARKERS['list'][1], 'id': 'home:hall', 'kind': 'home', 'tier': 3, 'position': [4, 14, -10.5]}, MARKERS['list'][0]])
+        self.assertEqual({m['id']: m['showLabel'] for m in js('mapMarkers(%s, -1, null)' % json.dumps(stacked))},
+                         {'home:hall': False, 'quest:personal/release-notes/write/done': True})  # the tracked label wins
+        upper = js('mapMarkers(%s, 1, y => y > 10 ? 1 : 0)' % json.dumps(markers))
+        self.assertEqual({m['id']: m['dim'] for m in upper}, {'workspace:21': True, 'home:sun-court': False,
+                                                               'quest:personal/release-notes/write/done': True})  # other levels dimmed
+
     def test_error_text(self):
         self.assertEqual(js("errorText('focus.start', '-32004: session running')"), 'A focus session is already running.')
         self.assertEqual(js("errorText('quests.update', '-32007: not personal')"), 'Only personal quests can be edited or deleted.')

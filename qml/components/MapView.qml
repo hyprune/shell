@@ -1,6 +1,7 @@
 import ".."
 import "../theme"
 import "../Blueprint.js" as Blueprint
+import "../Quests.js" as Quests
 import QtQuick
 import QtQuick.Layouts
 
@@ -311,6 +312,56 @@ Item {
 
             }
 
+        }
+
+        // RFC-0012 map markers: core's resolved markers on the shown level, styled like the
+        // world markers (tier 1 ringed and labelled, homes labelled, tracked on top).
+        Repeater {
+            model: root.compact || !root.map ? [] : Quests.mapMarkers(ShellState.markersState, root.showingLevel ? root.levelIndex : -1,
+                                                                        y => Blueprint.levelFor(root.levels, y))
+            delegate: Item {
+                id: guide
+                required property var modelData
+                readonly property color tone: modelData.role === 'quest' ? Tokens.quest : modelData.role === 'accent' ? Tokens.accent : Tokens.muted
+                objectName: 'mapMarker:' + modelData.id
+                opacity: modelData.dim ? 0.4 : 1
+                x: root.px(modelData.position) - width / 2
+                y: root.py(modelData.position) - height / 2
+                width: 32; height: 32
+                Rectangle {
+                    visible: guide.modelData.ring
+                    anchors.centerIn: parent
+                    width: guide.modelData.size + 12; height: width; radius: width / 2
+                    color: 'transparent'; border.width: guide.modelData.tracked ? 2 : 1.5
+                    border.color: guide.modelData.tracked ? Tokens.quest : guide.tone
+                }
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: guide.modelData.size; height: width
+                    rotation: guide.modelData.shape === 'diamond' ? 45 : 0
+                    radius: guide.modelData.shape === 'diamond' ? 2 : 1
+                    color: guide.modelData.shape === 'square' ? Tokens.panel : guide.tone
+                    border.width: guide.modelData.shape === 'square' ? 2 : 1
+                    border.color: guide.modelData.shape === 'square' ? guide.tone : Tokens.ink
+                }
+                HudLabel {
+                    visible: guide.modelData.showLabel && guide.modelData.label !== ''
+                    anchors.top: parent.bottom; anchors.topMargin: 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(180, root.width / 4)
+                    horizontalAlignment: Text.AlignHCenter
+                    text: guide.modelData.label
+                    font.pixelSize: 11
+                    color: guide.modelData.tracked ? Tokens.quest : Tokens.text
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    onEntered: root.hoverName = guide.modelData.label
+                    onExited: root.hoverName = ''
+                }
+            }
         }
 
         // Quests > Show on map (RFC-0012): the quest target the view was centred on.

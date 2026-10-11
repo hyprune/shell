@@ -556,3 +556,41 @@ function guidancePatch(settings, key, value) {
     out[key] = value;
     return out;
 }
+
+// ---- Director Map markers (markers.list) ----
+
+// Markers the Map draws: resolved ones, without places (the Map draws those already).
+// Markers on another blueprint level than the shown one (levelOf(y) gives a level index;
+// shownLevel -1 = no levels) are dimmed, as the Map does for places and the player: a
+// wall-top home marker can sit above its floor's band, so hiding would lose it. Tracked
+// last so they draw on top; then by tier.
+function mapMarkers(markers, shownLevel, levelOf) {
+    var list = markers && markers.list ? markers.list : [];
+    return list.filter(function (m) {
+        return m.position && m.kind !== 'place';
+    }).map(function (m) {
+        var quest = m.kind === 'quest' || m.kind === 'focus' || m.kind === 'break';
+        return {id: m.id, label: m.label, position: m.position, tier: m.tier, tracked: !!m.tracked, kind: m.kind,
+                // Same tier language as core's world markers: tier 1 has a ring and a label.
+                size: m.tracked ? 18 : m.tier === 1 ? 15 : m.tier === 2 ? 12 : 10,
+                ring: m.tier === 1 || !!m.tracked, shape: m.tier >= 3 ? 'square' : 'diamond',
+                role: quest ? 'quest' : m.tier >= 3 ? 'muted' : 'accent',
+                showLabel: m.tier === 1 || !!m.tracked || m.kind === 'home',
+                dim: shownLevel >= 0 && !!levelOf && levelOf(m.position[1]) !== shownLevel};
+    }).sort(function (a, b) { return (a.tracked === b.tracked ? 0 : a.tracked ? 1 : -1) || b.tier - a.tier; })
+      .map(function (m, i, all) {
+        // Coinciding markers (a quest step at an area home): only the one drawn on top keeps its label.
+        var covered = all.slice(i + 1).some(function (o) { return o.showLabel && Math.abs(o.position[0] - m.position[0]) < 2 && Math.abs(o.position[2] - m.position[2]) < 2; });
+        return covered ? Object.assign(m, {showLabel: false}) : m;
+    });
+}
+
+// ---- Focus target picker ----
+
+// The focus.start target for the picker: Any window, or a workspace (default: the one
+// current on the desktop, state workspaces.currentId). null when the number is invalid.
+function focusTargetInput(choice, currentId) {
+    if (!choice || choice.kind !== 'workspace') return {kind: 'any'};
+    var n = Math.floor(Number(choice.workspaceId || currentId || 0));
+    return n >= 1 && n <= 2147483647 ? {kind: 'workspace', workspaceId: n} : null;
+}
