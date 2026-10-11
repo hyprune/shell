@@ -1,5 +1,7 @@
 # Hyprune shell
 
+> **Hyprune** is an explorable, world-driven desktop environment for Hyprland: your workspaces become places you can walk through, with live windows on the walls. This repository is the reference **shell**: the Quickshell HUD, Director, settings and overlays. Install Hyprune through the [hyprune](https://github.com/hyprune/hyprune) repository (starter kits, Nix, Arch); learn more at [hyprune.com](https://hyprune.com). Licence: MIT.
+
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
 IPC 0.1–0.19 (one vendored pin per version under `protocol/`). The shell launcher
 defaults to the newest pin; `--protocol` or
