@@ -21,7 +21,7 @@ def crops(path):
     boxes=[(i-14,i+r,i+r+20,i+r+40),(rw-i-(230 if compact else 310)-14,i-14,rw-i+20,i+78)]
     return [im.crop(tuple(round(v*factor) for v in b)) for b in boxes]
 
-for path in P.glob('vanguard-*-*p-s*-v5.png'):
+for path in P.glob('adventure-*-*p-s*-v5.png'):
     if not re.search(r'(sun-court|rime-vault)-\d+p-s[12]-v5.png$',path.name):continue
     for suffix,im in zip(['radar-caption','status'],crops(path)):
         im.save(path.with_name(path.stem.replace('-v5','-'+suffix+'-v5')+'.png'))
@@ -38,12 +38,12 @@ for scale in [1,2]:
         y=130+row*235
         d.text((30,y),f'{home.replace("-"," ").title()} / {res}p / scale {scale}',font=f(17),fill='#b9c8ce')
         for col,version in enumerate(['v4','v5']):
-            caption,status=crops(P/f'vanguard-{home}-{res}p-s{scale}-{version}.png');x=30+740*col
+            caption,status=crops(P/f'adventure-{home}-{res}p-s{scale}-{version}.png');x=30+740*col
             status=ImageOps.contain(status,(660,130),Image.Resampling.LANCZOS)
             caption=ImageOps.contain(caption,(660,55),Image.Resampling.LANCZOS)
             sheet.paste(status,(x,y+32));sheet.paste(caption,(x,y+172))
-        sample=measurements[f'vanguard-{home}-{res}p-s{scale}-v5']
-        white=measurements[f'vanguard-white-{res}p-s{scale}-v5']
+        sample=measurements[f'adventure-{home}-{res}p-s{scale}-v5']
+        white=measurements[f'adventure-white-{res}p-s{scale}-v5']
         for n,(label,v) in enumerate(zip(['Radar caption','Navigation','Input status'],sample['regions'])):
             d.text((1510,y+35+n*30),f'{label}: {v["rasterCoreMin"]:.2f}:1',font=f(19),fill='#edf3f5')
         nominal=min(v['nominalMin'] for v in sample['regions'])

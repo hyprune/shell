@@ -1,7 +1,8 @@
 # Adventure / Placement HUD contract
 
-Adventure replaces Vanguard; Instrument and Minimal keep their layouts. Saved
-Vanguard choices migrate without resetting curvature, resources or world styles.
+Adventure replaces the earlier default concept; Instrument and Minimal keep their
+layouts. Saved choices of the earlier concept migrate without resetting curvature,
+resources or world styles.
 Legacy `ui.hud.cycle` events are ignored. Selection is Settings/config only.
 
 IPC 0.15 `editor.unplaced` supplies count, ordered window rows, selectedId and

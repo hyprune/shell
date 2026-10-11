@@ -1,8 +1,8 @@
 # HUD concepts and package styles
 
 Hold TAB for the Director. **Settings → Appearance → HUD concept** selects
-**Adventure** (default), Instrument or Minimal. Saved Vanguard preferences migrate
-to Adventure without changing other choices. Changes show a centre banner and
+**Adventure** (default), Instrument or Minimal. Preferences saved under the
+concept's earlier name migrate to Adventure without changing other choices. Changes show a centre banner and
 save immediately. **5 selects Placement** on the updated core; legacy HUD-cycle
 events are ignored. Concept selection is Settings/config only.
 
@@ -95,7 +95,7 @@ python3 dev/hud-contrast-sheet.py
 The development-only `preview.contrastProbe` endpoint can hide the text while
 keeping its scrim, or render white glyph masks over black. It has no effect in
 normal operation and does not capture the screen itself. Numerical evidence
-uses the three static Vanguard labels to avoid changing frame-stat strings.
+uses the three static Adventure labels to avoid changing frame-stat strings.
 Text/background/mask crops are retained in the capture output's `contrast-v5/`, and
 `contrast-v5-measurements.json` records bounding boxes and unrounded results.
 
@@ -198,7 +198,7 @@ are validated without adding automatic recording or replay actions.
 
 Back / Super+Tab switches to the real cursor. A passive **CURSOR · Back /
 Super+Tab to return** chip replaces the bottom action hints on the same curved
-plane. Vanguard uses its accent stripe, Instrument a technical border/mono font,
+plane. Adventure uses its accent stripe, Instrument a technical border/mono font,
 and Minimal a smaller stripe and restrained scrim. TAB/use/focus/scope and
 subtype-action hints disappear; the status label says **NATIVE POINTER**.
 
@@ -230,7 +230,7 @@ hint is still drawn during cursor mode. The prompt generation in
 walking/noclip/typing but does not exclude suspended free-cursor mode. Core must
 suppress its own interaction prompts there. Shell cannot hide a prompt baked
 into the world frame; its own climb/tool/footer prompts are verified hidden.
-See `cursor-vanguard-1080p-s1-ipc012.png` for direct evidence.
+See the IPC 0.12 cursor captures in `docs/evidence/hud-interaction-012.json`.
 
 Validation: **67 shell tests**, the SDK 0.2 mock compatibility check, and **12
 real-core 0.12 concept/resolution cases** passed. The locked run captured 25
@@ -340,7 +340,7 @@ held `/tmp/worldshell-nested.lock`; no host-session commands were used.
 
 ## IPC 0.15: Adventure, Placement and live tool hints
 
-Adventure is the new default and the migrated name for Vanguard. Key 5 selects
+Adventure is the default; preferences saved under its earlier name migrate to it. Key 5 selects
 Placement; old HUD-cycle events have no effect. Choose concepts in Appearance.
 
 Placement collapses the tool grid into one window tile beside the selected

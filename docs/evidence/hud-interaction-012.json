@@ -3,7 +3,7 @@
   "coreCommit": "0a4c6d1b0acbcb1e7154b4ffe4bf7aefa959b865",
   "results": [
     {
-      "concept": "Vanguard",
+      "concept": "Adventure",
       "mechanic": "grab",
       "resolution": "1920x1080",
       "scale": 1,
@@ -30,7 +30,7 @@
       "detachedPromptHidden": true
     },
     {
-      "concept": "Vanguard",
+      "concept": "Adventure",
       "mechanic": "grab",
       "resolution": "2560x1440",
       "scale": 1,
@@ -57,7 +57,7 @@
       "detachedPromptHidden": true
     },
     {
-      "concept": "Vanguard",
+      "concept": "Adventure",
       "mechanic": "grab",
       "resolution": "3840x2160",
       "scale": 1,
@@ -84,7 +84,7 @@
       "detachedPromptHidden": true
     },
     {
-      "concept": "Vanguard",
+      "concept": "Adventure",
       "mechanic": "grab",
       "resolution": "1920x1080",
       "scale": 2,

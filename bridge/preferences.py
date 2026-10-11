@@ -5,12 +5,14 @@ from pathlib import Path
 import tempfile
 
 DEFAULTS = dict(version=1, concept='Adventure', curvature=.8, curved=True, resource='gpu', worldStyles=True)
+# Concept names from earlier releases, still accepted in saved preferences and patches.
+LEGACY_CONCEPTS = {'Vanguard': 'Adventure'}
 
 def validate(patch):
     if not isinstance(patch, dict) or set(patch) - set(DEFAULTS):
         raise ValueError('Unknown presentation preference')
     patch = dict(patch)
-    if patch.get('concept') == 'Vanguard': patch['concept'] = 'Adventure'
+    if patch.get('concept') in LEGACY_CONCEPTS: patch['concept'] = LEGACY_CONCEPTS[patch['concept']]
     for key, value in patch.items():
         if key == 'version' and value != 1: raise ValueError('Unsupported preferences version')
         if key == 'concept' and value not in ['Adventure','Instrument','Minimal']: raise ValueError('Unknown HUD concept')
@@ -26,7 +28,7 @@ class Preferences:
         try:
             saved = json.loads(self.path.read_text())
             value = validate(saved)
-            if saved.get('concept') == 'Vanguard': self.update(value)
+            if saved.get('concept') in LEGACY_CONCEPTS: self.update(value)
             else: self.value.update(value)
         except (OSError, ValueError, TypeError): pass
 

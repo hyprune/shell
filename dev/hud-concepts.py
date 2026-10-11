@@ -123,7 +123,7 @@ def acceptance(client,children,args,shell_token,socketpath):
                         contrast_results.append(hud_contrast.capture(ui,raw_shot,SHOTS/(name+'.png')))
                 if contrast_review and concept=='Adventure':
                     ui('contrastProbe','white')
-                    name=f'vanguard-white-{height}p-s{scale}-{version}'
+                    name=f'adventure-white-{height}p-s{scale}-{version}'
                     shot(name);evidence['captures'].append(name)
                     contrast_results.append(hud_contrast.capture(ui,raw_shot,SHOTS/(name+'.png'),white=True))
                     (SHOTS/'contrast-v5-measurements.json').write_text(json.dumps(contrast_results,indent=2)+'\n')
@@ -140,9 +140,9 @@ def acceptance(client,children,args,shell_token,socketpath):
         if text_review:
             ui('concept','Adventure');ui('worldStyles','true');time.sleep(1)
             assert status()['worldStyle']=='com.hyprune.lumen-reach'
-            shot(f'vanguard-world-outline-{version}');evidence['captures'].append(f'vanguard-world-outline-{version}')
+            shot(f'adventure-world-outline-{version}');evidence['captures'].append(f'adventure-world-outline-{version}')
             ui('worldStyles','false');time.sleep(1)
-            shot(f'vanguard-world-outline-optout-{version}');evidence['captures'].append(f'vanguard-world-outline-optout-{version}')
+            shot(f'adventure-world-outline-optout-{version}');evidence['captures'].append(f'adventure-world-outline-optout-{version}')
         errors=(s.STATE/'shell.log').read_text()
         assert not any(x in errors for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Presentation:']),errors[-6000:]
         evidence.update(defaultStrength=.8,quick=bool(os.environ.get('HYPRUNE_HUD_QUICK')),validation='All layout audits passed; no QML errors')
@@ -166,7 +166,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             print('PASS review resolution',height,scale,flush=True)
             if os.environ.get('HYPRUNE_HUD_QUICK'): break
         resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Adventure')
-        ui('curvature',0);shot('vanguard-sun-court-flat-v2');ui('curvature',.8);shot('vanguard-sun-court-curved-v2')
+        ui('curvature',0);shot('adventure-sun-court-flat-v2');ui('curvature',.8);shot('adventure-sun-court-curved-v2')
         # Auto exercises the blocked USB-C policy without requesting offload On.
         client.call('graphics.set',{'patch':{'offload':'auto'}})
         opened();ui('tab',7);ui('scrollPage',0);time.sleep(1);shot('performance-renderer-auto-policy-v2')
@@ -243,7 +243,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         print('PASS resolution',height,scale,flush=True)
         if os.environ.get('HYPRUNE_HUD_QUICK'): break
     resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Adventure')
-    ui('curvature',0);shot('vanguard-sun-court-flat');ui('curvature',.8);shot('vanguard-sun-court-curved')
+    ui('curvature',0);shot('adventure-sun-court-flat');ui('curvature',.8);shot('adventure-sun-court-curved')
     from m2 import pointer
     for slot in [2,3,4]:
         keys('-k',str(slot));time.sleep(.2)
