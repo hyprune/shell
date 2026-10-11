@@ -4,6 +4,7 @@ import Quickshell.Io
 import "theme"
 import "HudManipulation.js" as Manipulation
 import "PlayerSettings.js" as PlayerSettings
+import "DirectorModel.js" as DirectorModel
 pragma Singleton
 
 QtObject {
@@ -79,6 +80,24 @@ QtObject {
         playerPending = Object.assign({}, playerPending, patch); playerCommit.restart();
     }
     property Timer playerCommit: Timer { interval: 120; onTriggered: { if (Object.keys(root.playerPending).length && root.supportsProtocol(19)) root.action('player.set', {patch:root.playerPending}); root.playerPending = ({}); } }
+    // IPC 0.20 pocket: put a window in / take it out; the latest result shows in Surfaces.
+    property var surfaceFeedback: null // {surfaceId, level, text, at}
+    property string pocketTarget: ''
+    property Timer surfaceFeedbackTimer: Timer { onTriggered: root.surfaceFeedback = null }
+    function pocket(surfaceId, into) {
+        var method = into ? 'surface.pocket' : 'surface.unpocket';
+        if (!available(method)) return;
+        pocketTarget = surfaceId; surfaceFeedback = null;
+        action(method, {surfaceId: surfaceId});
+    }
+    function pocketFeedback(method, result, error) {
+        var text = error !== undefined ? DirectorModel.pocketError(method, error) : null;
+        var info = text ? {level: 'warning', text: text} : DirectorModel.pocketResult(method, result);
+        if (!info) return;
+        surfaceFeedback = {surfaceId: pocketTarget, level: info.level, text: info.text, at: Date.now()};
+        surfaceFeedbackTimer.interval = info.level === 'warning' ? 12000 : 5000; surfaceFeedbackTimer.restart();
+        if (method === 'surface.unpocket' && result && result.placed === false) showBanner('AIM AND CLICK TO PLACE');
+    }
     property bool director: false
     // IPC 0.17 debug capture note: the capture awaiting a note ('' = no prompt).
     property string notePrompt: ''
@@ -388,6 +407,7 @@ QtObject {
             }
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             if (msg.method === 'player.get' || msg.method === 'player.set') player = msg.result;
+            if (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket') pocketFeedback(msg.method, msg.result);
             break;
         case 'menu.panel':
             if (msg.panel === 'map') tab = 0;
@@ -412,6 +432,7 @@ QtObject {
         case 'notice':
             if (msg.code === 'placement.pocketed') {showBanner('POCKETED '+msg.message.replace(/^pocketed\s*/i,''));break;}
             if (msg.code === 'runtime.ready') {showReady(msg.message);break;}
+            if (msg.code === 'shell.action' && (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket')) pocketFeedback(msg.method, null, msg.message);
             notice(msg.message, msg.level);
             break;
         case 'zone':
