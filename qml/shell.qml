@@ -249,6 +249,14 @@ ShellRoot {
             if (json.charAt(0) === '{') ShellState.receive({type: 'action', method: method, result: JSON.parse(json)});
             else ShellState.receive({type: 'notice', level: 'warning', code: 'shell.action', method: method, message: json});
         }
+        // Press a named control (Button or map button) as a click would.
+        function press(name: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var item = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), name);
+            if (!item || !item.enabled) return false;
+            item.clicked();
+            return true;
+        }
         function mapView(zoom: real, panX: real, panY: real, level: string): string {
             if (!ShellState.dev || !ShellState.director) return '{}';
             var map = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'mapView');

@@ -7,7 +7,7 @@ and methods (movement.set, surface.pocket, surface.unpocket) come from the dev-o
 `statePreview` hook (ShellState.dev); preview-only actions are recorded, never sent.
 Level SVGs: HYPRUNE_BLUEPRINT_DIR (ground.svg/upper.svg) or the dev/blueprint fixtures.
 Stills go to dev/.run/director; HYPRUNE_DIRECTOR_PUBLISH=1 also copies them to the
-gallery's screenshots/director-<date>/ (dot-temp name, then rename).
+gallery's screenshots/director-<date>/ as mock-*.png (dot-temp name, then rename).
 """
 import datetime
 import hashlib
@@ -91,6 +91,13 @@ for name, mode, state in [('help-walk', 'com.hyprune.walk', 'grounded'), ('help-
     preview(mode, state)
     assert status()['movement']['modeId'] == mode
     shot(name)
+# Pressing a segment asks the (mock) core; its answer moves the control.
+ui('statePreview', '', ''); time.sleep(.5)
+assert ui('press', 'segment:walk') == 'true'; time.sleep(1)
+# The SDK mock implements free flight only: the request reaches it and its refusal shows.
+assert '"method": "movement.set"' in (ROOT / 'dev/.run/shell.log').read_text()
+assert status()['movement']['modeId'] == 'com.hyprune.fly', status()['movement']
+shot('help-walk-refused-by-mock')
 
 # Surfaces: two pocketed windows (one only in the pocket list), two placed.
 preview()
@@ -118,6 +125,8 @@ view = json.loads(ui('mapView', 1, 0, 0, 'ground')); assert view['level'] == 'gr
 shot('map-ground-picked')
 view = json.loads(ui('mapView', 2.5, -260, 180, 'upper')); assert view['zoom'] == 2.5, view
 shot('map-upper-zoomed-panned')
+json.loads(ui('mapView', 1, 0, 0, 'auto')); assert ui('press', 'mapCentre') == 'true' and ui('press', 'mapZoomIn') == 'true'
+shot('map-upper-centred-on-me')
 preview(position=(0, 1.7, 4), heading=40)
 view = json.loads(ui('mapView', 4, -420, 380, 'auto')); assert view['level'] == 'ground', view
 shot('map-ground-zoomed-panned')
@@ -134,8 +143,8 @@ assert not any(x in logs for x in ['ReferenceError', 'TypeError', 'Binding loop'
 if os.environ.get('HYPRUNE_DIRECTOR_PUBLISH') == '1':
     target = devenv.gallery_dir('screenshots/director-' + datetime.date.today().isoformat())
     for name in taken:
-        temp = target / ('.' + name + '.png.tmp')
+        temp = target / ('.mock-' + name + '.png.tmp')  # mock-: SDK mock + preview data, not real core
         shutil.copyfile(SHOTS / (name + '.png'), temp)
-        os.replace(temp, target / (name + '.png'))
+        os.replace(temp, target / ('mock-' + name + '.png'))
     print('published ->', target)
 print('PASS director captures:', ', '.join(taken), '->', SHOTS)
