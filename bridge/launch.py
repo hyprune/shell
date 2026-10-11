@@ -59,7 +59,8 @@ def shell_actions(protocol):
             (['overlay.style','input.get','input.preview','input.set','input.capture','input.capture.cancel'] if at_least(protocol, 6) else []) +
             (['graphics.get','graphics.set'] if at_least(protocol, 7) else []) +
             (['camera.get'] if at_least(protocol, 13) else []) +
-            (['player.get', 'player.set'] if at_least(protocol, 19) else []))
+            (['player.get', 'player.set'] if at_least(protocol, 19) else []) +
+            (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []))
 
 
 def catalog(paths):
@@ -185,7 +186,8 @@ async def main(args):
                 raise ValueError('Unknown presentation command')
         except Exception as error:
             message = 'Core response does not match the negotiated protocol.' if isinstance(error, ValidationError) else str(error)[:512]
-            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message})
+            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
+                  **({'method': cmd['method']} if isinstance(cmd, dict) and cmd.get('type') == 'action' and isinstance(cmd.get('method'), str) else {})})
 
     current_peer = None
     async def peer(reader, writer):
