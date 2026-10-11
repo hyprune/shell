@@ -47,7 +47,7 @@ npm ci
 npm run build
 
 # In this repository:
-python3 -m pip install -r requirements.txt
+python3 -m pip install --require-hashes -r requirements.txt   # exact, hash-pinned (dev/pin-requirements.py)
 ./dev/run
 ```
 

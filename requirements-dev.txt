@@ -1,4 +1,6 @@
--r requirements.txt
+# Development extras. Not hash-pinned (pip cannot mix hashed and unhashed
+# requirements), so the runtime dependency is repeated loosely here.
+jsonschema>=4.23,<5
 # Nested screenshot contrast measurements and crop sheets.
 numpy>=1.26,<3
 Pillow>=10,<13
