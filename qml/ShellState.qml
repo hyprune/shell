@@ -4,6 +4,7 @@ import Quickshell.Io
 import "theme"
 import "HudManipulation.js" as Manipulation
 import "PlayerSettings.js" as PlayerSettings
+import "Blueprint.js" as Blueprint
 import "DirectorModel.js" as DirectorModel
 pragma Singleton
 
@@ -366,7 +367,7 @@ QtObject {
             else if (state.world && state.world.id!==readyWorld) showReady('HYPRUNE READY · '+worldName+' · Loaded and ready to enter');
             if (state.world) readyWorld=state.world.id;
             var nextMap = spatial ? spatial.map : null;
-            if ((!mapData && nextMap) || (mapData && (!nextMap || mapData.sha256 !== nextMap.sha256))) mapData = nextMap;
+            if (Blueprint.mapKey(mapData) !== Blueprint.mapKey(nextMap)) mapData = nextMap;
             var nextPlaces = spatial && spatial.world ? spatial.world.places : [];
             if (JSON.stringify(corePlaces) !== JSON.stringify(nextPlaces)) corePlaces = nextPlaces;
             if (spatial && spatial.projection && spatial.projection.outputId === output && state.world && spatial.projection.worldId === state.world.id) {

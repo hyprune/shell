@@ -1,9 +1,12 @@
 import ".."
 import "../theme"
+import "../Blueprint.js" as Blueprint
 import QtQuick
+import QtQuick.Layouts
 
 Item {
     id: root
+    objectName: 'mapView'
 
     property bool compact: false
     property var points: ShellState.places
@@ -15,27 +18,125 @@ Item {
     signal travelRequested(var point)
 
     readonly property var map: ShellState.mapData
-    readonly property real mapRatio: blueprint.implicitWidth > 0 ? blueprint.implicitWidth / blueprint.implicitHeight : 0.9
+    // IPC 0.20 blueprint levels: auto-follow the player's feet until the user picks one.
+    readonly property var levels: map && map.levels ? map.levels : []
+    property string pickedLevel: ''
+    onLevelsChanged: { if (pickedLevel && !levels.some(l => l.id === pickedLevel)) pickedLevel = ''; }
+    readonly property int autoLevel: Blueprint.levelFor(levels, ShellState.pose[1])
+    readonly property int levelIndex: Blueprint.shownLevel(levels, pickedLevel, ShellState.pose[1])
+    readonly property var level: levelIndex >= 0 ? levels[levelIndex] : null
+    // Themed data URLs are cached per level content and theme colours; never rebuilt per frame.
+    // The colours are binding inputs (not read inside) so a theme switch never sees stale tokens.
+    readonly property var themeColours: ({text: String(Tokens.text), muted: String(Tokens.muted), accent: String(Tokens.accent),
+        gold: String(Tokens.gold), line: String(Tokens.line), ink: String(Tokens.ink), positive: String(Tokens.positive), warning: String(Tokens.warning)})
+    property var sourceCache: ({})
+    function levelSource(level, colours) {
+        var key = level.sha256 + JSON.stringify(colours);
+        if (sourceCache[key] === undefined) {
+            if (Object.keys(sourceCache).length > 24) sourceCache = ({});
+            sourceCache[key] = Blueprint.dataUrl(level.svg, Blueprint.palette(colours));
+        }
+        return sourceCache[key];
+    }
+    readonly property string themedLevel: level ? levelSource(level, themeColours) : ''
+    readonly property bool showingLevel: themedLevel !== ''
+    readonly property string overviewSource: map ? 'data:image/svg+xml,' + encodeURIComponent(map.svg) : ''
+    readonly property real mapRatio: map ? Blueprint.viewBoxRatio(map.svg, 0.9) : 0.9
+
+    // Pan (pixels, map centre from view centre) and zoom (1 = whole map in view).
+    property real zoom: 1
+    property real panX: 0
+    property real panY: 0
+    readonly property bool interactive: map !== null && !compact
+    function setView(nextZoom, nextPan) {
+        zoom = Blueprint.clampZoom(nextZoom);
+        var p = Blueprint.clampPan(nextPan, zoom, mapWidth, mapHeight);
+        panX = p[0]; panY = p[1];
+    }
+    function zoomBy(factor, x, y) {
+        var at = x === undefined ? [0, 0] : [x - width / 2, y - height / 2];
+        var next = Blueprint.zoomAt([panX, panY], zoom, zoom * factor, at);
+        setView(next.zoom, next.pan);
+    }
+    function resetView() { setView(1, [0, 0]); }
+    onMapChanged: resetView()
+
     readonly property real mapWidth: Math.min(width, height * mapRatio)
     readonly property real mapHeight: mapWidth / mapRatio
+    readonly property real drawWidth: mapWidth * zoom
+    readonly property real drawHeight: mapHeight * zoom
+    readonly property real originX: (width - drawWidth) / 2 + panX
+    readonly property real originY: (height - drawHeight) / 2 + panY
+    readonly property real pxPerMeter: map ? Math.hypot(map.worldToMap[0] * drawWidth, map.worldToMap[1] * drawHeight) : unit
+    readonly property var scaleBar: Blueprint.scaleBar(pxPerMeter)
+
     function mapped(position) {
         var t = map.worldToMap;
         return [t[0]*position[0]+t[2]*position[2]+t[4], t[1]*position[0]+t[3]*position[2]+t[5]];
     }
-    Image {
-        id: blueprint
-        anchors.fill: parent
-        visible: root.map !== null
-        source: root.map ? 'data:image/svg+xml,' + encodeURIComponent(root.map.svg) : ''
-        fillMode: Image.PreserveAspectFit
-        asynchronous: false
-    }
     function px(position) {
-        return map ? (width-mapWidth)/2 + mapped(position)[0]*mapWidth : width / 2 + position[0] * unit;
+        return map ? originX + mapped(position)[0] * drawWidth : width / 2 + position[0] * unit;
+    }
+    function py(position) {
+        return map ? originY + mapped(position)[1] * drawHeight : height / 2 + position[2] * unit;
+    }
+    // Places and the player on another level than the one shown are dimmed.
+    function onShownLevel(position) {
+        return !showingLevel || Blueprint.levelFor(levels, position[1]) === levelIndex;
     }
 
-    function py(position) {
-        return map ? (height-mapHeight)/2 + mapped(position)[1]*mapHeight : height / 2 + position[2] * unit;
+    Rectangle {
+        anchors.fill: parent
+        visible: root.showingLevel
+        color: Tokens.ink
+    }
+
+    // Drag pans, wheel and pinch zoom about the pointer. Markers above take their own clicks.
+    MouseArea {
+        id: panArea
+        anchors.fill: parent
+        enabled: root.interactive
+        property point last
+        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        onPressed: (mouse) => last = Qt.point(mouse.x, mouse.y)
+        onPositionChanged: (mouse) => {
+            root.setView(root.zoom, [root.panX + mouse.x - last.x, root.panY + mouse.y - last.y]);
+            last = Qt.point(mouse.x, mouse.y);
+        }
+        onDoubleClicked: (mouse) => root.zoomBy(2, mouse.x, mouse.y)
+        onWheel: (wheel) => {
+            var steps = (wheel.angleDelta.y || wheel.pixelDelta.y / 8) / 120;
+            if (steps) root.zoomBy(Math.pow(1.25, steps), wheel.x, wheel.y);
+        }
+    }
+
+    PinchHandler {
+        id: pinch
+        target: null
+        enabled: root.interactive
+        property real startZoom: 1
+        onActiveChanged: { if (active) startZoom = root.zoom; }
+        onActiveScaleChanged: root.zoomBy(startZoom * activeScale / root.zoom, centroid.position.x, centroid.position.y)
+    }
+
+    Item {
+        anchors.fill: parent
+        clip: true
+
+        Image {
+            id: blueprint
+            visible: root.map !== null
+            x: root.originX
+            y: root.originY
+            width: root.drawWidth
+            height: root.drawHeight
+            source: root.showingLevel ? root.themedLevel : root.overviewSource
+            // Re-rasterised only at zoom steps (1, 2, 4, 8), capped at 4096 px.
+            sourceSize.width: Math.min(4096, Math.ceil(root.mapWidth * Math.pow(2, Math.ceil(Math.log(root.zoom) / Math.LN2 - 0.01))))
+            fillMode: Image.Stretch
+            smooth: true
+            asynchronous: false
+        }
     }
 
     Canvas {
@@ -110,7 +211,7 @@ Item {
 
         Connections {
             function onPoseChanged() {
-                chart.requestPaint();
+                if (chart.visible) chart.requestPaint();
             }
 
             target: ShellState
@@ -134,98 +235,138 @@ Item {
 
     }
 
-    Repeater {
-        model: root.points
+    Item {
+        anchors.fill: parent
+        clip: true
 
-        delegate: Item {
-            id: marker
+        Repeater {
+            model: root.points
 
-            required property var modelData
+            delegate: Item {
+                id: marker
 
-            x: root.px(modelData.position) - 16
-            y: root.py(modelData.position) - 16
-            width: 32
-            height: 32
+                required property var modelData
 
-            Rectangle {
-                anchors.centerIn: parent
-                width: root.compact ? 6 : mouse.containsMouse ? 22 : 15
-                height: width
-                rotation: 45
-                radius: 2
-                color: root.selected && root.selected.id === marker.modelData.id ? Tokens.gold : Tokens.panel
-                border.color: Tokens.accent
-                border.width: root.compact ? 1 : 2
+                x: root.px(modelData.position) - 16
+                y: root.py(modelData.position) - 16
+                width: 32
+                height: 32
+                opacity: root.onShownLevel(modelData.position) ? 1 : 0.35
 
-                Behavior on width {
-                    NumberAnimation {
-                        duration: Tokens.motion
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: root.compact ? 6 : mouse.containsMouse ? 22 : 15
+                    height: width
+                    rotation: 45
+                    radius: 2
+                    color: root.selected && root.selected.id === marker.modelData.id ? Tokens.gold : Tokens.panel
+                    border.color: Tokens.accent
+                    border.width: root.compact ? 1 : 2
+
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: Tokens.motion
+                        }
+
                     }
 
                 }
 
-            }
-
-            HudLabel {
-                visible: !root.compact && !root.map
-                anchors.top: parent.bottom
-                anchors.topMargin: 9
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.min(160, root.width / 3)
-                text: marker.modelData.name.toUpperCase()
-                font.pixelSize: 11
-                font.letterSpacing: 1.8
-                color: mouse.containsMouse ? Tokens.accent : Tokens.muted
-            }
-
-            MouseArea {
-                id: mouse
-
-                anchors.fill: parent
-                enabled: !root.compact
-                hoverEnabled: true
-                onEntered: root.hoverName = marker.modelData.name
-                onExited: root.hoverName = ''
-                onClicked: {
-                    root.selected = marker.modelData;
-                    root.selectedPoint(marker.modelData);
+                HudLabel {
+                    visible: !root.compact && !root.map
+                    anchors.top: parent.bottom
+                    anchors.topMargin: 9
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(160, root.width / 3)
+                    text: marker.modelData.name.toUpperCase()
+                    font.pixelSize: 11
+                    font.letterSpacing: 1.8
+                    color: mouse.containsMouse ? Tokens.accent : Tokens.muted
                 }
-                onDoubleClicked: root.travelRequested(marker.modelData)
+
+                MouseArea {
+                    id: mouse
+
+                    anchors.fill: parent
+                    enabled: !root.compact
+                    hoverEnabled: true
+                    onEntered: root.hoverName = marker.modelData.name
+                    onExited: root.hoverName = ''
+                    onClicked: {
+                        root.selected = marker.modelData;
+                        root.selectedPoint(marker.modelData);
+                    }
+                    onDoubleClicked: root.travelRequested(marker.modelData)
+                }
+
             }
 
         }
 
+        // The player: a heading cone and arrow, dimmed when on another level than the one shown.
+        Item {
+            objectName: 'mapPlayer'
+            x: root.px(ShellState.pose) - width / 2
+            y: root.py(ShellState.pose) - height / 2
+            width: root.compact ? 18 : 64
+            height: width
+            rotation: ShellState.heading
+            opacity: root.onShownLevel(ShellState.pose) ? 1 : 0.45
+
+            Canvas {
+                id: playerGlyph
+                anchors.fill: parent
+                property bool cone: !root.compact
+                Connections { target: Tokens; function onLightChanged() { playerGlyph.requestPaint(); } }
+                onPaint: {
+                    var c = getContext('2d'), s = width / 2;
+                    c.reset();
+                    c.translate(s, s);
+                    if (cone) {
+                        var g = c.createRadialGradient(0, 0, 4, 0, 0, s);
+                        g.addColorStop(0, Qt.rgba(Tokens.accent.r, Tokens.accent.g, Tokens.accent.b, 0.42));
+                        g.addColorStop(1, Qt.rgba(Tokens.accent.r, Tokens.accent.g, Tokens.accent.b, 0));
+                        c.fillStyle = g;
+                        c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, s, -Math.PI / 2 - 0.5, -Math.PI / 2 + 0.5); c.closePath(); c.fill();
+                    }
+                    var k = cone ? 1.25 : 1;
+                    c.fillStyle = Tokens.accent;
+                    c.strokeStyle = Tokens.ink;
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.moveTo(0, -9 * k); c.lineTo(7 * k, 8 * k); c.lineTo(0, 4 * k); c.lineTo(-7 * k, 8 * k);
+                    c.closePath();
+                    c.stroke();
+                    c.fill();
+                }
+            }
+
+        }
     }
 
-    Item {
-        x: root.px(ShellState.pose) - 9
-        y: root.py(ShellState.pose) - 9
-        width: 18
-        height: 18
-        rotation: ShellState.heading
-
-        Canvas {
-            anchors.fill: parent
-            id:playerGlyph
-            Connections{target:Tokens;function onLightChanged(){playerGlyph.requestPaint()}}
-            onPaint: {
-                var c = getContext('2d');
-                c.fillStyle = Tokens.accent;
-                c.beginPath();
-                c.moveTo(9, 0);
-                c.lineTo(16, 17);
-                c.lineTo(9, 13);
-                c.lineTo(2, 17);
-                c.closePath();
-                c.fill();
-            }
+    // Overlay legibility over a zoomed drawing.
+    Rectangle {
+        visible: root.showingLevel && !root.compact
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: 64
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, 0.85) }
+            GradientStop { position: 1; color: Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, 0) }
         }
-
+    }
+    Rectangle {
+        visible: root.showingLevel && !root.compact
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: 72
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, 0) }
+            GradientStop { position: 1; color: Qt.rgba(Tokens.ink.r, Tokens.ink.g, Tokens.ink.b, 0.85) }
+        }
     }
 
     HudLabel {
         visible: !root.compact
-        text: root.map ? 'WORLD MAP' : 'N ↑'
+        text: root.showingLevel ? 'N ↑   BLUEPRINT' : root.map ? 'WORLD MAP' : 'N ↑'
         font.family: Tokens.mono
         font.pixelSize: 12
         color: Tokens.accent
@@ -238,10 +379,127 @@ Item {
 
     }
 
+    // Level switcher (IPC 0.20 blueprint): the levels, top to bottom, and Auto.
+    Rectangle {
+        id: levelPanel
+        objectName: 'mapLevels'
+        visible: !root.compact && root.levels.length > 0
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 46
+        anchors.rightMargin: 18
+        width: 190
+        height: levelColumn.implicitHeight + 20
+        radius: 3
+        color: Tokens.panel
+        border.color: Tokens.line
+        opacity: 0.96
+
+        ColumnLayout {
+            id: levelColumn
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 4
+
+            HudLabel {
+                text: 'LEVEL'
+                font.family: Tokens.mono
+                font.pixelSize: 10
+                font.letterSpacing: 2
+                color: Tokens.gold
+                Layout.bottomMargin: 2
+            }
+
+            Repeater {
+                model: root.levels.map((l, i) => i).reverse()
+
+                delegate: MapButton {
+                    required property int modelData
+                    readonly property var entry: root.levels[modelData]
+                    objectName: 'mapLevel:' + entry.id
+                    Layout.fillWidth: true
+                    text: entry.name
+                    detail: modelData === root.autoLevel ? 'YOU' : ''
+                    active: modelData === root.levelIndex
+                    onClicked: root.pickedLevel = entry.id
+                }
+            }
+
+            MapButton {
+                objectName: 'mapLevelAuto'
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                text: root.pickedLevel === '' ? 'Auto · following you' : 'Auto · follow me'
+                active: root.pickedLevel === ''
+                activeColor: Tokens.gold
+                onClicked: root.pickedLevel = ''
+            }
+        }
+    }
+
+    // Zoom: +, −, fit.
+    Column {
+        objectName: 'mapZoom'
+        visible: root.interactive
+        spacing: 4
+        anchors.right: parent.right
+        anchors.rightMargin: 18
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 76
+
+        MapButton { width: 36; text: '+'; onClicked: root.zoomBy(1.5); enabled: root.zoom < 8; objectName: 'mapZoomIn' }
+        MapButton { width: 36; text: '−'; onClicked: root.zoomBy(1 / 1.5); enabled: root.zoom > 1; objectName: 'mapZoomOut' }
+        MapButton { width: 36; text: '⤢'; onClicked: root.resetView(); enabled: root.zoom !== 1 || root.panX !== 0 || root.panY !== 0; objectName: 'mapZoomReset' }
+    }
+
+    component MapButton: Rectangle {
+        id: button
+        property string text: ''
+        property string detail: ''
+        property bool active: false
+        property color activeColor: Tokens.accent
+        signal clicked()
+        implicitHeight: 30
+        implicitWidth: 36
+        radius: 2
+        color: active ? activeColor : buttonMouse.containsMouse && enabled ? Tokens.raised : Tokens.panel
+        border.color: active ? activeColor : Tokens.line
+        opacity: enabled ? 1 : 0.45
+        Accessible.role: Accessible.Button
+        Accessible.name: text
+        HudLabel {
+            anchors.left: parent.left
+            anchors.right: detailLabel.left
+            anchors.leftMargin: button.width > 60 ? 10 : 0
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: button.width > 60 ? Text.AlignLeft : Text.AlignHCenter
+            text: button.text
+            font.pixelSize: button.width > 60 ? 12 : 16
+            color: button.active ? Tokens.ink : Tokens.text
+        }
+        HudLabel {
+            id: detailLabel
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.verticalCenter: parent.verticalCenter
+            text: button.detail
+            font.pixelSize: 9
+            color: button.active ? Tokens.ink : Tokens.accent
+        }
+        MouseArea {
+            id: buttonMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: button.enabled
+            onClicked: button.clicked()
+        }
+    }
+
     HudLabel {
         visible: !root.compact
-        width: parent.width - 150
-        text: root.map ? 'PACKAGE BLUEPRINT   /   METERS' : 'LOCAL SCHEMATIC   /   METERS'
+        width: parent.width - 260
+        text: root.showingLevel ? 'BLUEPRINT   /   ' + root.level.name.toUpperCase() + (root.pickedLevel ? '' : '   /   AUTO') + (root.zoom > 1.01 ? '   /   ×' + root.zoom.toFixed(1) : '')
+            : root.map ? 'PACKAGE BLUEPRINT   /   METERS' : 'LOCAL SCHEMATIC   /   METERS'
         font.family: Tokens.mono
         font.pixelSize: 11
         font.letterSpacing: 1.2
@@ -257,7 +515,7 @@ Item {
 
     Rectangle {
         visible: !root.compact
-        width: root.unit * 10
+        width: root.map ? root.scaleBar.pixels : root.unit * 10
         height: 1
         color: Tokens.accent
 
@@ -271,7 +529,7 @@ Item {
             anchors.bottom: parent.top
             anchors.bottomMargin: 8
             anchors.horizontalCenter: parent.horizontalCenter
-            text: '10 m'
+            text: root.map ? Blueprint.meters(root.scaleBar.meters) : '10 m'
             font.pixelSize: 11
             color: Tokens.muted
         }

@@ -114,7 +114,8 @@ RowLayout {
         }
 
         HudLabel {
-            text: ShellState.available('travel.start') ? 'Click · set waypoint\nDouble click · jump to location' : 'Select · inspect location\nDouble click · travel unavailable'
+            text: (ShellState.available('travel.start') ? 'Click · set waypoint\nDouble click · jump to location' : 'Select · inspect location\nDouble click · travel unavailable')
+                + (ShellState.mapData ? '\nDrag · pan    Wheel · zoom' : '')
             color: Tokens.muted
             font.pixelSize: 12
             lineHeight: 1.7
