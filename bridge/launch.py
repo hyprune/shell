@@ -13,7 +13,7 @@ import socket
 import signal
 import stat
 import tempfile
-from client import Client
+from client import Client, OutgoingInvalid
 from preferences import Preferences
 from world_style import load as load_world_style
 from protocol import SUPPORTED_PROTOCOLS, at_least
@@ -61,6 +61,33 @@ def shell_actions(protocol):
             (['camera.get'] if at_least(protocol, 13) else []) +
             (['player.get', 'player.set'] if at_least(protocol, 19) else []) +
             (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []))
+
+
+# Core's answer to a style request whose lease it no longer holds (lease lost or rotated
+# before the next snapshot reached the bridge). The next HUD bind or lease re-applies it.
+LEASE_LOST = 'overlay style needs owning shell lease'
+
+
+def lease_params(method, params, lease):
+    """Params for a lease-scoped action, or None while there is no lease to send."""
+    if method != 'overlay.style':
+        return params
+    return {**params, 'leaseId': lease} if lease else None
+
+
+def action_notice(cmd, error):
+    """The warning a failed shell action shows, or None for a transient lease race."""
+    method = cmd.get('method') if isinstance(cmd, dict) and cmd.get('type') == 'action' else None
+    if method == 'overlay.style' and LEASE_LOST in str(error):
+        return None
+    if isinstance(error, OutgoingInvalid):
+        message = 'Shell request does not match the negotiated protocol.'
+    elif isinstance(error, ValidationError):
+        message = 'Core response does not match the negotiated protocol.'
+    else:
+        message = str(error)[:512]
+    return {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
+            **({'method': method} if isinstance(method, str) else {})}
 
 
 def catalog(paths):
@@ -167,8 +194,9 @@ async def main(args):
                 # QML can request only the published intent methods.
                 if cmd['method'] not in shell_actions(args.protocol):
                     raise ValueError('Unknown shell action')
-                params=cmd['params']
-                if cmd['method']=='overlay.style':params={**params,'leaseId':client.lease}
+                params = lease_params(cmd['method'], cmd['params'], client.lease)
+                if params is None:
+                    return  # no lease yet: hud.bound / the next lease applies the style
                 result = await client.call(cmd['method'], params)
                 emit({'type': 'action', 'method': cmd['method'], 'result': result})
             elif cmd['type'] == 'capture.note' and at_least(args.protocol, 17):
@@ -185,9 +213,8 @@ async def main(args):
             else:
                 raise ValueError('Unknown presentation command')
         except Exception as error:
-            message = 'Core response does not match the negotiated protocol.' if isinstance(error, ValidationError) else str(error)[:512]
-            emit({'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
-                  **({'method': cmd['method']} if isinstance(cmd, dict) and cmd.get('type') == 'action' and isinstance(cmd.get('method'), str) else {})})
+            if (notice := action_notice(cmd, error)) is not None:
+                emit(notice)
 
     current_peer = None
     async def peer(reader, writer):

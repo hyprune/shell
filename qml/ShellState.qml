@@ -58,7 +58,7 @@ QtObject {
     function applyCoreStyle() { action('overlay.style', {style:coreStyle()}); }
     property Connections coreThemeConnection: Connections {
         target: Tokens
-        function onLightChanged() { root.applyCoreStyle(); }
+        function onLightChanged() { if (root.lease) root.applyCoreStyle(); }
         function onHudConceptChanged() { if (root.supportsProtocol(19) && root.lease) Qt.callLater(root.applyCoreStyle); }
         function onSkinChanged() { if (root.supportsProtocol(19) && root.lease) Qt.callLater(root.applyCoreStyle); }
     }

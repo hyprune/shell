@@ -15,6 +15,10 @@ import stat
 import struct
 from protocol import frame, read_frame, validate_response, VALIDATORS, SUPPORTED_PROTOCOLS, at_least
 
+
+class OutgoingInvalid(ValueError):
+    """A request this shell built does not match the negotiated protocol (never sent)."""
+
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
             'shell.claim', 'shell.release', 'shell.overlay', 'surface.focus', 'movement.set', 'world.load', 'runtime.exit']
@@ -77,7 +81,10 @@ class Client:
         self.pending_methods[rid] = method
         try:
             async with self.write_lock:
-                packet = frame({'jsonrpc': '2.0', 'id': rid, 'method': method, 'params': params}, self.validator)
+                try:
+                    packet = frame({'jsonrpc': '2.0', 'id': rid, 'method': method, 'params': params}, self.validator)
+                except ValidationError as error:
+                    raise OutgoingInvalid(method) from error
                 if self.writer.transport.get_write_buffer_size() + len(packet) > 4 * 1024 * 1024:
                     self.writer.close()
                     raise ConnectionError('Core write queue overflow')

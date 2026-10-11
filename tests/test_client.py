@@ -9,7 +9,7 @@ import unittest
 import json
 import struct
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'bridge'))
-from client import Client, GRANTS, REQUIRED
+from client import Client, GRANTS, REQUIRED, OutgoingInvalid
 from protocol import frame, read_frame, VALIDATOR, V2_VALIDATOR
 
 STATE={'runtime':{'active':True,'outputs':['world','unrelated']},'world':{'id':'com.hyprune.observatory','spawnId':'arrival'},'surfaces':[],
@@ -104,6 +104,10 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         await self.until(lambda:self.snapshot_requests>=3 and not self.client.resyncing)
         self.assertEqual(self.snapshot_requests,3);self.assertEqual(self.connections,1)
         self.assertTrue(self.client.ready)
+    async def test_invalid_request_is_the_shells_error_and_never_sent(self):
+        sent=len(self.calls)
+        with self.assertRaises(OutgoingInvalid):await self.client.call('movement.set',{'modeId':5})
+        self.assertEqual(len(self.calls),sent)
     async def test_complete_malformed_json_does_not_poison_next_frame(self):
         self.raw(b'{broken-json')
         await self.until(lambda:self.snapshot_requests and not self.client.resyncing)
