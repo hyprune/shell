@@ -12,6 +12,7 @@ QtObject {
     readonly property var content: manipulation.content
     readonly property bool placing: placement.available && tool === 5
     readonly property bool freeCursor: Interaction.freeCursor(ShellState.state)
+    readonly property bool focusMode: Interaction.focusMode(ShellState.state)
     readonly property bool climbing: Interaction.climbing(ShellState.state)
     readonly property string climbPrompt: Interaction.climbPrompt(ShellState.state)
     readonly property bool worldPrompts: !freeCursor

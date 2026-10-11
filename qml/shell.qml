@@ -46,7 +46,7 @@ ShellRoot {
                 height: parent.height / uiScale
                 scale: uiScale
                 transformOrigin: Item.TopLeft
-                visible: ShellState.active && !ShellState.authoredCamera
+                visible: ShellState.active && !ShellState.authoredCamera && !HudData.focusMode
             }
 
             Item {

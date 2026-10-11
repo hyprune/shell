@@ -31,3 +31,10 @@ console.log(JSON.stringify([
 '''
         result=json.loads(subprocess.check_output(['node','-e',script],text=True))
         self.assertEqual(result,['Core-authored prompt','W/S climb · Space let go','','',False,False,False,''])
+
+    def test_focus_and_use_modes_hide_the_hud(self):
+        script=(Path(__file__).resolve().parents[1]/'qml/HudInteraction.js').read_text()+'''
+console.log(JSON.stringify(['movement','typing','workspace','fullscreen','cursor'].map(m=>focusMode({interaction:{mode:m}})).concat([focusMode(null),focusMode({})])));
+'''
+        self.assertEqual(json.loads(subprocess.check_output(['node','-e',script],text=True)),[False,True,True,True,False,False,False])
+        self.assertIn('!HudData.focusMode',(Path(__file__).resolve().parents[1]/'qml/shell.qml').read_text())
