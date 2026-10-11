@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Build the v4/v5 status crop comparison from locked nested capture evidence."""
 from pathlib import Path
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import json
 import os
 import re
 import subprocess
 
-P=(Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else Path(__file__).resolve().parent/'.run/gallery')/'screenshots/hud-concepts'
+P=devenv.gallery_dir()/'screenshots/hud-concepts'
 font=subprocess.check_output(['fc-match','-f','%{file}','DejaVu Sans'],text=True)
 def f(n):return ImageFont.truetype(font,n)
 def crops(path):

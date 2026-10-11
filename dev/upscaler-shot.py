@@ -4,6 +4,7 @@ Run from anywhere: flock /tmp/worldshell-nested.lock python3 dev/upscaler-shot.p
 HYPRUNE_CORE_DIR selects the core checkout (needs IPC 0.16). No owner-session control.
 """
 import argparse, json, os, pathlib, subprocess, sys, time
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 CORE=pathlib.Path(os.environ.get('HYPRUNE_CORE_DIR',str(ROOT.parent/'core')))
 sys.path.insert(0,str(CORE/'dev/nested'))
@@ -11,7 +12,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys
-SHOTS=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')/'screenshots/optimise-2026-10'
+SHOTS=devenv.gallery_dir()/'screenshots/optimise-2026-10'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
 def acceptance(client,children,args,shell_token,socketpath):

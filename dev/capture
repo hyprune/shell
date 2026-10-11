@@ -4,9 +4,10 @@ ROOT=$(cd -- "$(dirname -- "$0")/.." && pwd)
 : "${HYPRUNE_SHELL_PID:?Use dev/run capture, under the nested-session lock}"
 : "${HYPRLAND_INSTANCE_SIGNATURE:?Missing isolated instance}"
 : "${WAYLAND_DISPLAY:?Missing isolated display}"
-GALLERY=${HYPRUNE_GALLERY_DIR:-$ROOT/dev/.run/gallery}
-SHOTS="$GALLERY/screenshots/hyprune-shell-m0"
-mkdir -p "$SHOTS" "$GALLERY/videos"
+# HYPRUNE_GALLERY_DIR / HYPRUNE_VIDEO_DIR: environment or ~/.config/hyprune/dev.env
+# (dev/devenv.py warns and falls back to dev/.run/ when they aren't configured).
+SHOTS=$("$ROOT/dev/devenv.py" --gallery screenshots/hyprune-shell-m0)
+VIDEOS=$("$ROOT/dev/devenv.py" --videos)
 ipc() { qs ipc --pid "$HYPRUNE_SHELL_PID" call preview "$@"; }
 open() { kill -WINCH "$(cat "$ROOT/dev/.run/mock.pid")"; sleep .55; }
 shot() { grim -o HYPRUNE-PREVIEW "$SHOTS/$1.png"; }
@@ -55,11 +56,11 @@ if [[ -n "$record_pid" ]]; then
     kill -INT "$record_pid"
     wait "$record_pid"
     record_pid=''
-    ffmpeg -y -loglevel warning -i "$ROOT/dev/.run/raw.mp4" -vf 'scale=1920:1080:in_range=pc:out_range=tv,fps=30' -c:v libx264 -crf 21 -preset medium -pix_fmt yuv420p -color_range tv -movflags +faststart -an "$GALLERY/videos/hyprune-shell-m0.mp4"
-    cat > "$GALLERY/videos/hyprune-shell-m0.json" <<'JSON'
+    ffmpeg -y -loglevel warning -i "$ROOT/dev/.run/raw.mp4" -vf 'scale=1920:1080:in_range=pc:out_range=tv,fps=30' -c:v libx264 -crf 21 -preset medium -pix_fmt yuv420p -color_range tv -movflags +faststart -an "$VIDEOS/hyprune-shell-m0.mp4"
+    cat > "$VIDEOS/hyprune-shell-m0.json" <<'JSON'
 {"title":"Hyprune shell M0","tag":"shell","notes":"Original Quickshell Director and HUD in isolated nested Hyprland at 1080p, running the actual SDK hyprune-mock on real IPC 0.2. SDK owns the 350 ms hold timer and emits canonical ui.opened/ui.closed and location.transition; waypoint.set uses Target and point travel uses travel.start. World loading uses native indeterminate progress, stable operation IDs and confirmed arrival. The visual dev harness explicitly emulates verified Wayland association for its supervised QML child because M1 core and the faithful mock reject exclusive input; mock workspace-location mapping is also a documented test adapter. No mock-only wire fields or notice-carried transitions remain. Projection/backdrop/vehicle are explicit presentation fixtures. Real-core checks separately pass native warp, loading, hold timing, exclusive refusal and F12 during warp. No owner-session control commands or prototype assets."}
 JSON
-    ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt,width,height -show_entries format=duration,size -of json "$GALLERY/videos/hyprune-shell-m0.mp4" > "$ROOT/dev/.run/video-info.json"
+    ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt,width,height -show_entries format=duration,size -of json "$VIDEOS/hyprune-shell-m0.mp4" > "$ROOT/dev/.run/video-info.json"
     python3 - "$ROOT/dev/.run/video-info.json" <<'PY'
 import json,sys
 x=json.load(open(sys.argv[1]));s=x['streams'][0];f=x['format']

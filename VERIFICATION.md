@@ -85,7 +85,7 @@ seals are original Canvas/QML drawings; no prototype code or game assets ship.
 
 ## Review artifacts
 
-Gallery root: `$HYPRUNE_GALLERY_DIR` (default `dev/.run/gallery/`).
+Gallery root: `$HYPRUNE_GALLERY_DIR` (environment or `~/.config/hyprune/dev.env`; unset: `dev/.run/gallery/`, with a warning).
 Screenshots are **1920×1080**, stored under `screenshots/hyprune-shell-m0/`:
 
 | View | File |

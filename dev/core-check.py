@@ -10,6 +10,8 @@ import signal
 import stat
 import subprocess
 import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import devenv  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE = Path(os.environ.get('HYPRUNE_CORE_DIR', ROOT.parent / 'core'))
@@ -173,7 +175,7 @@ async def main():
         await probe.call('travel.start', {'to': {'zoneId': 'gallery'}, 'durationMs': 5800})
         await until(lambda: ui()['warp'])
         await asyncio.sleep(2)
-        shots = Path(os.environ.get('HYPRUNE_GALLERY_DIR', str(Path(__file__).resolve().parent / '.run/gallery'))) / 'screenshots/hyprune-shell-m0'
+        shots = devenv.gallery_dir() / 'screenshots/hyprune-shell-m0'
         shots.mkdir(parents=True, exist_ok=True)
         nested('grim', '-o', 'HYPRUNE-PREVIEW', str(shots / 'native-core-warp.png'))
         await until(lambda: probe.state['location']['transition']['phase'] == 'arrived')

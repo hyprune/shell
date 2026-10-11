@@ -1,5 +1,7 @@
 """Real IPC 0.15 shell acceptance. Parent owns the isolated nested flock."""
 import hashlib,json,math,os,subprocess,time
+import sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 from pathlib import Path
 import session as s
 from m2 import wait,keys,pose
@@ -136,7 +138,7 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
     client.call('runtime.exit',{});wait(lambda:not state()['runtime']['active'])
     client.call('world.load',{'worldId':'com.hyprune.switchyard'})
     wait(lambda:status()['readyText'])
-    dest=(Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else Path(__file__).resolve().parent/'.run/gallery')/'screenshots/hud-concepts/ready-loaded-inactive-ipc015.png'
+    dest=devenv.gallery_dir()/'screenshots/hud-concepts/ready-loaded-inactive-ipc015.png'
     subprocess.run([str(s.HERE/'ctl.py'),'shot',str(dest)],check=True)
     log=(s.STATE/'shell.log').read_text()
     assert not any(x in log for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Invalid core frame','Presentation:']),log[-6000:]

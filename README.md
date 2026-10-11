@@ -55,8 +55,13 @@ window. `preview` is an alias. The SDK owns the 350 ms hold timer; a supervisor
 trigger feeds its `hold` API and the shell receives `ui.opened`. Ctrl+C stops the
 run. `HYPRUNE_SDK_DIR` selects another checkout (default: the sibling `../sdk`);
 the tested pin and adapter hooks are recorded in `dev/SDK-SOURCE.json`. Capture
-harnesses write screenshots and videos under `$HYPRUNE_GALLERY_DIR` (default:
-the ignored `dev/.run/gallery/`).
+harnesses write screenshots under `$HYPRUNE_GALLERY_DIR` and finished videos under
+`$HYPRUNE_VIDEO_DIR`. Set them in the environment or in an optional
+`~/.config/hyprune/dev.env` (`$XDG_CONFIG_HOME` if set): one `KEY=VALUE` per line,
+`#` comments, `~` expanded; the environment wins. Unset, the harness prints one
+warning and writes to the ignored `dev/.run/gallery/` and `dev/.run/videos/`.
+`dev/devenv.py` prints the effective values. Machine-specific values like these
+never go into the repository.
 
 ```sh
 ./dev/run tour          # six views, then a native world load

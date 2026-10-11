@@ -4,6 +4,7 @@ Run: flock /tmp/worldshell-nested.lock python3 dev/followup-core.py
 No source changes or controls outside the nested compositor.
 """
 import argparse, json, os, pathlib, signal, subprocess, sys, tempfile, time
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 CORE=pathlib.Path(os.environ.get('HYPRUNE_CORE_DIR',str(ROOT.parent/'core')))
 sys.path.insert(0,str(CORE/'dev/nested'))
@@ -11,7 +12,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys, pose
-GALLERY=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')
+GALLERY=devenv.gallery_dir()
 PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.8')
 SHOTS=GALLERY/'screenshots/hyprune-shell-followup'
 SHOTS.mkdir(parents=True,exist_ok=True)

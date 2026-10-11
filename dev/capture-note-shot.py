@@ -9,6 +9,7 @@ open, keeps both notes in order; navigation resumes right after (W moves). Still
 prompt in the Night and Day themes go to the gallery.
 """
 import argparse, json, math, os, pathlib, shutil, subprocess, sys, time
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 CORE=pathlib.Path(os.environ.get('HYPRUNE_CORE_DIR',str(ROOT.parent/'core')))
 sys.path.insert(0,str(CORE/'dev/nested'))
@@ -16,7 +17,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys, pose
-SHOTS=pathlib.Path.home()/'hyprune-gallery/screenshots/capture-notes'
+SHOTS=devenv.gallery_dir('screenshots/capture-notes')
 SHOTS.mkdir(parents=True,exist_ok=True)
 
 def acceptance(client,children,args,shell_token,socketpath):

@@ -4,6 +4,7 @@ Run: flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
 No source changes or controls outside the nested compositor.
 """
 import argparse, json, os, pathlib, signal, subprocess, sys, tempfile, time
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent)); import devenv  # noqa: E402
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 CORE=pathlib.Path(os.environ.get('HYPRUNE_CORE_DIR',str(ROOT.parent/'core')))
 sys.path.insert(0,str(CORE/'dev/nested'))
@@ -11,7 +12,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys, pose
-GALLERY=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')
+GALLERY=devenv.gallery_dir()
 PROTOCOL=os.environ.get('HYPRUNE_FOLLOWUP_PROTOCOL','0.12' if os.environ.get('HYPRUNE_HUD_INTERACTION') else '0.13' if os.environ.get('HYPRUNE_HUD_AUTHORING') and not os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.14' if os.environ.get('HYPRUNE_HUD_INK_PERSISTENCE') else '0.15')
 SHOTS=GALLERY/'screenshots/hud-concepts'
 SHOTS.mkdir(parents=True,exist_ok=True)
@@ -281,7 +282,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-of','json',str(encoded)]))
             assert 45<=float(probe['format']['duration'])<=60
             import shutil
-            destination=GALLERY/'videos/hud-concepts.mp4';shutil.move(str(encoded),destination)
+            destination=devenv.video_dir()/'hud-concepts.mp4';shutil.move(str(encoded),destination)
             destination.with_suffix('.json').write_text(json.dumps({'title':'Hyprune · three HUD concepts','tag':'shell','notes':'Adventure, Instrument and Minimal. Real core tools and wheel subtypes, HUD-only perspective, Sun Court and Rime Vault, Appearance and Performance. Concept selection is Settings/config only; key 5 never changes it. Native Quickshell rendering inside the locked isolated nested compositor. Original geometric icons; no private reference asset included.','duration':probe['format']['duration']},indent=2)+'\n')
             evidence['videoSeconds']=probe['format']['duration']
     pose(client,homes['signal-rise'])
