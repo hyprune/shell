@@ -165,6 +165,18 @@ def acceptance(client, children, args, shell_token, socketpath):
         shot('core-quests-page')
     attempt('quests page', quest_page)
 
+    # Map: core's markers.list on the shown level, the tracked step among them.
+    def map_markers():
+        ui('tab', 0); time.sleep(1)
+        listed_ids = {m['id'] for m in state()['markers']['list'] if m['position'] and m['kind'] != 'place'}
+        drawn = set(json.loads(ui('mapMarkers')))
+        tracked = [m['id'] for m in state()['markers']['list'] if m['tracked']]
+        json.loads(ui('mapView', 1, 0, 0, 'auto'))
+        shot('core-map-markers')
+        check('Map draws markers.list (resolved, shown level), tracked step included', drawn and drawn <= listed_ids and
+              any(t in drawn for t in tracked), {'drawn': sorted(drawn), 'tracked': tracked, 'listed': len(listed_ids)})
+    attempt('map markers', map_markers)
+
     # Settings > Guidance: a toggle and a reset go through guidance.set and the file.
     def guidance():
         ui('tab', 7); ui('settingsSection', 5)
@@ -187,9 +199,13 @@ def acceptance(client, children, args, shell_token, socketpath):
         ui('tab', 1); ui('questSelect', 'personal/ship-the-release-notes')
         wait(lambda: (status().get('quests') or {}).get('detail') == 'Ship the release notes 0.21', 5)
         time.sleep(.5)
+        current = state()['workspaces']['currentId']
+        assert press('segment:workspace'), 'focus target picker'
         assert press('quest-start-focus-review'), 'Start focus session button'
         f = wait(lambda: (lambda x: x if x['state'] == 'work' else None)(state()['focus']), 5)
         linked = (f['target'] or {}).get('questRef') == {'source': 'personal', 'id': 'ship-the-release-notes'}
+        check('focus target picker: Workspace defaults to the current workspace', current and f['target']['kind'] == 'workspace'
+              and f['target'].get('workspaceId') == current, {'current': current, 'target': f['target']})
         shot('core-quests-focus-started')
         closed()
         s.ctl('eval', 'hl.plugin.hyprune.camera(-8, 1.7, 12, 0, 0)')
