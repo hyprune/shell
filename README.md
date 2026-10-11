@@ -35,6 +35,10 @@ in calm mode). Settings → Guidance edits markers, notifications and focus sett
 `guidance.get` / `guidance.set`. The bridge requests `quest.control` only at 0.21. The
 Director hold ring waits 180 ms (`holdRingDelayMs`) so a TAB tap never flashes it.
 `./dev/run quests` captures all of it from the mock with dev preview data.
+Against a real 0.21 core, `dev/quests-core.py` runs inside core's nested harness (headless
+hosts: `python3 $CORE/dev/nested/isolated.py dev/quests-core.py`, `HYPRUNE_CORE_DIR`
+selects the core checkout) and reports each check; `dev/quests-demo.py OUT.mkv` records the
+same features in Lumen Reach.
 
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,
