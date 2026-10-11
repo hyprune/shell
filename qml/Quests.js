@@ -203,28 +203,74 @@ function formTarget(kind, value) {
     return null;
 }
 
+// A step's objectives the form can show as they are: one plain checkbox, or one focus
+// objective (its session count). Anything else is kept as it is when editing.
+function simpleObjectives(objectives) {
+    if (!objectives || objectives.length !== 1) return !objectives || !objectives.length;
+    var o = objectives[0];
+    return (o.type === 'manual' && (o.count || 1) === 1) || (o.type === 'focus' && !o.minutes && (o.focusTarget || 'quest') === 'quest');
+}
+
+// QuestDetail objective -> objectiveInput (definition only; progress stays in core).
+function objectiveInput(o) {
+    var out = {id: o.id, type: o.type};
+    if ((o.count || 1) > 1 && o.type !== 'focus') out.count = o.count;
+    if (o.label && o.type !== 'focus') out.label = o.label;
+    if (o.type === 'reach') { if (o.target) out.target = o.target; if (o.radius) out.radius = o.radius; }
+    if (o.type === 'focus') {
+        out.sessions = o.sessions || 1;
+        if (o.minutes) out.minutes = o.minutes;
+        if (o.focusTarget) out.focusTarget = o.focusTarget;
+    }
+    return out;
+}
+
+function sameTarget(a, b) { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+
 // Form -> PersonalQuestInput. form: {title, summary, steps (text), targetKind, targetValue,
-// sessions: {stepTitle: n}}. `previous` (QuestDetail, when editing) keeps the step ids of
-// steps whose title is unchanged so their progress survives the update.
+// sessions: {stepTitle: n}}. `previous` (QuestDetail, when editing) keeps, for every step
+// whose title is unchanged: its id (so its progress survives the update), its optional/any
+// flags, objectives the form can't show, and (targetKind 'keep') its own target. The quest
+// keeps its order and due time.
 function questInput(form, previous) {
     var title = cleanTitle(form.title);
     var titles = parseSteps(form.steps);
     if (!titles.length && title) titles = [title];
-    var target = formTarget(form.targetKind, form.targetValue);
+    var keep = form.targetKind === 'keep';
+    var target = keep ? null : formTarget(form.targetKind, form.targetValue);
     var used = [], prevSteps = previous && previous.steps ? previous.steps.slice() : [];
     var steps = titles.map(function (t, i) {
         var match = prevSteps.findIndex(function (s) { return s.title === t && used.indexOf(s.id) < 0; });
-        var id = match >= 0 ? prevSteps[match].id : uniqueSlug(slugify(t, 'step-' + (i + 1)), used);
-        if (match >= 0) used.push(id);
+        var prev = match >= 0 ? prevSteps[match] : null;
+        var id = prev ? prev.id : uniqueSlug(slugify(t, 'step-' + (i + 1)), used);
+        if (prev) used.push(id);
         var step = {id: id, title: t};
+        if (prev && prev.optional) step.optional = true;
+        if (prev && prev.any) step.any = true;
         if (target) step.target = target;
-        var n = Math.floor(Number((form.sessions || {})[t] || 0));
-        if (n > 0) step.objectives = [{id: 'focus', type: 'focus', sessions: Math.min(12, n)}];
+        else if (keep && prev && prev.target) step.target = prev.target;
+        var n = Math.min(12, Math.floor(Number((form.sessions || {})[t] || 0)));
+        if (prev && !simpleObjectives(prev.objectives)) {
+            var objectives = prev.objectives.map(objectiveInput).filter(function (o) { return o.type !== 'focus' || n > 0; });
+            var focus = objectives.find(function (o) { return o.type === 'focus'; });
+            if (focus) focus.sessions = n;
+            else if (n > 0) objectives.push({id: objectives.some(function (o) { return o.id === 'focus'; }) ? 'focus-2' : 'focus', type: 'focus', sessions: n});
+            // A reach objective without its own target needs a step target.
+            objectives = objectives.filter(function (o) { return o.type !== 'reach' || o.target || step.target; });
+            if (objectives.length) step.objectives = objectives.slice(0, 8);
+        } else {
+            // Simple steps keep their objective id, so progress survives a change of kind too.
+            var only = prev && prev.objectives && prev.objectives.length ? prev.objectives[0] : null;
+            if (n > 0) step.objectives = [{id: only && only.type === 'focus' ? only.id : 'focus', type: 'focus', sessions: n}];
+            else if (only && only.type === 'manual' && only.id !== 'done') step.objectives = [{id: only.id, type: 'manual'}];
+        }
         return step;
     });
     var quest = {title: title, steps: steps};
     var summary = String(form.summary || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, 1000);
     if (summary) quest.summary = summary;
+    if (previous && previous.sequential === false) quest.sequential = false;
+    if (previous && previous.expires) quest.expires = String(previous.expires).slice(0, 16);
     return quest;
 }
 
@@ -237,17 +283,22 @@ function formError(form) {
     return '';
 }
 
-// QuestDetail -> form (Edit). The quest-wide target is the first step target.
+// QuestDetail -> form (Edit). One target shared by every step (workspace, area or place)
+// is the quest's target; differing or other step targets show as 'keep' (per step).
 function formFromDetail(detail) {
     var form = {title: '', summary: '', steps: '', targetKind: 'none', targetValue: '', sessions: {}};
     if (!detail) return form;
     form.title = detail.title || '';
     form.summary = detail.summary || '';
     form.steps = (detail.steps || []).map(function (s) { return s.title; }).join('\n');
-    var t = (detail.steps || []).map(function (s) { return s.target; }).find(function (v) { return !!v; });
-    if (t && t.workspaceId !== undefined) { form.targetKind = 'workspace'; form.targetValue = String(t.workspaceId); }
-    else if (t && t.areaId) { form.targetKind = 'area'; form.targetValue = t.areaId; }
-    else if (t && t.placeId) { form.targetKind = 'place'; form.targetValue = t.placeId; }
+    var targets = (detail.steps || []).map(function (s) { return s.target || null; });
+    var t = targets.find(function (v) { return !!v; });
+    var shared = !!t && targets.every(function (v) { return sameTarget(v, t); });
+    if (!t) form.targetKind = 'none';
+    else if (shared && t.workspaceId !== undefined) { form.targetKind = 'workspace'; form.targetValue = String(t.workspaceId); }
+    else if (shared && t.areaId) { form.targetKind = 'area'; form.targetValue = t.areaId; }
+    else if (shared && t.placeId) { form.targetKind = 'place'; form.targetValue = t.placeId; }
+    else form.targetKind = 'keep';
     (detail.steps || []).forEach(function (s) {
         var f = (s.objectives || []).find(function (o) { return o.type === 'focus'; });
         if (f) form.sessions[s.title] = f.sessions || 1;
@@ -339,7 +390,7 @@ function toastFor(method, p, focus) {
         return null; // objective progress: the tracker updates in place
     }
     if (method === 'focus.phase') {
-        var t = {key: 'focus:' + p.phase, kind: 'toast', category: 'focus', title: 'Focus session', line: '', detail: '',
+        var t = {key: 'focus:' + p.phase, kind: 'toast', category: 'focus', phase: p.phase, title: 'Focus session', line: '', detail: '',
                  durationMs: DURATIONS.focus, count: 1};
         var of = p.cycle + ' of ' + p.cycles;
         if (p.phase === 'work') { t.line = 'Work · interval ' + of; }

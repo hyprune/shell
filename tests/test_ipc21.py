@@ -401,12 +401,44 @@ class Helpers(unittest.TestCase):
         form = js('formFromDetail(%s)' % json.dumps(DETAIL))
         self.assertEqual(form['steps'], 'Draft\nWrite\nPublish')
         self.assertEqual(form['sessions'], {'Write': 2})
-        self.assertEqual((form['targetKind'], form['targetValue']), ('area', 'sun-court'))
+        self.assertEqual(form['targetKind'], 'keep')  # steps with their own targets
         edited = dict(form, steps='Draft\nPolish\nWrite\nPublish')
         quest = js('questInput(%s, %s)' % (json.dumps(edited), json.dumps(DETAIL)))
         self.assertEqual([s['id'] for s in quest['steps']], ['draft', 'polish', 'write', 'publish'])
-        self.assertEqual(quest['steps'][2]['objectives'], [{'id': 'focus', 'type': 'focus', 'sessions': 2}])
+        self.assertEqual([s.get('target') for s in quest['steps']], [None, None, {'areaId': 'sun-court'}, {'placeId': 'lookout'}])
+        self.assertEqual(quest['steps'][2]['objectives'], [{'id': 'focus', 'type': 'focus', 'sessions': 2},
+                                                           {'id': 'done', 'type': 'manual', 'label': 'Done'}])
         frame(request('quests.update', {'questRef': REF, 'quest': quest}), V21)
+
+    def test_edit_keeps_what_the_form_cannot_show(self):
+        detail = json.loads(json.dumps(DETAIL))
+        detail['sequential'] = False
+        detail['expires'] = '2026-10-20T18:00:00'
+        detail['steps'][0]['target'] = {'zoneId': 'hall'}
+        detail['steps'][2]['optional'] = True
+        detail['steps'][2]['objectives'] = [
+            {'id': 'go', 'type': 'reach', 'label': 'Reach the lookout', 'count': 2, 'done': 1, 'radius': 6},
+            {'id': 'ok', 'type': 'manual', 'label': 'Sign off', 'count': 1, 'done': 0}]
+        detail['steps'][0]['objectives'] = [{'id': 'check', 'type': 'manual', 'label': 'Done', 'count': 1, 'done': 1}]
+        form = js('formFromDetail(%s)' % json.dumps(detail))
+        self.assertEqual(form['targetKind'], 'keep')  # differing step targets: per step
+        quest = js('questInput(%s, %s)' % (json.dumps(dict(form, sessions={'Publish': 1})), json.dumps(detail)))
+        frame(request('quests.update', {'questRef': REF, 'quest': quest}), V21)
+        steps = {s['id']: s for s in quest['steps']}
+        self.assertEqual(steps['draft']['target'], {'zoneId': 'hall'})
+        self.assertEqual(steps['draft']['objectives'], [{'id': 'check', 'type': 'manual'}])
+        self.assertEqual(steps['write']['target'], {'areaId': 'sun-court'})
+        self.assertEqual(steps['publish']['objectives'], [{'id': 'go', 'type': 'reach', 'count': 2, 'label': 'Reach the lookout', 'radius': 6},
+                                                         {'id': 'ok', 'type': 'manual', 'label': 'Sign off'},
+                                                         {'id': 'focus', 'type': 'focus', 'sessions': 1}])
+        self.assertTrue(steps['publish']['optional'])
+        self.assertEqual((quest['sequential'], quest['expires']), (False, '2026-10-20T18:00'))
+        cleared = js('questInput(%s, %s)' % (json.dumps(dict(form, targetKind='none')), json.dumps(detail)))
+        self.assertFalse([s for s in cleared['steps'] if 'target' in s])
+        self.assertNotIn('go', [o['id'] for s in cleared['steps'] for o in s.get('objectives', [])])  # reach needs a target
+        shared = json.loads(json.dumps(DETAIL))
+        for st in shared['steps']: st['target'] = {'workspaceId': 21}
+        self.assertEqual(js('formFromDetail(%s)' % json.dumps(shared))['targetKind'], 'workspace')
 
     def test_focus_timing(self):
         self.assertEqual(js('[countdown(1500000), countdown(61001), countdown(999), countdown(0), countdown(7200000), countdown(-5)]'),
