@@ -1,9 +1,11 @@
 import ".."
 import "../theme"
 import QtQuick
+import "../Quests.js" as Quests
 Item {
     id: root
     readonly property real holdProgress: holdRing.progress
+    readonly property bool holdFilling: holdRing.filling
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property bool compact: width < 1200 || height < 700
@@ -49,6 +51,33 @@ Item {
             HudStatusText { y:49; probeMode:root.contrastProbe; width:parent.width; horizontalAlignment:Text.AlignRight; visible:root.technical; text:HudData.stats; font.pixelSize:12 }
         }
     }
+    // RFC-0012 (IPC 0.21): quest tracker, focus timer chip and toasts under the status.
+    HudCluster {
+        objectName: 'hudQuestColumn'
+        z: 2
+        anchors.right: parent.right; anchors.rightMargin: root.inset
+        y: root.inset + (root.technical ? 92 : 84)
+        width: root.compact ? 236 : 300; height: questColumn.height
+        edgeX: 1; edgeY: -.6
+        curvatureScale: .35
+        shown: questColumn.height > 0
+        Column {
+            id: questColumn
+            width: parent.width
+            spacing: 10
+            QuestTracker { width: parent.width; height: implicitHeight }
+            FocusChip { anchors.right: parent.right; width: Math.min(parent.width, implicitWidth); height: implicitHeight; visible: Quests.chipVisible(ShellState.focusState, true, null) }
+            QuestToast { width: parent.width; height: implicitHeight; toast: ShellState.toasts.length ? ShellState.toasts[0] : null }
+        }
+    }
+    QuestToast {
+        objectName: 'hudQuestBanner'
+        banner: true
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.inset + 84
+        width: Math.min(520, root.width * .6); height: implicitHeight
+        toast: ShellState.banners.length ? ShellState.banners[0] : null
+    }
     HudCluster {
         id: deck; objectName: 'hudToolDeck'
         x:root.inset; y:root.height-height-root.inset-46
@@ -67,7 +96,7 @@ Item {
     HudCluster {
         x:root.inset; y:root.height-root.inset-36; width:Math.min(680,root.width-root.inset*2); height:36; edgeX:-1;edgeY:1
         HoldRing { id:holdRing; width:32;height:32; visible:HudData.worldPrompts }
-        HudText { objectName:'hudWorldHints'; visible:HudData.worldPrompts; x:44;y:9;width:parent.width-x;text:root.minimal || HudData.climbing ? 'HOLD · DIRECTOR' : 'HOLD · DIRECTOR    E · USE    F · FOCUS    Q · SCOPE'; font.pixelSize:12; font.letterSpacing:.5; color:Tokens.hudMuted }
+        HudText { objectName:'hudWorldHints'; visible:HudData.worldPrompts; x:44;y:9;width:parent.width-x;text:(ShellState.markersState ? 'TAP · MARKERS    ' : '')+(root.minimal || HudData.climbing ? 'HOLD · DIRECTOR' : 'HOLD · DIRECTOR    E · USE    F · FOCUS    Q · SCOPE'); font.pixelSize:12; font.letterSpacing:.5; color:Tokens.hudMuted }
         HudModeChip { objectName:'hudCursorChip'; visible:HudData.freeCursor; width:Math.min(parent.width,implicitWidth); height:36 }
     }
     Item {

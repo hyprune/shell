@@ -19,6 +19,12 @@ QtObject {
     // World HUD styles can't override these yet (hud-style 1 has no such keys).
     readonly property color hudPositive: hudConcept === 'Instrument' ? '#74eec4' : hudConcept === 'Minimal' ? '#9fe3ad' : '#59f299'
     readonly property color hudWarning: hudConcept === 'Instrument' ? '#ffb35c' : hudConcept === 'Minimal' ? '#f2a777' : '#ff9e59'
+    // RFC-0012 quests: tracker, toasts and banner accents; also core's overlay questColor (0.21).
+    readonly property color hudQuest: '#ffc74d'
+    // The same accent on Director panels (readable on Paper).
+    readonly property color quest: light ? '#8a5a00' : '#ffc74d'
+    // Focus session phases: the chip ring is the accent in work and this colour in breaks.
+    readonly property color hudBreak: hudConcept === 'Instrument' ? '#9ad7ff' : hudConcept === 'Minimal' ? '#b9d8ee' : '#8fd3ff'
     readonly property color hudOutline: skinColor('outline','#081118')
     readonly property color hudScrim: skinColor('scrim','#101820')
     readonly property string hudCorners: skin.corners || 'square'

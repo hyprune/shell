@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import "theme"
 import "components"
 import "components/LayoutAudit.js" as Audit
+import "Quests.js" as Quests
 
 ShellRoot {
     id: root
@@ -49,6 +50,15 @@ ShellRoot {
                 visible: ShellState.active && !ShellState.authoredCamera && !HudData.focusMode
             }
 
+            // RFC-0012: the focus timer chip in use (E) mode, where the HUD itself is hidden.
+            FocusChip {
+                property real uiScale: hudScene.uiScale
+                visible: ShellState.active && !ShellState.director && HudData.focusMode && !!ShellState.state.interaction && ShellState.state.interaction.mode === 'typing' &&
+                         Quests.chipVisible(ShellState.focusState, true, null)
+                anchors { right: parent.right; top: parent.top; margins: 24 }
+                width: implicitWidth; height: implicitHeight
+            }
+
             Item {
                 objectName:'readyNotification'
                 visible:ShellState.live && ShellState.readyText!=='' && !ShellState.active
@@ -85,6 +95,37 @@ ShellRoot {
                         elide: Text.ElideRight
                     }
                 }
+            }
+        }
+    }
+
+    // RFC-0012 desktop focus chip (guidance focus.desktop_chip) and focus-phase toasts while
+    // the world is not active. Passive: no input region, no keyboard.
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            id: desktopFocus
+            required property var modelData
+            readonly property bool chip: ShellState.live && !ShellState.state.runtime.active && Quests.chipVisible(ShellState.focusState, false, ShellState.guidanceConfig)
+            readonly property var toast: ShellState.toasts.length && ShellState.toasts[0].category === 'focus' ? ShellState.toasts[0] : null
+            screen: modelData
+            visible: modelData.name === root.lastScreen && ShellState.live && !ShellState.state.runtime.active && (chip || !!toast)
+            anchors { top: true; right: true }
+            margins { top: 16; right: 16 }
+            implicitWidth: 300
+            implicitHeight: Math.max(1, desktopColumn.height)
+            color: 'transparent'
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: 'hyprune-focus'
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            mask: Region {}
+            Column {
+                id: desktopColumn
+                width: parent.width
+                spacing: 10
+                FocusChip { objectName: 'desktopFocusChip'; anchors.right: parent.right; visible: desktopFocus.chip; width: implicitWidth; height: implicitHeight }
+                QuestToast { width: parent.width; height: implicitHeight; toast: desktopFocus.toast }
             }
         }
     }
@@ -194,8 +235,25 @@ ShellRoot {
             if (ShellState.dev) ShellState.close();
         }
         function tab(index: int): void {
-            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(7, index));
+            if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
+        // IPC 0.21 preview (dev only): quests.list/get and guidance.get answers, events, keys.
+        function questPreview(json: string): void {
+            if (!ShellState.dev) return;
+            ShellState.questPreview = json ? JSON.parse(json) : null;
+            if (ShellState.questPreview) ShellState.refreshGuidance();
+        }
+        function questEvent(method: string, json: string): void { if (ShellState.dev) ShellState.receive({type: method, value: JSON.parse(json)}); }
+        function questSelect(key: string): void { if (ShellState.dev) ShellState.selectQuest(key); }
+        function questForm(json: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorQuests');
+            if (!page) return false;
+            page.openForm(json ? JSON.parse(json) : null);
+            return true;
+        }
+        function clockOffset(offset: real): void { if (ShellState.dev) ShellState.receive({type: 'clock', offsetMs: offset}); }
+        function monotonicNow(): real { return ShellState.monotonicNow() || 0; }
         function select(index: int): void {
             if (ShellState.dev && ShellState.places[index]) {
                 ShellState.selectedPlace = ShellState.places[index].id;
@@ -315,6 +373,10 @@ ShellRoot {
                 manipulation: HudData.manipulation, readyText:ShellState.readyText, concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
                 graphics: ShellState.graphics, player: ShellState.playerSettings, playerSupported: ShellState.playerSupported,
                 menuHold: ShellState.menuHold,
+                holdFilling: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdFilling || false,
+                quests: {selected: ShellState.selectedQuest, list: ShellState.questList.length, detail: ShellState.questDetail ? ShellState.questDetail.title : null,
+                         feedback: ShellState.questFeedback, toasts: ShellState.toasts, banners: ShellState.banners, deferred: ShellState.deferredToasts.length,
+                         guidance: ShellState.guidanceConfig, mapFocus: ShellState.mapFocus},
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,

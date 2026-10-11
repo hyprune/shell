@@ -6,6 +6,7 @@ import "HudManipulation.js" as Manipulation
 import "PlayerSettings.js" as PlayerSettings
 import "Blueprint.js" as Blueprint
 import "DirectorModel.js" as DirectorModel
+import "Quests.js" as Quests
 pragma Singleton
 
 QtObject {
@@ -38,12 +39,20 @@ QtObject {
     function supportsProtocol(minor) { var v=protocol.split('.'); return v[0]==='0' && Number(v[1])>=minor; }
     readonly property bool authoredCamera: supportsProtocol(13) && (!camera || camera.held)
     property Timer cameraPoll: Timer { interval:250; running:root.active && root.supportsProtocol(13) && root.available('camera.get'); repeat:true; triggeredOnStart:true; onTriggered:root.action('camera.get',{}) }
-    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === 7 && root.supportsProtocol(13) && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
+    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === root.tabPerformance && root.supportsProtocol(13) && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
     function refreshOutline() { if (state && state.world) send({type:'outline.get',worldId:state.world.id}); }
     function patchOutline(patch) { if (state && state.world) send({type:'outline.patch',worldId:state.world.id,patch:patch}); }
     property var graphics: null
     property var previousTimings: null // prior graphics.get sample (idle detection)
     property var menuHold: null
+    // A TAB tap (RFC-0012 markers.reveal) must not flash the Director hold ring: the ring
+    // waits this long after the hold started, then fills the rest (local, no wire field).
+    property int holdRingDelayMs: Quests.HOLD_RING_DELAY_MS
+    // Core's monotonic clock (keymap holds, focus phases) = Date.now() + clockOffset;
+    // the bridge measures it with session.ping.
+    property double clockOffset: 0
+    property bool clockKnown: false
+    function monotonicNow() { return clockKnown ? Date.now() + clockOffset : null; }
     property double revision: 0
     property string output: ''
     property string screenName: ''
@@ -53,7 +62,7 @@ QtObject {
     // IPC 0.19 adds the core reticle colours (HUD foreground, positive, warning).
     function coreStyle() {
         return PlayerSettings.overlayStyle({mono:Tokens.mono,accent:Tokens.accent,text:Tokens.text,gold:Tokens.gold,
-                                            reticle:Tokens.hudForeground,positive:Tokens.hudPositive,warning:Tokens.hudWarning}, protocolMinor());
+                                            reticle:Tokens.hudForeground,positive:Tokens.hudPositive,warning:Tokens.hudWarning,quest:Tokens.hudQuest}, protocolMinor());
     }
     function applyCoreStyle() { action('overlay.style', {style:coreStyle()}); }
     property Connections coreThemeConnection: Connections {
@@ -103,6 +112,84 @@ QtObject {
         surfaceFeedbackTimer.interval = info.level === 'warning' ? 12000 : 5000; surfaceFeedbackTimer.restart();
         if (method === 'surface.unpocket' && result && result.placed === false) showBanner('AIM AND CLICK TO PLACE');
     }
+    // ---- IPC 0.21 (RFC-0012): markers, quests, focus sessions, guidance ----
+    readonly property var markersState: state && state.markers ? state.markers : null
+    readonly property var questsState: state && state.quests ? state.quests : null
+    readonly property var focusState: state && state.focus ? state.focus : null
+    readonly property bool questsSupported: (supportsProtocol(21) || dev) && available('quests.list')
+    readonly property bool focusCalm: !!(focusState && focusState.calm)
+    property var questList: []
+    property var questDetail: null
+    property string selectedQuest: ''      // "<source>/<id>"
+    property string questFeedback: ''     // last refusal from core, plain words
+    property Timer questFeedbackTimer: Timer { interval: 8000; onTriggered: root.questFeedback = '' }
+    property var guidance: null            // guidance.get / guidance.set result
+    property bool guidanceRequested: false
+    property var mapFocus: null            // {position, label, at}: Quests > Show on map
+    property var questPreview: null        // DEV ONLY: quests.list/get and guidance.get answers
+    readonly property var guidanceConfig: guidance && guidance.config ? guidance.config : null
+    readonly property string questNotifications: guidanceConfig && guidanceConfig['quests.notifications'] ? guidanceConfig['quests.notifications'] : 'all'
+    readonly property bool questsVisible: director && tab === tabQuests
+    signal focusPulse(string phase)
+    signal questsRefreshed()
+    signal questActionDone(string method, var params, var result)
+    signal questActionFailed(string method, var params, string message)
+    function refreshQuests() {
+        if (!questsSupported) return;
+        action('quests.list', {});
+        if (selectedQuest) loadQuest(selectedQuest);
+    }
+    property Timer questRefresh: Timer { interval: 150; onTriggered: root.refreshQuests() }
+    function questRef(key) { var i = key.indexOf('/'); return i > 0 ? {source: key.slice(0, i), id: key.slice(i + 1)} : null; }
+    function loadQuest(key) { var ref = questRef(key); if (ref && questsSupported) action('quests.get', {questRef: ref}); }
+    function selectQuest(key) {
+        if (key === selectedQuest) return;
+        selectedQuest = key;
+        questDetail = null;
+        if (key) loadQuest(key);
+    }
+    function questAction(method, params) {
+        questFeedback = '';
+        action(method, params);
+    }
+    function refreshGuidance() { if (available('guidance.get')) { guidanceRequested = true; action('guidance.get', {}); } }
+    property var guidancePending: ({})
+    function patchGuidance(patch) { guidancePending = Object.assign({}, guidancePending, patch); guidanceCommit.restart(); }
+    property Timer guidanceCommit: Timer { interval: 120; onTriggered: { if (Object.keys(root.guidancePending).length) root.action('guidance.set', {patch: root.guidancePending}); root.guidancePending = ({}); } }
+    function showOnMap(resolved) {
+        if (!resolved || !resolved.position) return;
+        mapFocus = {position: resolved.position, label: resolved.label || '', at: Date.now()};
+        tab = tabMap;
+    }
+    // Toasts (under the HUD tracker) and banners (top centre), RFC-0012 notifications.
+    property var toasts: []
+    property var banners: []
+    property var deferredToasts: []
+    property Timer toastClock: Timer { interval: 200; repeat: true; running: root.toasts.length > 0 || root.banners.length > 0; onTriggered: root.advanceToasts() }
+    function advanceToasts() {
+        var now = Date.now(), t = Quests.advance(toasts, now), b = Quests.advance(banners, now);
+        if (t.length !== toasts.length || (t.length && t[0] !== toasts[0])) toasts = t;
+        if (b.length !== banners.length || (b.length && b[0] !== banners[0])) banners = b;
+    }
+    function showToast(toast) {
+        var now = Date.now();
+        if (Tokens.reducedMotion) toast = Object.assign({}, toast, {instant: true});
+        if (toast.kind === 'banner') banners = Quests.enqueue(banners, toast, now);
+        else toasts = Quests.enqueue(toasts, toast, now);
+    }
+    function presentToast(toast) {
+        var route = Quests.route(toast, questNotifications, focusCalm);
+        if (route === 'show') showToast(toast);
+        else if (route === 'defer') deferredToasts = Quests.enqueue(deferredToasts, Object.assign({}, toast), Date.now());
+    }
+    onFocusCalmChanged: {
+        // Calm ends with the work interval: deferred quest toasts show at the break.
+        if (!focusCalm && deferredToasts.length) {
+            var pending = deferredToasts; deferredToasts = [];
+            pending.forEach(t => presentToast(Object.assign({}, t, {count: 1})));
+        }
+    }
+    onQuestsVisibleChanged: { if (questsVisible) refreshQuests(); }
     // DEV ONLY (preview IPC): state fields and methods shown without a newer core. The
     // patch is merged into every snapshot; preview-only methods are recorded, never sent.
     property var statePreview: null
@@ -128,6 +215,12 @@ QtObject {
     function submitNote() { if (notePrompt) send({type: 'capture.note', captureId: notePrompt, note: cleanNote(noteText), release: true}); }
     function dismissNote() { if (notePrompt) send({type: 'capture.dismiss', captureId: notePrompt}); }
     property int tab: 0
+    // Director tab indices (Quests sits directly after Map, RFC-0012).
+    readonly property int tabMap: 0
+    readonly property int tabQuests: 1
+    readonly property int tabSettings: 7
+    readonly property int tabPerformance: 8
+    readonly property int tabCount: 9
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)
@@ -249,6 +342,8 @@ QtObject {
     function action(method, params) {
         if (dev && previewMethods.indexOf(method) >= 0 && methods.indexOf(method) < 0) {
             previewActions = previewActions.concat([{method: method, params: params}]).slice(-16);
+            var answer = questPreview ? previewAnswer(method, params) : null;
+            if (answer) Qt.callLater(() => receive({type: 'action', method: method, params: params, result: answer}));
             return;
         }
         if (available(method))
@@ -258,6 +353,31 @@ QtObject {
             "params": params
         });
 
+    }
+
+    // DEV ONLY: answers for preview-only quest reads (questPreview: {list, details, guidance}).
+    function previewAnswer(method, params) {
+        if (method === 'quests.list') return {quests: questPreview.list || []};
+        if (method === 'quests.get') { var d = (questPreview.details || {})[Quests.refKey(params.questRef)]; return d ? {quest: d} : null; }
+        if (method === 'guidance.get') return questPreview.guidance || null;
+        if (method === 'guidance.set' && questPreview.guidance) {
+            var g = JSON.parse(JSON.stringify(questPreview.guidance));
+            Object.keys(params.patch).forEach(k => { g.config[k] = params.patch[k] === null ? g.defaults[k] : params.patch[k]; });
+            questPreview = Object.assign({}, questPreview, {guidance: g});
+            return g;
+        }
+        return null;
+    }
+
+    function questResult(method, params, result) {
+        if (!method || !result) return;
+        if (method === 'quests.list') { questList = result.quests; questsRefreshed(); return; }
+        if (method === 'quests.get') { if (Quests.refKey(result.quest.questRef) === selectedQuest) questDetail = result.quest; return; }
+        if (method === 'guidance.get' || method === 'guidance.set') { guidance = result; return; }
+        if (method === 'quests.create' && result.questRef) { selectedQuest = Quests.refKey(result.questRef); questDetail = null; }
+        if (method === 'quests.delete' && params && Quests.refKey(params.questRef) === selectedQuest) { selectedQuest = ''; questDetail = null; }
+        if (/^quests\./.test(method)) questRefresh.restart();
+        questActionDone(method, params || null, result);
     }
 
     function waypoint(point) {
@@ -338,6 +458,17 @@ QtObject {
         case 'menu.hold':
             menuHold = msg.hold;
             break;
+        case 'clock':
+            clockOffset = msg.offsetMs; clockKnown = true;
+            break;
+        case 'quest.progress':
+            presentToast(Quests.toastFor('quest.progress', msg.value, focusState));
+            if (questsVisible) questRefresh.restart();
+            break;
+        case 'focus.phase':
+            focusPulse(msg.value.phase);
+            presentToast(Quests.toastFor('focus.phase', msg.value, focusState));
+            break;
         case 'connection':
             status = msg.status;
             error = msg.message || '';
@@ -351,6 +482,8 @@ QtObject {
                 markers = [];
                 camera = null; outline = null; graphics = null; player = null; previousTimings = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
+                questList = []; questDetail = null; guidance = null; guidanceRequested = false; clockKnown = false;
+                toasts = []; banners = []; deferredToasts = [];
                 methods = [];
                 capabilities = [];
             }
@@ -375,6 +508,7 @@ QtObject {
             if (!state || !state.world || !msg.state || !msg.state.world || state.world.id !== msg.state.world.id) { camera = null; outline = null; }
             if (state && msg.state && state.workspaces && msg.state.workspaces && state.workspaces.currentId !== msg.state.workspaces.currentId) showBanner('WORKSPACE FOCUSED');
             var contentChange=Manipulation.changedContent(state,msg.state);
+            var previousQuests = state ? state.quests || null : null;
             state = msg.state;
             if (contentChange) contentFeedback(contentChange);
             revision = msg.revision;
@@ -416,6 +550,8 @@ QtObject {
                 }
             }
             if (state.keymap && state.keymap.capture && state.keymap.capture.status === 'captured') inputCapture(state.keymap.capture);
+            if (questsVisible && JSON.stringify(previousQuests) !== JSON.stringify(state.quests || null)) questRefresh.restart();
+            if (!guidanceRequested && available('guidance.get')) refreshGuidance();
             arrive();
             var q = state.movement.orientation;
             var angle = -Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2])) * 180 / Math.PI;
@@ -438,12 +574,14 @@ QtObject {
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             if (msg.method === 'player.get' || msg.method === 'player.set') player = msg.result;
             if (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket') pocketFeedback(msg.method, msg.result);
+            questResult(msg.method, msg.params, msg.result);
             break;
         case 'menu.panel':
             if (msg.panel === 'map') tab = 0;
             break;
         case 'director':
             director = msg.open;
+            if (!msg.open) mapFocus = null;
             break;
         case 'capture.prompt':
             if (msg.captureId) {
@@ -464,6 +602,12 @@ QtObject {
             if (msg.code === 'runtime.ready') {showReady(msg.message);break;}
             if (msg.code === 'shell.action' && msg.method === 'movement.set') { movementRefusal = String(msg.message).replace(/^-?\d+:\s*/, ''); movementRefusalTimer.restart(); }
             if (msg.code === 'shell.action' && (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket')) pocketFeedback(msg.method, null, msg.message);
+            if (msg.code === 'shell.action' && /^(quests|focus|guidance)\./.test(msg.method || '')) {
+                questFeedback = Quests.errorText(msg.method, msg.message); questFeedbackTimer.restart();
+                questActionFailed(msg.method, msg.params || null, questFeedback);
+                if (msg.method === 'quests.get' && msg.params && Quests.refKey(msg.params.questRef) === selectedQuest) questDetail = null;
+                break; // shown on the Quests page, not as a HUD notice
+            }
             notice(msg.message, msg.level);
             break;
         case 'zone':
