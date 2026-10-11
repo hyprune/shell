@@ -42,7 +42,7 @@ export WAYLAND_DISPLAY=${session[1]}
 [[ "$HYPRLAND_INSTANCE_SIGNATURE" != "$outer_signature" && "$WAYLAND_DISPLAY" != "$outer_display" && -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] || { echo 'Refusing unsafe session target' >&2; exit 1; }
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" output create headless HYPRUNE-PREVIEW > "$ROOT/dev/.run/output.log"
 target_output=HYPRUNE-PREVIEW
-if [[ "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director ]]; then
+if [[ "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director && "$mode" != quests ]]; then
     target_output=$(hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" monitors -j | python3 -c 'import json,sys; print(next(m["name"] for m in json.load(sys.stdin) if m["name"]!="HYPRUNE-PREVIEW"))')
 fi
 [[ "$target_output" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
@@ -85,6 +85,8 @@ elif [[ "$mode" == player ]]; then
     python3 "$ROOT/dev/player-shots.py"
 elif [[ "$mode" == director ]]; then
     python3 "$ROOT/dev/director-shots.py"
+elif [[ "$mode" == quests ]]; then
+    python3 "$ROOT/dev/quests-shots.py"
 elif [[ "$mode" == polish ]]; then
     python3 "$ROOT/dev/polish-mock.py"
 elif [[ "$mode" == capture ]]; then

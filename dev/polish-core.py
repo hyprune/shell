@@ -77,7 +77,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             ui('curvature',.6);shot(prefix+'-sun-court-curved')
             pose(client,[38,-4.3,-79]);shot(prefix+'-rime-vault-curved')
             opened()
-            for i,name in enumerate(['map','places','surfaces','workspaces','help','whats-new','settings']):
+            for i,name in enumerate(['map','quests','places','surfaces','workspaces','help','whats-new','settings']):
                 ui('tab',i);shot(prefix+'-'+name)
             ui('settingsSection',1);shot(prefix+'-settings-graphics')
             ui('settingsScroll',1);shot(prefix+'-settings-graphics-detail')
@@ -97,7 +97,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             wait(lambda:not status().get('warp'))
             evidence.append({'width':w,'height':h,'scale':scale,'apps':status()['apps'],'capture':'F8'})
             print('PASS core visual/seat',prefix,flush=True)
-    opened();ui('tab',6);ui('settingsSection',1)
+    opened();ui('tab',7);ui('settingsSection',1)
     ui('graphicsPatch',json.dumps({'quality':'low','bloom':'off','fog':'linear','msaa':1,'normal_maps':False,'specular':False,'reflections':False,'ambient_occlusion':True,'alpha_haze':False,'anisotropy':1,'dynamic_resolution':False,'render_scale':.75,'target_fps':60,'fov':60,'sharpen':.5,'exposure':1,'bloom_strength':.15,'reduced_motion':True}))
     wait(lambda:status().get('graphics') and status()['graphics']['config']['quality']=='low')
     assert status()['graphics']['effective']['bloom']=='off'
@@ -121,9 +121,9 @@ def acceptance(client,children,args,shell_token,socketpath):
         for w,h in [(1920,1080),(2560,1440),(3840,2160)]:
             for scale in [1,2]:
                 resolution(w,h,scale);opened()
-                for index,name in [(0,'map'),(1,'places'),(3,'workspaces')]:
+                for index,name in [(0,'map'),(2,'places'),(4,'workspaces')]:
                     ui('tab',index);ui('scrollPage',0);shot(f'core-{h}p-s{scale}-long-{name}')
-                    if index in [1,3]:
+                    if index in [2,4]:
                         ui('scrollPage',1);shot(f'core-{h}p-s{scale}-long-{name}-detail')
                         ui('scrollPage',0)
                 closed()
@@ -141,7 +141,7 @@ def acceptance(client,children,args,shell_token,socketpath):
             time.sleep(3);ui('curvature',0);time.sleep(2);ui('curvature',.6);time.sleep(3)
             pose(client,[38,-4.3,-79]);time.sleep(4)
             opened()
-            for i in range(7):ui('tab',i);time.sleep(2)
+            for i in range(8):ui('tab',i);time.sleep(2)
             closed();pose(client,[-8,2,12]);time.sleep(max(0,36-(time.monotonic()-start)))
         finally:rec.send_signal(signal.SIGINT);rec.wait(timeout=20)
         subprocess.run(['ffmpeg','-y','-loglevel','error','-i',str(raw),'-an','-vf','scale=1920:1080:in_range=pc:out_range=tv,fps=30','-c:v','libx264','-crf','21','-preset','medium','-pix_fmt','yuv420p','-color_range','tv','-movflags','+faststart',str(encoded)],check=True)

@@ -33,7 +33,7 @@ for w, h, scale, suffix in [(1920, 1080, 1, ''), (1920, 1080, 2, '-s2'), (1920, 
     assert json.loads(ui('status'))['director']
     for theme in ['night', 'paper']:
         ui('theme', 'true' if theme == 'paper' else 'false')
-        for tab, surface in [(0, 'director'), (6, 'settings'), (7, 'performance')]:
+        for tab, surface in [(0, 'director'), (7, 'settings'), (8, 'performance')]:
             ui('tab', tab)
             if surface == 'settings':
                 ui('settingsSection', 0); time.sleep(.3); ui('settingsScroll', 1)

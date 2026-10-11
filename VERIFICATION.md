@@ -1,3 +1,17 @@
+# IPC 0.21 quests, focus sessions and guidance — 2026-10-12
+
+`python3 -m unittest discover -s tests`: **207 pass**, including `tests/test_ipc21.py`
+(30): hello capabilities validate against every vendored pin (`quest.control` only from
+0.21), the 0.21 allowlist, request/result/state/event shapes against the 0.21 pin (and
+refused by 0.20), event forwarding per session, the clock offset, and the `qml/Quests.js`
+helpers (list grouping, form parsing and edit round trips, focus timing, toast routing and
+queue, hold ring delay, guidance patches). `./dev/run quests` (nested, SDK mock with dev
+preview data) captures the Quests page, form, Settings → Guidance, the HUD tracker, focus
+chip, toasts and banner at 1920×1080, 1280×720 and 2560×1440 at scale 2, with the layout
+audit clean, a keyboard check (arrows, T) and no QML runtime errors.
+
+---
+
 # First real session verification — 2026-10-07
 
 Shell 0.2.0 runs with real core 0.2.0 in the locked nested harness over IPC 0.3.

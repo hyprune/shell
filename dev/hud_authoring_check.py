@@ -14,7 +14,7 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
     client.call('world.load',{'worldId':'org.hyprune.visibility'})
     wait(lambda:status()['world']=='org.hyprune.visibility' and not status()['warp'])
     wait(lambda:status()['hudVisible'])
-    opened();ui('tab',7);ui('scrollPage',1);time.sleep(1)
+    opened();ui('tab',8);ui('scrollPage',1);time.sleep(1)
     def focus(key):assert ui('graphicsFocus',key)=='true',key
     def choose(key,end):focus(key);keys('-k','space','-k',end,'-k','Return');time.sleep(.3)
     choose('outline','Home');wait(lambda:client.call('graphics.get',{})['config']['outline'] is None)
@@ -67,7 +67,7 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
 
 def check_compat(client,ui,status,shot,opened):
     assert client.hello['protocol']==status()['protocol']=='0.12'
-    opened();ui('tab',7);ui('scrollPage',0);time.sleep(1)
+    opened();ui('tab',8);ui('scrollPage',0);time.sleep(1)
     assert ui('graphicsFocus','quality')=='true'
     keys('-k','space','-k','Home','-k','Down','-k','Return')
     wait(lambda:client.call('graphics.get',{})['config']['quality']=='low')

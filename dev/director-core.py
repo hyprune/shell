@@ -73,7 +73,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     director(); park()
 
     # Help: the segmented control drives core's movement mode; core's mode drives the control.
-    ui('tab', 4)
+    ui('tab', 5)
     client.call('movement.set', {'modeId': 'com.hyprune.walk'}); wait(lambda: state()['movement']['modeId'] == 'com.hyprune.walk')
     shot('core-help-walk')
     assert ui('press', 'segment:fly') == 'true'; wait(lambda: state()['movement']['modeId'] == 'com.hyprune.fly')
@@ -82,7 +82,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     assert ui('press', 'segment:fly') == 'true'; wait(lambda: state()['movement']['modeId'] == 'com.hyprune.fly')
 
     # Surfaces: pocket one window through the shell, then take it out where no spot fits.
-    ui('tab', 2); ui('scrollPage', 0)
+    ui('tab', 3); ui('scrollPage', 0)
     notes, music = ids['Notes · field journal'], ids['Music · ambient']
     shot('core-surfaces-before')
     assert ui('press', 'pocketButton:' + music) == 'true'; wait(lambda: music in pocketed(), 5)

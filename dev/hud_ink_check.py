@@ -33,7 +33,7 @@ def persistent_controls(client,ui,status,focus,choose,opened,closed,shot):
         client.call('world.load',{'worldId':world})
         wait(lambda:status()['world']==world and not status()['warp'])
     wait(lambda:ink()['widthPx']==4 and ink()['colour']==[.2,.4,.6])
-    opened();ui('tab',7);ui('scrollPage',1);time.sleep(1)
+    opened();ui('tab',8);ui('scrollPage',1);time.sleep(1)
     reset()
     saved=json.loads((s.STATE/'graphics.json').read_text())
     assert all(saved[k] is None for k in ['outline','outline_quality','outline_width_px','outline_colour'])

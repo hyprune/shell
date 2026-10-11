@@ -3,7 +3,7 @@
 > **Hyprune** is an explorable, world-driven desktop environment for Hyprland: your workspaces become places you can walk through, with live windows on the walls. This repository is the reference **shell**: the Quickshell HUD, Director, settings and overlays. Install Hyprune through the [hyprune](https://github.com/hyprune/hyprune) repository (starter kits, Nix, Arch); learn more at [hyprune.com](https://hyprune.com). Licence: MIT.
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.19 (one vendored pin per version under `protocol/`). The shell launcher
+IPC 0.1–0.21 (one vendored pin per version under `protocol/`). The shell launcher
 defaults to the newest pin; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
@@ -22,6 +22,19 @@ Instrument and Minimal. In IPC 0.15, tool 5 opens the window pocket. Tool hints
 use core's Primary / Secondary / Alternate / Cycle labels and configured
 bindings, switching to global gestures while Super is held. See
 [the Placement HUD contract](docs/proposals/placement-hud.md).
+
+IPC 0.21 (RFC-0012) adds a **Quests** tab directly after Map: quests grouped Active
+(tracked first), Available, Completed and Failed or abandoned; details with per-objective
+Track, Set waypoint, Show on map, Start focus session and Mark done; a personal quest form
+(title, one step per line, an optional workspace, area or place, focus sessions per step)
+that also edits. Keys: arrows, Enter, T track, Space mark done, F focus session, N new.
+The HUD shows the tracked quest under the status, a focus timer chip (ring, mm:ss on core's
+monotonic clock, phase, cycle dots, a quiet credit arc) and toasts (step done 3 s, quest
+complete banner 5 s, focus phases 4 s; at most three, repeats merged, deferred to the break
+in calm mode). Settings → Guidance edits markers, notifications and focus settings through
+`guidance.get` / `guidance.set`. The bridge requests `quest.control` only at 0.21. The
+Director hold ring waits 180 ms (`holdRingDelayMs`) so a TAB tap never flashes it.
+`./dev/run quests` captures all of it from the mock with dev preview data.
 
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,

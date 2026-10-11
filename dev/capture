@@ -35,7 +35,7 @@ shot map
 ipc select 1
 sleep 1
 shot map-waypoint
-for pair in '1 places' '2 surfaces' '3 workspaces' '4 help' '5 whats-new'; do
+for pair in '1 quests' '2 places' '3 surfaces' '4 workspaces' '5 help' '6 whats-new'; do
     read -r index name <<< "$pair"
     ipc tab "$index"
     sleep 1

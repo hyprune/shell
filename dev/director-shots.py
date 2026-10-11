@@ -85,7 +85,7 @@ ui('open'); time.sleep(.8)
 assert status()['director']
 
 # Help: Walk / Fly bound to movement.modeId; Climbing shown active, not selectable.
-ui('tab', 4)
+ui('tab', 5)
 for name, mode, state in [('help-walk', 'com.hyprune.walk', 'grounded'), ('help-fly', 'com.hyprune.fly', 'flying'),
                           ('help-climbing', 'com.hyprune.walk', 'climbing')]:
     preview(mode, state)
@@ -101,7 +101,7 @@ shot('help-walk-refused-by-mock')
 
 # Surfaces: two pocketed windows (one only in the pocket list), two placed.
 preview()
-ui('tab', 2); ui('scrollPage', 0)
+ui('tab', 3); ui('scrollPage', 0)
 shot('surfaces-pocket')
 ui('scrollPage', 1); shot('surfaces-placed'); ui('scrollPage', 0)
 ui('pocketResult', 'surface-music', 'surface.unpocket', json.dumps({'revision': 9, 'placed': False}))
