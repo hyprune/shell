@@ -22,7 +22,7 @@ Flickable {
     }
     Component.onCompleted: refresh()
     Connections { target: ShellState; function onStateChanged() { page.refresh(); } }
-    readonly property int columns: Math.max(1, Math.floor((width + 20) / 390))
+    readonly property int columns: Math.max(1, Math.floor((width + 20) / 520))
 
     component CardGrid: GridLayout {
         property alias model: cardRepeater.model
@@ -40,6 +40,7 @@ Flickable {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 Layout.preferredWidth: 1
+                Layout.maximumWidth: 760
                 Layout.alignment: Qt.AlignTop
             }
         }

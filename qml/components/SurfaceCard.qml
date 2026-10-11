@@ -57,7 +57,7 @@ Rectangle {
 
             Rectangle {
                 visible: root.pocketed
-                objectName: 'pocketBadge'
+                objectName: 'pocketBadge:' + root.surface.id
                 implicitWidth: pocketBadge.implicitWidth + 16
                 implicitHeight: pocketBadge.implicitHeight + 8
                 radius: 2
@@ -129,7 +129,7 @@ Rectangle {
 
         HudLabel {
             visible: root.feedback !== null
-            objectName: 'pocketFeedback'
+            objectName: 'pocketFeedback:' + root.surface.id
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             text: root.feedback ? root.feedback.text : ''
@@ -139,7 +139,7 @@ Rectangle {
 
         ActionButton {
             visible: root.pocketed && root.canPocket
-            objectName: 'unpocketButton'
+            objectName: 'unpocketButton:' + root.surface.id
             Layout.fillWidth: true
             primary: true
             text: 'Take out / place ↗'
@@ -168,7 +168,7 @@ Rectangle {
 
         ActionButton {
             visible: !root.pocketed && root.canPocket
-            objectName: 'pocketButton'
+            objectName: 'pocketButton:' + root.surface.id
             Layout.fillWidth: true
             text: 'Put in pocket'
             onClicked: ShellState.pocket(root.surface.id, true)
