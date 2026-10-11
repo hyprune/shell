@@ -46,10 +46,10 @@ The test-only launcher preserves the actual bridge PID and inherited token FD;
 production exposes no fault-injection endpoint.
 
 By default the nested test now generates the generic core visibility fixture with
-a HUD style; `HYPRUNE_RECOVERY_WORLD` may name a local package instead. No private
-identifiers, assets or captures are retained in this repository.
+a HUD style; `HYPRUNE_RECOVERY_WORLD` may name a local package instead. No
+identifiers, assets or captures from such a package are retained in this repository.
 Redacted results are in [bridge-recovery.json](evidence/bridge-recovery.json).
-The owner's live compositor was never controlled or restarted.
+The host compositor was never controlled or restarted.
 
 With the final 0.15 schema pin, the nested run adopts two real clients on the
 unbound world workspace and mounts one per world with tool-5 placement. After

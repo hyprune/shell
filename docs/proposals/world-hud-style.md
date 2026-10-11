@@ -72,8 +72,8 @@ shell-owned decoration, preserving progress and destination text.
 the selected concept immediately. Exiting/changing worlds restores base tokens
 before applying another validated skin. Package discovery currently requires a
 launcher-authorised `--world-package /installed/package/world.json`; the shell
-selects it by authenticated active world ID. Core metadata discovery is requested
-in its SDK/shell handoff; no manifest-controlled absolute root is trusted.
+selects it by authenticated active world ID. Metadata-based discovery has been
+requested from core; no manifest-controlled absolute root is trusted.
 
 Sample: `dev/styles/signal-amber/` is original warm Signal Rise-inspired art.
 The nested harness installs it only into its private Lumen Reach copy.

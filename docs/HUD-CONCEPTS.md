@@ -61,13 +61,14 @@ flock /tmp/worldshell-nested.lock python3 dev/hud-concepts.py
 ```
 
 The harness verifies its own child compositor/headless output and owns teardown;
-never target the owner session or stop the gallery autocommitter.
+it never targets the host session.
 `HYPRUNE_HUD_QUICK=1` limits captures and skips video. Full run covers four Lumen
 Reach homes, three concepts, 1080p/1440p/4K at scales 1 and 2. It checks real key 5,
 wheel subtypes, hold animation/cancel, persistence, graphics dropdowns against
-core state, and package styles/opt-out/world exit. Output: gallery
-`screenshots/hud-concepts/`, `videos/hud-concepts.mp4` and a string-only sidecar.
-Video encodes in `/tmp`, then moves into the gallery when complete.
+core state, and package styles/opt-out/world exit. Output:
+`$HYPRUNE_GALLERY_DIR/screenshots/hud-concepts/`,
+`$HYPRUNE_VIDEO_DIR/hud-concepts.mp4` and a string-only sidecar.
+Video encodes in `/tmp`, then moves into place when complete.
 
 `HYPRUNE_HUD_REVIEW=1` captures the upper-cluster/Performance follow-up without
 recording another video: three concepts in Sun Court and Rime Vault, all six
@@ -95,7 +96,7 @@ The development-only `preview.contrastProbe` endpoint can hide the text while
 keeping its scrim, or render white glyph masks over black. It has no effect in
 normal operation and does not capture the screen itself. Numerical evidence
 uses the three static Vanguard labels to avoid changing frame-stat strings.
-Text/background/mask crops are retained in gallery `contrast-v5/`, and
+Text/background/mask crops are retained in the capture output's `contrast-v5/`, and
 `contrast-v5-measurements.json` records bounding boxes and unrounded results.
 
 Two gates must pass at 4.5:1: nominal foreground versus the brightest captured
@@ -110,12 +111,12 @@ capture evidence for these default labels, not a general accessibility claim
 for arbitrary fonts, world styles or the entire HUD.
 
 The v5 crop sheets retain v4 beside v5 and add measured contrast in a third
-column; scale 2 has a separate sheet. The private reference is not needed or
+column; scale 2 has a separate sheet. The reference images are not needed or
 copied for this regression check.
 
 ## Convex calibration
 
-Private curved-HUD reference captures (16:9 and 21:9; not included here) were
+Curved-HUD reference images (16:9 and 21:9; not included here) were
 reviewed before tuning. Native-pixel endpoints on four lower-left HUD box borders give
 apparent slopes of approximately 2.4°, 2.9°, 3.2° and 3.0° upward toward centre.
 The upper-left objective rule slopes about 2.4° down toward centre; the supplied
@@ -153,24 +154,25 @@ regression also passed. See `evidence/hud-concepts.json` for measured values.
 Only dynamic package discovery and RAM/system CPU telemetry remain core requests;
 the sample skin works through an authorised package path.
 
-Gallery review follow-up: 61 shell tests and the SDK mock check passed. The
+Review follow-up: 61 shell tests and the SDK mock check passed. The
 locked core 0.10 run produced 51 `-v2` captures: all concepts in Sun Court and
 Rime Vault at 1080p/1440p/4K, scales 1/2, Performance top/bottom at each size,
 flat/curved comparison and the USB-C Auto policy. Every capture passed the
-layout audit and the shell log contained no QML errors. See gallery
-`screenshots/hud-concepts/review-v2-verification.json` for the core snapshot.
+layout audit and the shell log contained no QML errors. See
+`screenshots/hud-concepts/review-v2-verification.json` in the capture output for
+the core snapshot.
 
 Convex follow-up: 61 shell tests (including projected-corner direction, mirrored
 sides, monotonic strength, measured default angle bands and identity when off),
 the SDK mock and locked core 0.10 capture run passed. All 45 `-v3` captures passed
 layout audits without QML errors: 36 concept/home/resolution/scale shots and nine
-flat/default/maximum comparisons. Evidence: gallery
+flat/default/maximum comparisons. Evidence (capture output):
 `screenshots/hud-concepts/convex-v3-verification.json`. The reference comparison
 sheet, endpoints/uncertainty and source attribution are kept outside this repository.
 
 Text follow-up: 61 shell tests, the SDK mock, and the locked core 0.10 run passed.
 All 44 `-v4` captures passed layout audits with no QML errors, including the
-explicit world-outline and opt-out pair. The gallery includes 24 separate status
+explicit world-outline and opt-out pair. The capture output includes 24 separate status
 and radar-caption crops and `screenshots/hud-concepts/hud-status-crops-v4.png`
 (v3/v4 comparisons in both homes at three resolutions). The reference comparison
 sheet was updated outside this repository.
@@ -181,7 +183,7 @@ Bright-background follow-up: 65 shell tests, the SDK mock, and the locked core
 All 54 static-label measurements passed both 4.5:1 gates. Minimum rendered
 core-pixel contrast: **6.62:1 Sun Court**, **6.28:1 Rime Vault**, **5.93:1 pure
 white**; minimum nominal contrast over pure white was **8.22:1**. Default solid
-fill, soft shadows and explicit world outlines are retained. The gallery has
+fill, soft shadows and explicit world outlines are retained. The capture output has
 24 standalone status/caption crops and two v4/v5 sheets with contrast columns:
 `screenshots/hud-concepts/hud-status-crops-v5.png` and
 `hud-status-crops-s2-v5.png`. [Recorded results](evidence/hud-contrast-v5.json).
@@ -213,12 +215,12 @@ HYPRUNE_HUD_INTERACTION=1 flock /tmp/worldshell-nested.lock python3 dev/hud-conc
 The check exercises both actual toggle gestures, all three climbing mechanics,
 all concepts, 1080p/1440p/4K scale 1 and compact 1080p scale 2. It asserts actual
 visible QML items, exact core prompt text, no truncation, native cursor visibility,
-frozen movement, return and Space-detach behavior. Screenshots are in gallery
-`screenshots/hud-concepts/{climb,cursor}-*-ipc012.png`.
+frozen movement, return and Space-detach behavior. Screenshots are
+`screenshots/hud-concepts/{climb,cursor}-*-ipc012.png` in the capture output.
 
 Integration note: core `0a4c6d1` still sets `PROTOCOL = '0.10'` in
 `dev/live/live.py`. That explicit launcher argument must move to 0.12 for the
-new HUD states in the owner's next live launch. Shell does not override an
+new HUD states in the next live launch. Shell does not override an
 explicit negotiation or edit the core-owned launcher. Nested verification
 launches 0.12 explicitly; no live-session commands were used.
 
@@ -282,7 +284,7 @@ actual keyboard controls for ink, width, colour/reset and culling. It captures
 Performance at 1080p/1440p/4K and compact 1080p scale 2, then holds a 90° rolled,
 15° FOV, shifted-lens camera. HUD hiding, fixed pose, same-lease restoration on
 release and author disconnect are asserted. Evidence:
-`docs/evidence/hud-authoring-013.json`; gallery `performance-ink-*-ipc013.png`,
+`docs/evidence/hud-authoring-013.json`; captures `performance-ink-*-ipc013.png`,
 `photo-held-ipc013.png` and `photo-released-ipc013.png`.
 
 Validation against core `2494c13`: **74 unit tests**, the SDK mock HUD check,
@@ -294,7 +296,7 @@ HYPRUNE_HUD_GRAPHICS_COMPAT=1 HYPRUNE_FOLLOWUP_PROTOCOL=0.12 flock /tmp/worldshe
 ```
 
 Integration note: that core revision's `dev/live/live.py` still explicitly picks
-**0.12**. Its launcher must select 0.13 to expose these additions in the owner's
+**0.12**. Its launcher must select 0.13 to expose these additions in a live
 session; the shell respects an explicit older version. No live-session commands
 were run for this work.
 
@@ -325,7 +327,7 @@ HYPRUNE_HUD_INK_PERSISTENCE=1 HYPRUNE_HUD_AUTHORING=1 flock /tmp/worldshell-nest
 Real-core `8bfade6` checks exercise keyboard selection of Fast/Smooth, disabled
 Fast width, live width/colour changes, saved `graphics.json`, world reload
 precedence, reset to immutable package defaults and global preset reset.
-The camera hold/release/author-disconnect checks also run at 0.14. Gallery
+The camera hold/release/author-disconnect checks also run at 0.14. Captured
 `screenshots/hud-concepts/performance-ink-*-ipc014.png` includes Fast, overrides,
 world-default reset, 1080p/1440p/4K and compact 1080p at scale 2. See
 `docs/evidence/hud-authoring-014.json` for recorded results. Tests verify durable
@@ -334,7 +336,7 @@ settings-file loader.
 
 Validation completed: **80 unit tests**, SDK mock HUD/Appearance checks, and real
 core **0.13 and 0.14** menu/camera acceptance all passed. Every compositor test
-held `/tmp/worldshell-nested.lock`; no owner-session commands were used.
+held `/tmp/worldshell-nested.lock`; no host-session commands were used.
 
 ## IPC 0.15: Adventure, Placement and live tool hints
 
@@ -364,7 +366,7 @@ The acceptance uses real tool keys and mouse events, remaps Alternate to F8,
 checks all five label sets and held-modifier overrides, and captures all three
 concepts at 1080p/1440p/4K with scales 1 and 2. It also checks first entry,
 pocketing, cursor suppression, both carry orientations, content scale, repeated
-reset, Help, Appearance and loaded/inactive readiness. Gallery filenames end
+reset, Help, Appearance and loaded/inactive readiness. Capture filenames end
 in `-ipc015.png`; see `docs/evidence/placement-hud-015.json` for the result and
 core binary hash. Test preferences and saved placements are private to nested.
 
