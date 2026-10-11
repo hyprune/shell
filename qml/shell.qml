@@ -241,6 +241,23 @@ ShellRoot {
             choice.forceActiveFocus();
             return true;
         }
+        // IPC 0.20 Director preview (dev only): merge state fields, expose methods, feed results.
+        function statePreview(json: string, methods: string): void { if (ShellState.dev) ShellState.setStatePreview(json ? JSON.parse(json) : null, methods ? methods.split(',') : []); }
+        function pocketResult(surfaceId: string, method: string, json: string): void {
+            if (!ShellState.dev) return;
+            ShellState.pocketTarget = surfaceId;
+            if (json.charAt(0) === '{') ShellState.receive({type: 'action', method: method, result: JSON.parse(json)});
+            else ShellState.receive({type: 'notice', level: 'warning', code: 'shell.action', method: method, message: json});
+        }
+        function mapView(zoom: real, panX: real, panY: real, level: string): string {
+            if (!ShellState.dev || !ShellState.director) return '{}';
+            var map = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'mapView');
+            if (!map) return '{}';
+            map.pickedLevel = level === 'auto' ? '' : level;
+            map.setView(zoom, [panX, panY]);
+            return JSON.stringify({zoom: map.zoom, pan: [map.panX, map.panY], level: map.level ? map.level.id : null,
+                                   auto: map.autoLevel, picked: map.pickedLevel, themed: map.showingLevel, scale: map.scaleBar});
+        }
         function playerPreview(json: string): void { if (ShellState.dev) ShellState.playerPreview = json ? JSON.parse(json) : null; }
         function graphicsPatch(patch: string): void { if (ShellState.dev) ShellState.action("graphics.set", {patch:JSON.parse(patch)}); }
         function inputSave(): void { if(ShellState.dev) ShellState.saveInputDraft(); }
@@ -302,7 +319,9 @@ ShellRoot {
                 workspaces: ShellState.workspaces,
                 appDetails: ShellState.state && ShellState.state.apps ? ShellState.state.apps : [],
                 apps: ShellState.state && ShellState.state.apps ? ShellState.state.apps.length : 0,
-                map: ShellState.mapData !== null, places: ShellState.places, markers: ShellState.markers.length
+                map: ShellState.mapData !== null, places: ShellState.places, markers: ShellState.markers.length,
+                previewActions: ShellState.previewActions, surfaceFeedback: ShellState.surfaceFeedback,
+                movement: ShellState.state ? ShellState.state.movement : null
             });
         }
     }

@@ -99,6 +99,23 @@ QtObject {
         surfaceFeedbackTimer.interval = info.level === 'warning' ? 12000 : 5000; surfaceFeedbackTimer.restart();
         if (method === 'surface.unpocket' && result && result.placed === false) showBanner('AIM AND CLICK TO PLACE');
     }
+    // DEV ONLY (preview IPC): state fields and methods shown without a newer core. The
+    // patch is merged into every snapshot; preview-only methods are recorded, never sent.
+    property var statePreview: null
+    property var previewMethods: []
+    property var previewActions: []
+    property var lastStateMessage: null
+    function mergePreview(base, patch) {
+        if (patch === null || typeof patch !== 'object' || Array.isArray(patch) || base === null || typeof base !== 'object' || Array.isArray(base)) return patch;
+        var out = Object.assign({}, base);
+        Object.keys(patch).forEach(k => { out[k] = mergePreview(base[k], patch[k]); });
+        return out;
+    }
+    function setStatePreview(patch, extraMethods) {
+        if (!dev) return;
+        statePreview = patch; previewMethods = extraMethods || [];
+        if (lastStateMessage) receive(lastStateMessage);
+    }
     property bool director: false
     // IPC 0.17 debug capture note: the capture awaiting a note ('' = no prompt).
     property string notePrompt: ''
@@ -216,7 +233,7 @@ QtObject {
     }
 
     function available(method) {
-        return live && methods.indexOf(method) >= 0;
+        return live && (methods.indexOf(method) >= 0 || (dev && previewMethods.indexOf(method) >= 0));
     }
 
     function send(value) {
@@ -226,6 +243,10 @@ QtObject {
     }
 
     function action(method, params) {
+        if (dev && previewMethods.indexOf(method) >= 0 && methods.indexOf(method) < 0) {
+            previewActions = previewActions.concat([{method: method, params: params}]).slice(-16);
+            return;
+        }
         if (available(method))
             send({
             "type": 'action',
@@ -343,6 +364,10 @@ QtObject {
             presentation = msg;
             break;
         case 'state':
+            if (dev) {
+                lastStateMessage = msg;
+                if (statePreview && msg.state) msg = Object.assign({}, msg, {state: mergePreview(msg.state, statePreview)});
+            }
             if (!state || !state.world || !msg.state || !msg.state.world || state.world.id !== msg.state.world.id) { camera = null; outline = null; }
             if (state && msg.state && state.workspaces && msg.state.workspaces && state.workspaces.currentId !== msg.state.workspaces.currentId) showBanner('WORKSPACE FOCUSED');
             var contentChange=Manipulation.changedContent(state,msg.state);
