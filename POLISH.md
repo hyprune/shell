@@ -67,13 +67,10 @@ The matrix covers 1920×1080, 2560×1440 and 3840×2160, each at output scale 1/
 Includes long app/workspace titles and German-length world headings, both menu themes,
 HUD flat/curved, bright Sun Court/dark Rime Vault, all Director pages and warp.
 
-Before: `~/hyprune-gallery/screenshots/hyprune-shell-m0/`.
-Owner background references: `~/.local/state/hyprune/captures/capture-1791475443322.png`,
-`capture-1791475449718.png`, `capture-1791475472398.png` (world-only captures).
-Concepts: `worlds/concept/release-world/`; HUD study:
-`prototype-concept/quickshell/hypr3d/`.
+Before: `$HYPRUNE_GALLERY_DIR/screenshots/hyprune-shell-m0/`. Background
+references were world-only captures; concepts: `worlds/concept/release-world/`.
 
-After: `~/hyprune-gallery/screenshots/hyprune-shell-polish/`.
+After: `$HYPRUNE_GALLERY_DIR/screenshots/hyprune-shell-polish/`.
 `mock-<height>p-s<scale>-*.png` and `core-<height>p-s<scale>-*.png` identify the
 source and physical output scale. Compare `*-sun-court-flat.png` with
 `*-sun-court-curved.png` at the same pose. Full run result is

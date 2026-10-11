@@ -11,7 +11,7 @@ import session as s
 import m3b
 from ctl import verified
 from m2 import wait, keys
-SHOTS=pathlib.Path.home()/'hyprune-gallery/screenshots/optimise-2026-10'
+SHOTS=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')/'screenshots/optimise-2026-10'
 SHOTS.mkdir(parents=True,exist_ok=True)
 
 def acceptance(client,children,args,shell_token,socketpath):

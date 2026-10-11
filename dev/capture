@@ -4,7 +4,7 @@ ROOT=$(cd -- "$(dirname -- "$0")/.." && pwd)
 : "${HYPRUNE_SHELL_PID:?Use dev/run capture, under the nested-session lock}"
 : "${HYPRLAND_INSTANCE_SIGNATURE:?Missing isolated instance}"
 : "${WAYLAND_DISPLAY:?Missing isolated display}"
-GALLERY=${HYPRUNE_GALLERY_DIR:-$HOME/hyprune-gallery}
+GALLERY=${HYPRUNE_GALLERY_DIR:-$ROOT/dev/.run/gallery}
 SHOTS="$GALLERY/screenshots/hyprune-shell-m0"
 mkdir -p "$SHOTS" "$GALLERY/videos"
 ipc() { qs ipc --pid "$HYPRUNE_SHELL_PID" call preview "$@"; }

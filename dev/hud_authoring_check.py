@@ -1,5 +1,5 @@
 """Performance and photo holds on real 0.13/0.14, inside the parent nested flock."""
-import json,math,subprocess,time
+import json,math,os,subprocess,time
 from pathlib import Path
 import session as s
 from m2 import keys,wait
@@ -46,7 +46,7 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
     keys('-P','w','-s','200','-p','w')
     assert client.call('camera.get',{})['position']==lens['position']
     # shot() requires visible labels; photo holds intentionally have none.
-    dest=Path.home()/f'hyprune-gallery/screenshots/hud-concepts/photo-held-{tag}.png'
+    dest=(Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else Path(__file__).resolve().parent/'.run/gallery')/f'screenshots/hud-concepts/photo-held-{tag}.png'
     subprocess.run([str(s.HERE/'ctl.py'),'shot',str(dest)],check=True)
     client.call('camera.release',{})
     wait(lambda:status()['camera'] and not status()['camera']['held'] and status()['hudVisible'])

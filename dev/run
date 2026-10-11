@@ -11,7 +11,7 @@ export HYPRUNE_SHELL_PREFERENCES="$ROOT/dev/.run/shell-preferences.json"
 if [[ "$mode" == core-check ]]; then
     exec python3 "$ROOT/dev/core-check.py"
 fi
-SDK=${HYPRUNE_SDK_DIR:-../sdk}
+SDK=${HYPRUNE_SDK_DIR:-$ROOT/../sdk}
 [[ -f "$SDK/dist/src/mock-cli.js" ]] || { echo 'Build the SDK first: npm ci && npm run build in the SDK checkout' >&2; exit 1; }
 [[ -n ${XDG_RUNTIME_DIR:-} && -n ${WAYLAND_DISPLAY:-} ]] || { echo 'A parent Wayland display is required' >&2; exit 1; }
 outer_signature=${HYPRLAND_INSTANCE_SIGNATURE:-}

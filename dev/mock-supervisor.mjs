@@ -3,8 +3,8 @@
 // Wayland association and workspace mapping; no protocol fields/events are added.
 import {spawn} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {pathToFileURL} from 'node:url';
-const sdk=process.env.HYPRUNE_SDK_DIR || '../sdk';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+const sdk=process.env.HYPRUNE_SDK_DIR || fileURLToPath(new URL('../../sdk', import.meta.url));
 const {MockDaemon,GRANTS}=await import(pathToFileURL(sdk+'/dist/src/mock.js'));
 const [scenarioPath,...launch]=process.argv.slice(2);
 const scenario=JSON.parse(readFileSync(scenarioPath,'utf8'));

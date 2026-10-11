@@ -2,7 +2,7 @@
 
 **Authoring decision:** use the version 1 format below. The v0.1 author proposal is retained for rationale; its field names are superseded by the final mapping.
 
-## Personal-world proposal (received)
+## Author proposal (received)
 
 A data-only world may declare `extensions["com.hyprune.hud-style"] = {"version":"0.1","path":"hud/theme.json"}`. Unknown optional metadata is ignored. Paths in the style resolve from the immutable package root. Shell applies a validated style atomically after world readiness, restores defaults on exit, and rolls back on failed warp. No world identity or third-party reference art is required by this proposal.
 

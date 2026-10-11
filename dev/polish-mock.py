@@ -2,7 +2,7 @@
 """SDK mock visual matrix; invoked only by dev/run polish under its flock."""
 import json, os, pathlib, subprocess, time
 ROOT=pathlib.Path(__file__).resolve().parent.parent
-GALLERY=pathlib.Path.home()/'hyprune-gallery/screenshots/hyprune-shell-polish'
+GALLERY=(pathlib.Path(os.environ['HYPRUNE_GALLERY_DIR']) if os.environ.get('HYPRUNE_GALLERY_DIR') else ROOT/'dev/.run/gallery')/'screenshots/hyprune-shell-polish'
 GALLERY.mkdir(parents=True,exist_ok=True)
 session=json.loads((ROOT/'dev/.run/session.json').read_text())
 assert session['WAYLAND_DISPLAY']==os.environ['WAYLAND_DISPLAY']
