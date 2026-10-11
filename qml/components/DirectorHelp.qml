@@ -159,17 +159,18 @@ RowLayout {
                 model: segment === 'climb'
                     ? [{id:'walk',label:'Walk'},{id:'climb',label:'Climbing',selectable:false},{id:'fly',label:'Fly'}]
                     : [{id:'walk',label:'Walk'},{id:'fly',label:'Fly'}]
-                onPicked: (id) => ShellState.action('movement.set', {"modeId": Model.modeFor(id)})
+                onPicked: (id) => ShellState.setMovement(Model.modeFor(id))
             }
 
             HudLabel {
                 text: !ShellState.state ? 'Disconnected'
+                    : ShellState.movementRefusal ? 'Core kept the current mode: ' + ShellState.movementRefusal
                     : !ShellState.available('movement.set') ? 'Movement mode changes are unavailable.'
                     : movementMode.segment === 'climb' ? 'Climbing. Walk or Fly asks core to end the climb.'
                     : movementMode.segment === '' ? 'Mode · ' + ShellState.state.movement.modeId
                     : movementMode.segment === 'fly' ? 'Free flight: Space rises, Ctrl descends.' : 'On foot: Space jumps, Shift runs.'
                 font.pixelSize: 12
-                color: Tokens.muted
+                color: ShellState.movementRefusal ? Tokens.warning : Tokens.muted
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }

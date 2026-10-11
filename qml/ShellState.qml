@@ -85,6 +85,10 @@ QtObject {
     property var surfaceFeedback: null // {surfaceId, level, text, at}
     property string pocketTarget: ''
     property Timer surfaceFeedbackTimer: Timer { onTriggered: root.surfaceFeedback = null }
+    // Director > Help: core's refusal of the last movement.set ('' = none).
+    property string movementRefusal: ''
+    property Timer movementRefusalTimer: Timer { interval: 8000; onTriggered: root.movementRefusal = '' }
+    function setMovement(modeId) { movementRefusal = ''; action('movement.set', {modeId: modeId}); }
     function pocket(surfaceId, into) {
         var method = into ? 'surface.pocket' : 'surface.unpocket';
         if (!available(method)) return;
@@ -458,6 +462,7 @@ QtObject {
         case 'notice':
             if (msg.code === 'placement.pocketed') {showBanner('POCKETED '+msg.message.replace(/^pocketed\s*/i,''));break;}
             if (msg.code === 'runtime.ready') {showReady(msg.message);break;}
+            if (msg.code === 'shell.action' && msg.method === 'movement.set') { movementRefusal = String(msg.message).replace(/^-?\d+:\s*/, ''); movementRefusalTimer.restart(); }
             if (msg.code === 'shell.action' && (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket')) pocketFeedback(msg.method, null, msg.message);
             notice(msg.message, msg.level);
             break;
