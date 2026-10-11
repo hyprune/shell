@@ -34,12 +34,13 @@ Item {
         return conflicts.concat(steals).join('   ·   ');
     }
     readonly property bool playerSection: section === 3 || section === 4
-    onVisibleChanged: { if (visible) { load(); if (playerSection) ShellState.refreshPlayer(); } else if (pending) pending = ''; }
+    onVisibleChanged: { if (visible) { load(); if (playerSection) ShellState.refreshPlayer(); if (section === 5) ShellState.refreshGuidance(); } else if (pending) pending = ''; }
     onPlayerSectionChanged: { if (playerSection && visible) ShellState.refreshPlayer(); }
+    onSectionChanged: { if (section === 5 && visible) ShellState.refreshGuidance(); }
     Component.onCompleted: load()
     Connections {
         target: ShellState
-        function onBrowseSettings(section) { if (section === 1) { ShellState.tab=7; return; } root.section = section; scroll.contentItem.contentY = 0; }
+        function onBrowseSettings(section) { if (section === 1) { ShellState.tab=ShellState.tabPerformance; return; } root.section = section; scroll.contentItem.contentY = 0; }
         function onScrollSettings(fraction) { scroll.contentItem.contentY = Math.max(0, scroll.contentItem.contentHeight - scroll.contentItem.height) * fraction; }
         function onBeginInputCapture(mode, action, slot) {
             root.section = 2;
@@ -88,12 +89,13 @@ Item {
                 // Movement and Reticle need IPC 0.19 player settings.
                 model: [{name:'Appearance',section:0},{name:'Performance',section:1},{name:'Input bindings',section:2}]
                        .concat(ShellState.playerSupported ? [{name:'Movement',section:3},{name:'Reticle',section:4}] : [])
+                       .concat(ShellState.available('guidance.get') ? [{name:'Guidance',section:5}] : [])
                 ActionButton {
                     required property var modelData
                     objectName: 'settings-section-' + modelData.section
                     Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1
                     text: modelData.name; primary: root.section === modelData.section
-                    onClicked: { if (modelData.section === 1) ShellState.tab = 7; else root.section = modelData.section; }
+                    onClicked: { if (modelData.section === 1) ShellState.tab = ShellState.tabPerformance; else root.section = modelData.section; }
                 }
             }
         }
@@ -146,11 +148,13 @@ Item {
                     }
                 }
                 }
-                ActionButton { visible: root.section === 1; text: 'Open Performance'; onClicked: ShellState.tab = 7 }
+                ActionButton { visible: root.section === 1; text: 'Open Performance'; onClicked: ShellState.tab = ShellState.tabPerformance }
                 HudLabel { Layout.fillWidth: true; visible: root.section === 1 && !ShellState.available('graphics.get'); text: 'Graphics controls require a core with graphics settings support.'; wrapMode: Text.Wrap; color: Tokens.muted }
                 HudLabel { Layout.fillWidth: true; visible: root.playerSection && !ShellState.playerSupported; text: 'Movement and reticle settings require core IPC 0.19.'; wrapMode: Text.Wrap; color: Tokens.muted }
                 MovementSettings { Layout.fillWidth: true; visible: root.section === 3 && ShellState.playerSupported }
                 ReticleSettings { Layout.fillWidth: true; visible: root.section === 4 && ShellState.playerSupported }
+                HudLabel { Layout.fillWidth: true; visible: root.section === 5 && !ShellState.available('guidance.get'); text: 'Guidance settings require core IPC 0.21.'; wrapMode: Text.Wrap; color: Tokens.muted }
+                GuidanceSettings { Layout.fillWidth: true; visible: root.section === 5 && ShellState.available('guidance.get') }
                 ColumnLayout {
                 Layout.fillWidth: true; spacing: 16; visible: root.section === 2
                 HudLabel { text: 'INPUT'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }

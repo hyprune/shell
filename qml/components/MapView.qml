@@ -66,6 +66,10 @@ Item {
         setView(z, [mapWidth * z * (0.5 - m[0]), mapHeight * z * (0.5 - m[1])]);
     }
     onMapChanged: resetView()
+    Connections {
+        target: ShellState
+        function onMapFocusChanged() { if (ShellState.mapFocus && !root.compact) Qt.callLater(() => root.centreOn(ShellState.mapFocus.position, 2)); }
+    }
 
     readonly property real mapWidth: Math.min(width, height * mapRatio)
     readonly property real mapHeight: mapWidth / mapRatio
@@ -307,6 +311,27 @@ Item {
 
             }
 
+        }
+
+        // Quests > Show on map (RFC-0012): the quest target the view was centred on.
+        Item {
+            objectName: 'mapQuestFocus'
+            readonly property var spot: ShellState.mapFocus
+            visible: !root.compact && !!spot && !!root.map
+            x: spot ? root.px(spot.position) - 16 : 0
+            y: spot ? root.py(spot.position) - 16 : 0
+            width: 32; height: 32
+            Rectangle { anchors.centerIn: parent; width: 18; height: 18; rotation: 45; radius: 2; color: Tokens.quest; border.color: Tokens.ink; border.width: 2 }
+            Rectangle { anchors.centerIn: parent; width: 32; height: 32; radius: 16; color: 'transparent'; border.color: Tokens.quest; border.width: 2 }
+            HudLabel {
+                anchors.top: parent.bottom; anchors.topMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(220, root.width / 3)
+                horizontalAlignment: Text.AlignHCenter
+                text: parent.spot ? parent.spot.label : ''
+                font.pixelSize: 12
+                color: Tokens.text
+            }
         }
 
         // The player: a heading cone and arrow, dimmed when on another level than the one shown.

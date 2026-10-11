@@ -7,12 +7,12 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
+    readonly property var tabs: ['Map', 'Quests', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
     Keys.onLeftPressed: ShellState.tab = Math.max(0, ShellState.tab - 1)
-    Keys.onRightPressed: ShellState.tab = Math.min(7, ShellState.tab + 1)
+    Keys.onRightPressed: ShellState.tab = Math.min(root.tabs.length - 1, ShellState.tab + 1)
 
     Constellation {
         anchors.fill: parent
@@ -175,7 +175,7 @@ Item {
 
             HudLabel {
                 visible: root.width >= 1100
-                text: '0' + (ShellState.tab + 1) + ' / 08'
+                text: ('0' + (ShellState.tab + 1)).slice(-2) + ' / ' + ('0' + root.tabs.length).slice(-2)
                 font.family: Tokens.mono
                 color: Tokens.muted
                 font.pixelSize: 12
@@ -194,14 +194,15 @@ Item {
             Layout.fillHeight: true
             // Concrete page geometry avoids Qt 6.11 StackLayout's recursive
             // size-hint cache walking Repeater-owned/deleted layout children.
-            DirectorMap { anchors.fill: parent; visible: ShellState.tab === 0 }
-            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 1 }
-            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 2 }
-            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 3 }
-            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 4 }
-            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 5 }
-            DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === 7 }
-            DirectorSettings { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorMap { anchors.fill: parent; visible: ShellState.tab === ShellState.tabMap }
+            DirectorQuests { anchors.fill: parent; visible: ShellState.tab === ShellState.tabQuests }
+            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 2 }
+            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 3 }
+            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 4 }
+            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 5 }
+            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === ShellState.tabPerformance }
+            DirectorSettings { anchors.fill: parent; visible: ShellState.tab === ShellState.tabSettings }
         }
 
         Rectangle {
@@ -227,7 +228,9 @@ Item {
             }
 
             HudLabel {
-                text: '← →  Views      Tab  Focus      Esc  Close'
+                text: ShellState.tab === ShellState.tabQuests && ShellState.questsSupported
+                      ? '↑ ↓  Move    Enter  Open    T  Track    Space  Done    F  Focus    N  New    ← →  Views    Esc  Close'
+                      : '← →  Views      Tab  Focus      Esc  Close'
                 font.family: Tokens.mono
                 font.pixelSize: 11
                 color: Tokens.muted
