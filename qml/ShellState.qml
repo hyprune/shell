@@ -48,6 +48,8 @@ QtObject {
     // A TAB tap (RFC-0012 markers.reveal) must not flash the Director hold ring: the ring
     // waits this long after the hold started, then fills the rest (local, no wire field).
     property int holdRingDelayMs: Quests.HOLD_RING_DELAY_MS
+    // Diagnostics for the nested checks: holds reported, ring fills shown, last fill delay.
+    property var holdStats: ({seen: 0, shown: 0, lastDelayMs: -1})
     // Core's monotonic clock (keymap holds, focus phases) = Date.now() + clockOffset;
     // the bridge measures it with session.ping.
     property double clockOffset: 0
@@ -456,6 +458,8 @@ QtObject {
             transitionEvent(msg);
             break;
         case 'menu.hold':
+            if (msg.hold && (!menuHold || menuHold.startedAtMs !== msg.hold.startedAtMs))
+                holdStats = Object.assign({}, holdStats, {seen: holdStats.seen + 1});
             menuHold = msg.hold;
             break;
         case 'clock':
@@ -467,7 +471,7 @@ QtObject {
             break;
         case 'focus.phase':
             focusPulse(msg.value.phase);
-            presentToast(Quests.toastFor('focus.phase', msg.value, focusState));
+            presentToast(Quests.toastFor('focus.phase', msg.value, focusState, guidanceConfig));
             break;
         case 'connection':
             status = msg.status;

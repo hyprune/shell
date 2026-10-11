@@ -39,7 +39,7 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
         ActionButton {
-            implicitWidth: Math.max(84, contentItem.implicitWidth + 28)
+            implicitWidth: Math.max(84, contentItem.implicitWidth + 34)
             objectName: 'focus-start'
             visible: root.idle
             text: 'Start focus session'
@@ -47,7 +47,7 @@ ColumnLayout {
             onClicked: ShellState.questAction('focus.start', {})
         }
         ActionButton {
-            implicitWidth: Math.max(84, contentItem.implicitWidth + 28)
+            implicitWidth: Math.max(84, contentItem.implicitWidth + 34)
             objectName: 'focus-pause'
             visible: root.running
             text: 'Pause'
@@ -55,7 +55,7 @@ ColumnLayout {
             onClicked: ShellState.questAction('focus.pause', {})
         }
         ActionButton {
-            implicitWidth: Math.max(84, contentItem.implicitWidth + 28)
+            implicitWidth: Math.max(84, contentItem.implicitWidth + 34)
             objectName: 'focus-resume'
             visible: !root.idle && !root.running
             text: root.session && root.session.state === 'ready' ? (root.session.breakKind ? 'Start break' : 'Start next interval') : 'Resume'
@@ -64,7 +64,7 @@ ColumnLayout {
             onClicked: ShellState.questAction('focus.resume', {})
         }
         ActionButton {
-            implicitWidth: Math.max(84, contentItem.implicitWidth + 28)
+            implicitWidth: Math.max(84, contentItem.implicitWidth + 34)
             objectName: 'focus-skip'
             visible: !root.idle
             text: root.session && Quests.phaseTone(root.session) === 'break' ? 'Skip break' : 'Skip'
@@ -72,7 +72,7 @@ ColumnLayout {
             onClicked: ShellState.questAction('focus.skip', {})
         }
         ActionButton {
-            implicitWidth: Math.max(84, contentItem.implicitWidth + 28)
+            implicitWidth: Math.max(84, contentItem.implicitWidth + 34)
             objectName: 'focus-stop'
             visible: !root.idle
             text: 'Stop'

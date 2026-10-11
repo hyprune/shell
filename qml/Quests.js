@@ -153,7 +153,10 @@ function targetText(target, ctx) {
     if (!target) return '';
     ctx = ctx || {};
     if (target.workspaceId !== undefined) return 'Workspace ' + target.workspaceId;
-    if (target.areaId) return 'Area ' + target.areaId.replace(/-/g, ' ');
+    if (target.areaId) {
+        var home = (ctx.markers && ctx.markers.list || []).find(function (m) { return m.kind === 'home' && m.source && m.source.areaId === target.areaId; });
+        return home && home.label ? home.label : target.areaId.replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
     if (target.placeId) {
         var p = (ctx.places || []).find(function (v) { return v.id === target.placeId; });
         return p && p.name ? p.name : target.placeId.replace(/-/g, ' ');
@@ -375,7 +378,7 @@ function minutes(ms) { return Math.round((ms || 0) / 60000); }
 
 // quest.progress / focus.phase params -> a toast, or null for in-place updates.
 // kind 'toast' (under the tracker) or 'banner' (top centre).
-function toastFor(method, p, focus) {
+function toastFor(method, p, focus, guidanceConfig) {
     if (method === 'quest.progress') {
         var key = 'quest:' + refKey(p.questRef) + ':' + p.kind + ':' + (p.stepId || '');
         if (p.kind === 'step') return {key: key, kind: 'toast', category: 'step', title: p.title,
@@ -395,7 +398,9 @@ function toastFor(method, p, focus) {
         var of = p.cycle + ' of ' + p.cycles;
         if (p.phase === 'work') { t.line = 'Work · interval ' + of; }
         else if (p.phase === 'break') {
-            var mins = focus && focus.state === 'break' && focus.phaseMs ? minutes(focus.phaseMs) : 0;
+            // The event can arrive before the state delta: fall back to the configured length.
+            var mins = focus && focus.state === 'break' && focus.phaseMs ? minutes(focus.phaseMs)
+                     : guidanceConfig ? guidanceConfig[p.breakKind === 'long' ? 'focus.long_break_min' : 'focus.short_break_min'] || 0 : 0;
             t.line = (p.breakKind === 'long' ? 'Long break' : 'Break') + (mins ? ' · ' + mins + ' min' : '');
             t.detail = p.suggestion && p.suggestion.label ? 'Stretch, or walk to ' + p.suggestion.label + '.' : 'Stretch, look away, take a breath.';
         }

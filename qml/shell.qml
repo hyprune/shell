@@ -374,6 +374,13 @@ ShellRoot {
                 graphics: ShellState.graphics, player: ShellState.playerSettings, playerSupported: ShellState.playerSupported,
                 menuHold: ShellState.menuHold,
                 holdFilling: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdFilling || false,
+                holdStats: ShellState.holdStats,
+                focusChip: (function() {
+                    var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var time = Audit.find(view, 'hudFocusTime'), phase = Audit.find(view, 'hudFocusPhase');
+                    return time ? {time: time.text, phase: phase ? phase.text : ''} : null;
+                })(),
+                focus: ShellState.focusState,
                 quests: {selected: ShellState.selectedQuest, list: ShellState.questList.length, detail: ShellState.questDetail ? ShellState.questDetail.title : null,
                          feedback: ShellState.questFeedback, toasts: ShellState.toasts, banners: ShellState.banners, deferred: ShellState.deferredToasts.length,
                          guidance: ShellState.guidanceConfig, mapFocus: ShellState.mapFocus},

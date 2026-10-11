@@ -25,6 +25,8 @@ FocusScope {
     readonly property var ctx: ({markers: ShellState.markersState, places: ShellState.places,
                                  zones: ShellState.state && ShellState.state.location ? ShellState.state.location.zones : [],
                                  worldId: ShellState.state && ShellState.state.world ? ShellState.state.world.id : ''})
+    // Tracking follows core's state (current) rather than the last quests.get answer.
+    readonly property bool isTracked: !!detail && Quests.sameRef(ShellState.questsState ? ShellState.questsState.tracked : null, detail.questRef)
     readonly property bool focusIdle: !ShellState.focusState || ShellState.focusState.state === 'idle'
 
     function syncCurrent() {
@@ -71,7 +73,7 @@ FocusScope {
         if (!detail) return;
         if (actions.accept) { ShellState.questAction('quests.accept', {questRef: ref}); return; }
         if (!actions.track) { say('Only active quests can be tracked.'); return; }
-        ShellState.questAction('quests.track', {questRef: detail.tracked ? null : ref});
+        ShellState.questAction('quests.track', {questRef: isTracked ? null : ref});
     }
     function markDone(stepId, objectiveId) {
         if (!detail) return;
@@ -95,7 +97,9 @@ FocusScope {
         editRef = editingDetail ? editingDetail.questRef : null;
         form.previous = editingDetail;
         editing = true;
-        form.load(editingDetail ? Quests.formFromDetail(editingDetail) : Object.assign(Quests.formFromDetail(null), seed && !seed.edit ? seed : {}));
+        var base = Quests.formFromDetail(editingDetail);
+        var extra = Object.assign({}, seed || {}); delete extra.edit;
+        form.load(Object.assign(base, extra));
     }
     function save(input) {
         if (editRef) ShellState.questAction('quests.update', {questRef: editRef, quest: input});
@@ -280,8 +284,8 @@ FocusScope {
 
                     HudLabel {
                         Layout.fillWidth: true
-                        text: root.detail ? [root.detail.category, root.detail.state, root.detail.tracked ? 'tracked' : ''].filter(v => v).join('  ·  ').toUpperCase() : ''
-                        color: root.detail && root.detail.tracked ? Tokens.quest : Tokens.gold
+                        text: root.detail ? [root.detail.category, root.detail.state, root.isTracked ? 'tracked' : ''].filter(v => v).join('  ·  ').toUpperCase() : ''
+                        color: root.isTracked ? Tokens.quest : Tokens.gold
                         font.pixelSize: 11; font.letterSpacing: 1.8
                     }
                     HudLabel {
@@ -307,7 +311,7 @@ FocusScope {
                     Flow {
                         Layout.fillWidth: true
                         spacing: 8
-                        ActionButton { id: trackButton; objectName: 'quest-track'; visible: !!root.actions.track; text: root.detail && root.detail.tracked ? 'Untrack · T' : 'Track · T'; primary: !(root.detail && root.detail.tracked); enabled: ShellState.available('quests.track'); onClicked: root.track() }
+                        ActionButton { id: trackButton; objectName: 'quest-track'; visible: !!root.actions.track; text: root.isTracked ? 'Untrack · T' : 'Track · T'; primary: !root.isTracked; enabled: ShellState.available('quests.track'); onClicked: root.track() }
                         ActionButton { id: acceptButton; objectName: 'quest-accept'; visible: !!root.actions.accept; text: 'Accept · T'; primary: true; enabled: ShellState.available('quests.accept'); onClicked: ShellState.questAction('quests.accept', {questRef: root.ref}) }
                         ActionButton { id: resumeButton; objectName: 'quest-resume'; visible: !!root.actions.resume; text: 'Resume'; primary: true; enabled: ShellState.available('quests.resume'); onClicked: ShellState.questAction('quests.resume', {questRef: root.ref}) }
                         ActionButton { objectName: 'quest-focus'; visible: !!root.detail && root.detail.state === 'active'; text: 'Focus session · F'; enabled: root.focusIdle && ShellState.available('focus.start'); onClicked: root.startFocus('') }

@@ -472,6 +472,8 @@ class Helpers(unittest.TestCase):
                                                                   'suggestion': {'markerId': 'm', 'label': 'the north lookout'}}),
                                                      json.dumps(dict(FOCUS, state='break', phaseMs=300000))))
         self.assertEqual((brk['line'], brk['detail'], brk['durationMs']), ('Break · 5 min', 'Stretch, or walk to the north lookout.', 4000))
+        early = js('toastFor("focus.phase", %s, %s, {"focus.short_break_min": 5})' % (json.dumps({'phase': 'break', 'cycle': 1, 'cycles': 4, 'creditedMs': 0, 'breakKind': 'short'}), json.dumps(FOCUS)))
+        self.assertEqual(early['line'], 'Break · 5 min')  # event before the state delta
         ended = js('toastFor("focus.phase", %s)' % json.dumps({'phase': 'ended', 'cycle': 4, 'cycles': 4, 'creditedMs': 1380000, 'outcome': 'completed'}))
         self.assertEqual((ended['line'], ended['detail']), ('Session complete · 4 intervals', 'Last interval: 23 min credited'))
         for text in [toast, done, brk, ended]:

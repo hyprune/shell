@@ -27,6 +27,9 @@ Item {
     }
     function begin(view) {
         filling = true;
+        if (ShellState.holdStats.lastStartedAtMs !== hold.startedAtMs)  // one count per hold
+            ShellState.holdStats = Object.assign({}, ShellState.holdStats, {shown: ShellState.holdStats.shown + 1, lastStartedAtMs: hold.startedAtMs,
+                lastDelayMs: Math.round(hold.durationMs - hold.remainingMs + (Date.now() - received))});
         if (Tokens.reducedMotion) { progress = 1; return; }
         progress = view.progress;
         if (view.fillMs > 0) { fill.from = progress; fill.duration = view.fillMs; fill.start(); }
