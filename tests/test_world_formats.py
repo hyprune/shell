@@ -8,7 +8,7 @@ from protocol import WORLD_VALIDATORS  # noqa: E402
 class WorldFormats(unittest.TestCase):
     def test_every_vendored_world_pin_is_accepted(self):
         pins = {d.name[1:] for d in (ROOT / 'protocol' / 'worlds').iterdir() if (d / 'world.schema.json').exists()}
-        self.assertTrue({'0.6', '0.7'} <= pins)
+        self.assertTrue({'0.6', '0.7', '0.8'} <= pins)
         self.assertTrue(pins <= set(WORLD_VALIDATORS))
 
     def test_vendored_world_pins_match_their_source_hashes(self):
