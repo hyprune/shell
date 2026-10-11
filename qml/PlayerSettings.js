@@ -76,6 +76,7 @@ function overlayStyle(t, minor) {
         style.validColor = rgb(t.positive);
         style.invalidColor = rgb(t.warning);
     }
+    if (minor >= 21 && t.quest) style.questColor = rgb(t.quest); // RFC-0012 marker colour
     return style;
 }
 
