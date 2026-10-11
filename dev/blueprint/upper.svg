@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+<g class="grid" stroke-width="0.6">
+<path d="M50 0 V600 M100 0 V600 M150 0 V600 M200 0 V600 M250 0 V600 M300 0 V600 M350 0 V600 M400 0 V600 M450 0 V600 M500 0 V600 M550 0 V600"/>
+<path d="M0 50 H600 M0 100 H600 M0 150 H600 M0 200 H600 M0 250 H600 M0 300 H600 M0 350 H600 M0 400 H600 M0 450 H600 M0 500 H600 M0 550 H600"/>
+</g>
+<rect class="outline" x="8" y="8" width="584" height="584" stroke-width="1.5"/>
+<rect class="outline" x="440" y="556" width="152" height="36" stroke-width="1"/>
+<text class="label" x="450" y="579" font-size="14" font-family="DejaVu Sans Mono">UPPER  4.5 m</text>
+<path class="floor" d="M300 200 A100 100 0 1 1 299.9 200 Z M300 240 A60 60 0 1 0 300.1 240 Z" fill-rule="evenodd"/>
+<polygon class="floor" points="392,236 470,150 520,150 520,200 470,200 404,262"/>
+<circle class="void" cx="300" cy="300" r="60" stroke-width="1.2" stroke-dasharray="5 4"/>
+<path class="void" d="M258 258 L342 342 M342 258 L258 342" fill="none" stroke-width="0.8"/>
+<circle class="wall" cx="300" cy="300" r="100" fill="none" stroke-width="3"/>
+<circle class="wall" cx="300" cy="300" r="60" fill="none" stroke-width="1.5" stroke-dasharray="2 3"/>
+<path class="wall" d="M392 236 L470 150 H520 V200 H470 L404 262" fill="none" stroke-width="2.5"/>
+<g class="stair" stroke-width="1.2">
+<rect x="372" y="262" width="22" height="80"/>
+<path d="M372 272 H394 M372 282 H394 M372 292 H394 M372 302 H394 M372 312 H394 M372 322 H394 M372 332 H394" fill="none"/>
+</g>
+<line class="opening" x1="392" y1="236" x2="404" y2="262" stroke-width="5"/>
+<line class="screen" x1="478" y1="156" x2="514" y2="156" stroke-width="6"/>
+<line class="screen" x1="496" y1="156" x2="496" y2="168" stroke-width="2"/>
+<line class="screen" x1="248" y1="216" x2="300" y2="206" stroke-width="6"/>
+<line class="screen" x1="274" y1="211" x2="276" y2="223" stroke-width="2"/>
+<circle class="mount" cx="225" cy="330" r="5"/>
+<path class="area" d="M300 188 A112 112 0 1 1 299.9 188 Z" fill="none" stroke-width="1" stroke-dasharray="6 6"/>
+<path class="route" d="M330 220 A84 84 0 0 1 382 300 M396 250 L495 178" fill="none" stroke-width="1.6" stroke-dasharray="4 5"/>
+<circle class="waypoint" cx="495" cy="178" r="5" stroke-width="1.5"/>
+<text class="label" x="300" y="390" font-size="13" text-anchor="middle" font-family="DejaVu Sans" letter-spacing="2">GALLERY RING</text>
+<text class="label" x="495" y="222" font-size="13" text-anchor="middle" font-family="DejaVu Sans" letter-spacing="2">LOOKOUT</text>
+<text class="label" x="300" y="304" font-size="11" text-anchor="middle" font-family="DejaVu Sans" letter-spacing="1">OPEN TO BELOW</text>
+</svg>
