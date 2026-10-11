@@ -20,6 +20,15 @@ class OutgoingInvalid(ValueError):
     """A request this shell built does not match the negotiated protocol (never sent)."""
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
+# Grants that exist only from a protocol on: older cores reject unknown capabilities.
+VERSIONED_GRANTS = [(6, 'input.control'), (21, 'quest.control')]
+# RFC-0012 presentation hints (IPC 0.21): forwarded to QML, never replayed.
+QUEST_EVENTS = ['quest.progress', 'focus.phase']
+
+
+def capabilities(protocol):
+    """The hello capabilities for the offered protocol."""
+    return GRANTS + [grant for minor, grant in VERSIONED_GRANTS if at_least(protocol, minor)]
 REQUIRED = ['session.hello', 'session.ping', 'state.subscribe', 'state.snapshot', 'state.unsubscribe',
             'shell.claim', 'shell.release', 'shell.overlay', 'surface.focus', 'movement.set', 'world.load', 'runtime.exit']
 
@@ -69,6 +78,7 @@ class Client:
         self.tasks = set()
         self.invalid_frames = 0
         self.last_invalid_log = float('-inf')
+        self.clock_offset = None  # core monotonic ms minus local wall-clock ms (QML Date.now())
 
     async def call(self, method, params, bootstrap=False):
         if not self.writer or (not bootstrap and method not in self.hello.get('methods', [])):
@@ -115,6 +125,25 @@ class Client:
             remaining = max(0, min(hold['durationMs'], hold['startedAtMs'] + hold['durationMs'] - time.monotonic() * 1000))
             timing = {**hold, 'remainingMs': remaining, 'progress': 1 - remaining / hold['durationMs']}
         self.emit({'type': 'menu.hold', 'hold': timing})
+
+    def publish_clock(self, core_ms=None, wall_ms=None):
+        """Core's monotonic clock (keymap holds, focus phases) relative to QML's Date.now().
+        A session.ping sample wins; before it, the local CLOCK_MONOTONIC (same host)."""
+        if core_ms is None:
+            offset = time.monotonic() * 1000 - time.time() * 1000
+        else:
+            offset = core_ms - wall_ms
+        if self.clock_offset is not None and abs(offset - self.clock_offset) < 2: return
+        self.clock_offset = offset
+        self.emit({'type': 'clock', 'offsetMs': round(offset, 1)})
+
+    async def ping(self):
+        before = time.time() * 1000
+        result = await self.call('session.ping', {})
+        after = time.time() * 1000
+        if after - before < 1000:  # a slow round trip is a poor sample
+            self.publish_clock(result['monotonicMs'], (before + after) / 2)
+        return result
 
     def present_location(self, hint=None):
         # Core emits loading before a pending RPC returns. A validated hint can
@@ -279,6 +308,11 @@ class Client:
                     continue  # Transient hints are not a replay log.
             if self.hud_event(msg['method'], p):
                 continue
+            if msg['method'] in QUEST_EVENTS:
+                # Transient hints for toasts; state stays authoritative.
+                if at_least(self.protocol, 21) and p['sessionId'] == self.session and self.ready:
+                    self.emit({'type': msg['method'], 'value': p})
+                continue
             if msg['method'] == 'session.revoked':
                 raise RuntimeError('Session revoked: ' + p['reason'])
             if msg['method'] == 'runtime.notice':
@@ -330,7 +364,7 @@ class Client:
         while True:
             await asyncio.sleep(10)
             try:
-                await asyncio.wait_for(self.call('session.ping', {}), 30)
+                await asyncio.wait_for(self.ping(), 30)
             except QuarantinedFrame:
                 continue
 
@@ -507,7 +541,7 @@ class Client:
                     raise ValueError('Core peer UID mismatch')
                 reader_task = asyncio.create_task(self.receive(reader))
                 reader_task.add_done_callback(self.reader_finished)
-                params = {'protocols': [self.protocol], 'client': {'id': self.client_id, 'name': 'Hyprune shell'}, 'capabilities': GRANTS + (['input.control'] if at_least(self.protocol, 6) else [])}
+                params = {'protocols': [self.protocol], 'client': {'id': self.client_id, 'name': 'Hyprune shell'}, 'capabilities': capabilities(self.protocol)}
                 if token: params['token'] = token
                 self.hello = await self.call('session.hello', params, bootstrap=True)
                 if self.hello['protocol'] != self.protocol: raise ValueError('protocol mismatch')
@@ -517,6 +551,7 @@ class Client:
                 # Receive may observe queued deltas immediately after resolving this response.
                 self.subscription = result['subscriptionId']
                 self.ready = True
+                self.publish_clock()
                 self.emit({'type': 'connection', 'status': 'live'})
                 try:
                     await self.reconcile()
@@ -524,6 +559,9 @@ class Client:
                     self.emit({'type':'notice','level':'warning','code':'shell.lease','message':str(error)})
                 if at_least(self.protocol,9) and 'hud.subscribe' in self.hello['methods']:
                     await self.call('hud.subscribe',{'topics':['hud.frame','hud.pose','zone.entered','zone.exited','tool.changed']})
+                if at_least(self.protocol, 21):
+                    with contextlib.suppress(RuntimeError, QuarantinedFrame, asyncio.TimeoutError):
+                        await asyncio.wait_for(self.ping(), 5)  # focus countdowns need the offset now
                 backoff = .25
                 heartbeat = asyncio.create_task(self.heartbeat())
                 done, _ = await asyncio.wait([reader_task, heartbeat], return_when=asyncio.FIRST_COMPLETED)
@@ -538,6 +576,7 @@ class Client:
                 self.hud_subscription = self.bound_child = None
                 self.hud_sequence = -1
                 self.hud_times = {}
+                self.clock_offset = None
                 self.ready = self.director = False
                 self.end_note('lost')
                 self.resyncing = False

@@ -60,7 +60,24 @@ def shell_actions(protocol):
             (['graphics.get','graphics.set'] if at_least(protocol, 7) else []) +
             (['camera.get'] if at_least(protocol, 13) else []) +
             (['player.get', 'player.set'] if at_least(protocol, 19) else []) +
-            (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []))
+            (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []) +
+            (QUEST_ACTIONS if at_least(protocol, 21) else []))
+
+
+# RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
+QUEST_ACTIONS = ['markers.reveal', 'guidance.get', 'guidance.set',
+                 'quests.list', 'quests.get', 'quests.track', 'quests.accept', 'quests.abandon', 'quests.resume',
+                 'quests.create', 'quests.update', 'quests.delete', 'quests.mark',
+                 'focus.start', 'focus.pause', 'focus.resume', 'focus.skip', 'focus.stop', 'focus.history']
+
+
+def action_event(method, params, result):
+    """The presentation event for an action result. Quest, focus and guidance results echo
+    their params so QML can tell which quest a reply (or a later error) belongs to."""
+    event = {'type': 'action', 'method': method, 'result': result}
+    if method in QUEST_ACTIONS:
+        event['params'] = params
+    return event
 
 
 # Core's answer to a style request whose lease it no longer holds (lease lost or rotated
@@ -87,7 +104,8 @@ def action_notice(cmd, error):
     else:
         message = str(error)[:512]
     return {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
-            **({'method': method} if isinstance(method, str) else {})}
+            **({'method': method} if isinstance(method, str) else {}),
+            **({'params': cmd.get('params')} if method in QUEST_ACTIONS else {})}
 
 
 def catalog(paths):
@@ -143,7 +161,7 @@ async def main(args):
                 emit({'type':'world.style','value':style})
                 if style.get('warning'): emit({'type':'notice','level':'warning','message':style['warning'],'code':'style.asset'})
         if event["type"] in ["connection", "notice"]: print(json.dumps(event), flush=True)
-        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata', 'preferences', 'world.style', 'outline']:
+        if event['type'] in ['connection', 'hello', 'state', 'director', 'catalog', 'presentation', 'metadata', 'preferences', 'world.style', 'outline', 'clock']:
             cache[event['type']] = event
         line = (json.dumps(event, ensure_ascii=False, allow_nan=False) + '\n').encode()
         for writer in tuple(peers):
@@ -198,7 +216,7 @@ async def main(args):
                 if params is None:
                     return  # no lease yet: hud.bound / the next lease applies the style
                 result = await client.call(cmd['method'], params)
-                emit({'type': 'action', 'method': cmd['method'], 'result': result})
+                emit(action_event(cmd['method'], params, result))
             elif cmd['type'] == 'capture.note' and at_least(args.protocol, 17):
                 # Enter (note may be ''); release=False when U moved the prompt on.
                 note = cmd.get('note')
