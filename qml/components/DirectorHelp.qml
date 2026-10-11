@@ -1,6 +1,7 @@
 import Quickshell
 import ".."
 import "../HudManipulation.js" as Manipulation
+import "../DirectorModel.js" as Model
 import "../theme"
 import QtQuick
 import QtQuick.Controls
@@ -147,21 +148,30 @@ RowLayout {
                 font.letterSpacing: 2
             }
 
-            HudLabel {
-                text: ShellState.state ? ShellState.state.movement.modeId : 'Disconnected'
-                font.family: Tokens.mono
-                font.pixelSize: 11
-                color: Tokens.muted
-                Layout.fillWidth: true
-            }
-
-            ActionButton {
-                text: 'Use free flight'
+            // Bound to core's movement mode both ways; core decides (and may refuse while climbing).
+            Segmented {
+                id: movementMode
+                objectName: 'movementMode'
+                readonly property string segment: Model.movementSegment(ShellState.state)
                 Layout.fillWidth: true
                 enabled: ShellState.available('movement.set')
-                onClicked: ShellState.action('movement.set', {
-                    "modeId": 'com.hyprune.fly'
-                })
+                current: segment
+                model: segment === 'climb'
+                    ? [{id:'walk',label:'Walk'},{id:'climb',label:'Climbing',selectable:false},{id:'fly',label:'Fly'}]
+                    : [{id:'walk',label:'Walk'},{id:'fly',label:'Fly'}]
+                onPicked: (id) => ShellState.action('movement.set', {"modeId": Model.modeFor(id)})
+            }
+
+            HudLabel {
+                text: !ShellState.state ? 'Disconnected'
+                    : !ShellState.available('movement.set') ? 'Movement mode changes are unavailable.'
+                    : movementMode.segment === 'climb' ? 'Climbing. Walk or Fly asks core to end the climb.'
+                    : movementMode.segment === '' ? 'Mode · ' + ShellState.state.movement.modeId
+                    : movementMode.segment === 'fly' ? 'Free flight: Space rises, Ctrl descends.' : 'On foot: Space jumps, Shift runs.'
+                font.pixelSize: 12
+                color: Tokens.muted
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
             }
 
             Item {
