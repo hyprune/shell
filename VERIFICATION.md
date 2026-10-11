@@ -14,7 +14,7 @@ unassociated exclusivity and private PID spoof are rejected.
 method/version isolation. Core/schema/SDK suites and captured real wire traffic
 are also green; see `../core/docs/FIRST-SESSION.md` and its evidence JSON.
 
-Reviewed video: `videos/hyprune-first-session.mp4` in the gallery, **61.433333 s,
+Reviewed video: `$HYPRUNE_VIDEO_DIR/hyprune-first-session.mp4`, **61.433333 s,
 22,226,000 bytes**, H.264/yuv420p 1920×1080/30 fps with fast start, plus adjacent
 metadata JSON. Full-resolution Map and extracted video frames were inspected;
 btop displays live metrics and the Map waypoint is selected with a real pointer.
@@ -76,7 +76,7 @@ in NOTES-rfc-gaps.md. Core build completed with no work required.
 
 Earlier visible 1280×720 and headless 1080p runs verified composition scaling and
 output selection. The latest captures and real-core run use the distinct nested
-1920×1080 output; the owner's compositor is never controlled.
+1920×1080 output; the host compositor is never controlled.
 
 The UI was inspected using the screenshots and an extracted encoded-video frame.
 Iterations corrected light-theme text contrast, Canvas initialization, smaller
@@ -85,7 +85,7 @@ seals are original Canvas/QML drawings; no prototype code or game assets ship.
 
 ## Review artifacts
 
-Gallery root: `$HYPRUNE_GALLERY_DIR` (environment or `~/.config/hyprune/dev.env`; unset: `dev/.run/gallery/`, with a warning).
+Capture root: `$HYPRUNE_GALLERY_DIR` (environment or `~/.config/hyprune/dev.env`; unset: `dev/.run/gallery/`, with a warning).
 Screenshots are **1920×1080**, stored under `screenshots/hyprune-shell-m0/`:
 
 | View | File |
@@ -105,7 +105,7 @@ Screenshots are **1920×1080**, stored under `screenshots/hyprune-shell-m0/`:
 | Reduced-motion destination card | `warp-reduced-motion.png` |
 | Connection recovery | `reconnect.png` |
 
-Video: `videos/hyprune-shell-m0.mp4`, with adjacent
+Video: `$HYPRUNE_VIDEO_DIR/hyprune-shell-m0.mp4`, with adjacent
 `hyprune-shell-m0.json` (`title`, `tag`, `notes`). It shows the HUD, all six Director
 views and the full jump/arrival sequence. The capture script asserts H.264,
 `yuv420p`, 1920×1080, duration 20–40 seconds and size below 30 MB. The recording is
@@ -126,8 +126,8 @@ multi-monitor hotplug need further integration before full RFC-0008 conformance.
 Workspace-to-location mapping remains development-only in this delivery. See
 [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md).
 
-Concurrent 0.3 changes are owned by the integration agent and were not part of
-these results. The gallery is the verified 0.2 recording.
+Concurrent 0.3 integration changes were developed separately and were not part
+of these results. The recording above is the verified 0.2 result.
 
 M3B IPC 0.6: `python3 -m unittest discover -s tests` passes 42 protocol,
 lease, revision, reconnect and parser tests, including closed keymap/capture

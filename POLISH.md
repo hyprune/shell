@@ -32,7 +32,7 @@ Launch with `--protocol 0.7` to expose World graphics. Shell's offline validator
 applies `core/docs/graphics-ipc-amendment.json` to the pinned 0.6 base; provenance
 and amendment SHA-256 are in `protocol/v0.7/SOURCE.json`. Regenerate with
 `python3 dev/sync-graphics-schema.py`. This is the core's explicit handoff;
-canonical schema publication is tracked separately by its owner. Existing launchers
+canonical schema publication is tracked separately in the schema repository. Existing launchers
 must opt into exact `--protocol 0.7` (or `HYPRUNE_PROTOCOL=0.7`) to expose
 graphics; the default and older protocol contracts are not silently upgraded.
 
@@ -47,7 +47,7 @@ is visible. All changes use validated `graphics.set`; QML never writes files.
 ## Reproduction and evidence
 
 All compositor control uses the child signature/Wayland socket or core's
-PID/start-time/lock-verified `ctl.py`. The real owner session is never targeted.
+PID/start-time/lock-verified `ctl.py`. The host Hyprland session is never targeted.
 Run each independently (the mock and core scripts share the global lock):
 
 ```sh
@@ -68,15 +68,15 @@ Includes long app/workspace titles and German-length world headings, both menu t
 HUD flat/curved, bright Sun Court/dark Rime Vault, all Director pages and warp.
 
 Before: `$HYPRUNE_GALLERY_DIR/screenshots/hyprune-shell-m0/`. Background
-references were world-only captures; concepts: `worlds/concept/release-world/`.
+references were world-only captures.
 
 After: `$HYPRUNE_GALLERY_DIR/screenshots/hyprune-shell-polish/`.
 `mock-<height>p-s<scale>-*.png` and `core-<height>p-s<scale>-*.png` identify the
 source and physical output scale. Compare `*-sun-court-flat.png` with
 `*-sun-court-curved.png` at the same pose. Full run result is
-`core-verification.json`. Video: `gallery/videos/hyprune-shell-polish.mp4` and
-`.json`; recording and encoding happen in `/tmp` before publishing the finished
-file. Gallery autocommit is left running.
+`core-verification.json`. Video: `$HYPRUNE_VIDEO_DIR/hyprune-shell-polish.mp4` and
+`.json`; recording and encoding happen in `/tmp` before the finished file is
+moved into place.
 
 ## Core limitations
 
@@ -104,7 +104,7 @@ compositing with the world, with a stable dark floor for text contrast.
   not a claim of testing every possible translation or font.
 - Long native workspace/app/world names also pass at all six configurations;
   additional scrolled Places/Workspaces captures show cards and apps below the
-  compact viewport. The gallery contains 201 PNGs.
+  compact viewport. The run produced 201 PNGs.
 - Video is 35.93 seconds, 1920×1080 H.264/yuv420p, with flat/curved comparison,
   Sun Court, Rime Vault and all seven flat Director pages.
 - `hyprune-dev smoke` cannot pass unchanged: its 500 ms TAB hold is shorter than
@@ -115,7 +115,7 @@ compositing with the world, with a stable dark floor for text contrast.
   but remains empty. Retrying with a settle delay produces the same result.
   This remains a core integration/input follow-up; no core source was edited.
 
-Useful exact comparisons (under the gallery's `screenshots/` directory):
+Useful exact comparisons (under `$HYPRUNE_GALLERY_DIR/screenshots/`):
 
 | View | Earlier baseline | Final capture |
 | --- | --- | --- |
@@ -156,7 +156,7 @@ hold completion opening the Director. This last check currently exposes the core
 version-gate blocker below. Workspace captures cover 1080p/scale 2,
 1440p/scale 1 and 4K/scale 2 with long titles and native workspace names.
 
-Evidence: `gallery/screenshots/hyprune-shell-followup/`, including
+Evidence: `$HYPRUNE_GALLERY_DIR/screenshots/hyprune-shell-followup/`, including
 `graphics-0.7-before-f3.png`, `graphics-0.7-after-f3.png`,
 `hold-08-progress.png`, `workspaces-0.7-1440p-s1.png` and per-protocol
 `verification-0.7.json` / `verification-0.8.json`.

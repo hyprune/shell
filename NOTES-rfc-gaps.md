@@ -18,9 +18,9 @@ SDK preview `3ab86cb`. The M1 IPC 0.2 amendment landed during development and th
 added stable warp IDs, world loading and output identity to transition samples.
 The tested amended schema is `c07a923f1f44f48c00daad1662fb19b05047b735`;
 docs origin/main is `114387dbd13a1a779ffda9e81293814adc94fc85`. The core M1
-handoff was read. Vendored digests are in `protocol/v0.2/SOURCE.json`.
-These notes describe the verified 0.2 delivery; concurrent 0.3 integration belongs
-to the integration agent and has not been assessed here.
+integration notes were read. Vendored digests are in `protocol/v0.2/SOURCE.json`.
+These notes describe the verified 0.2 delivery; concurrent 0.3 integration work
+happened separately and has not been assessed here.
 
 These notes distinguish the initial omissions from the current amendment. The
 shell does not widen a negotiated schema or patch upstream repositories.
@@ -28,7 +28,7 @@ shell does not widen a negotiated schema or patch upstream repositories.
 ## Director and input authority
 
 IPC 0.1 has no core-owned panel-open event. The SDK mock uses `ui.open` as a method
-and `ui.opened` as an event; the original request's `ui.open` event name was
+and `ui.opened` as an event; the original M0 brief's `ui.open` event name was
 ambiguous. M1 resolves this with canonical `ui.opened` / `ui.closed`, lease/output,
 session and revision, core-owned 350 ms Tab hold, and the panel name `overview`.
 Release leaves it open; Esc closes. The shell accepts `overview` or `director`,

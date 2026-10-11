@@ -78,7 +78,7 @@ python3 -m unittest discover -s tests -v
 Every nested lifetime is wrapped in `flock /tmp/worldshell-nested.lock`. The
 harness reads the child compositor's startup environment, rejects the outer
 signature/display, gives every `hyprctl` call an explicit child signature and
-`qs ipc` its exact child PID. It never controls the owner's session. Interactive
+`qs ipc` its exact child PID. It never controls the host session. Interactive
 runs use the visible nested output; deterministic captures use the distinct
 1920×1080 `HYPRUNE-PREVIEW` output.
 
@@ -220,7 +220,7 @@ Manifest hints are approved reads once, not filesystem discovery. M0 preferences
 are session-local. No executable extension, world art/physics, compositor hook,
 or invented approval API is shipped here.
 
-See [VERIFICATION.md](VERIFICATION.md) for results and gallery paths,
+See [VERIFICATION.md](VERIFICATION.md) for results and capture paths,
 [NOTES-rfc-gaps.md](NOTES-rfc-gaps.md) for deferred contracts and core interop issues.
 Schema provenance is in `protocol/SOURCE.json` and `protocol/v0.2/SOURCE.json`.
 MIT; vendored schemas retain their license. All shell graphics are original.
