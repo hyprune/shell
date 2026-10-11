@@ -59,6 +59,12 @@ Item {
         setView(next.zoom, next.pan);
     }
     function resetView() { setView(1, [0, 0]); }
+    // Centre the view on a world position (the player), zooming in to at least 2x.
+    function centreOn(position, minZoom) {
+        if (!map) return;
+        var z = Blueprint.clampZoom(Math.max(zoom, minZoom || 2)), m = mapped(position);
+        setView(z, [mapWidth * z * (0.5 - m[0]), mapHeight * z * (0.5 - m[1])]);
+    }
     onMapChanged: resetView()
 
     readonly property real mapWidth: Math.min(width, height * mapRatio)
@@ -308,7 +314,7 @@ Item {
             objectName: 'mapPlayer'
             x: root.px(ShellState.pose) - width / 2
             y: root.py(ShellState.pose) - height / 2
-            width: root.compact ? 18 : 64
+            width: root.compact ? 18 : 80
             height: width
             rotation: ShellState.heading
             opacity: root.onShownLevel(ShellState.pose) ? 1 : 0.45
@@ -329,7 +335,7 @@ Item {
                         c.fillStyle = g;
                         c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, s, -Math.PI / 2 - 0.5, -Math.PI / 2 + 0.5); c.closePath(); c.fill();
                     }
-                    var k = cone ? 1.25 : 1;
+                    var k = cone ? 1.5 : 1;
                     c.fillStyle = Tokens.accent;
                     c.strokeStyle = Tokens.ink;
                     c.lineWidth = 2;
@@ -437,7 +443,7 @@ Item {
         }
     }
 
-    // Zoom: +, −, fit.
+    // Zoom: +, −, fit, centre on me.
     Column {
         objectName: 'mapZoom'
         visible: root.interactive
@@ -445,11 +451,12 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 18
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 76
+        anchors.bottomMargin: 64
 
         MapButton { width: 36; text: '+'; onClicked: root.zoomBy(1.5); enabled: root.zoom < 8; objectName: 'mapZoomIn' }
         MapButton { width: 36; text: '−'; onClicked: root.zoomBy(1 / 1.5); enabled: root.zoom > 1; objectName: 'mapZoomOut' }
         MapButton { width: 36; text: '⤢'; onClicked: root.resetView(); enabled: root.zoom !== 1 || root.panX !== 0 || root.panY !== 0; objectName: 'mapZoomReset' }
+        MapButton { width: 36; text: '◎'; onClicked: root.centreOn(ShellState.pose, 2); objectName: 'mapCentre' }
     }
 
     component MapButton: Rectangle {

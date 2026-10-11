@@ -27,7 +27,7 @@ function palette(t) {
         outline: {fill: 'none', stroke: line},
         floor: {fill: accent, 'fill-opacity': '0.10', stroke: 'none'},
         wall: {fill: text, stroke: text},
-        stair: {fill: accent, 'fill-opacity': '0.16', stroke: accent},
+        stair: {fill: accent, 'fill-opacity': '0.16', stroke: accent, 'stroke-opacity': '0.7'},
         opening: {fill: ink, stroke: gold},
         screen: {fill: gold, stroke: gold},
         mount: {fill: accent, stroke: accent},
