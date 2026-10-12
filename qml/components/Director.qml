@@ -7,7 +7,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Quests', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
+    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
@@ -196,11 +196,12 @@ Item {
             // size-hint cache walking Repeater-owned/deleted layout children.
             DirectorMap { anchors.fill: parent; visible: ShellState.tab === ShellState.tabMap }
             DirectorQuests { anchors.fill: parent; visible: ShellState.tab === ShellState.tabQuests }
-            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 2 }
-            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 3 }
-            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 4 }
-            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 5 }
-            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorObjects { anchors.fill: parent; visible: ShellState.tab === ShellState.tabObjects }
+            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 3 }
+            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 4 }
+            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 5 }
+            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 7 }
             DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === ShellState.tabPerformance }
             DirectorSettings { anchors.fill: parent; visible: ShellState.tab === ShellState.tabSettings }
         }
@@ -230,6 +231,9 @@ Item {
             HudLabel {
                 text: ShellState.tab === ShellState.tabQuests && ShellState.questsSupported
                       ? '↑ ↓  Move    Enter  Open    T  Track    Space  Done    F  Focus    N  New    ← →  Views    Esc  Close'
+                      : ShellState.tab === ShellState.tabObjects && ShellState.objectsSupported
+                      ? (ShellState.objectsView === 'placed' ? '↑ ↓  Move    Enter  Edit    L  Lock    H  Hide    R  Reset    Del  Remove    V  View    Esc  Close'
+                                                              : '↑ ↓  Move    Enter  Add    /  Search    V  Placed    ← →  Views    Esc  Close')
                       : '← →  Views      Tab  Focus      Esc  Close'
                 font.family: Tokens.mono
                 font.pixelSize: 11

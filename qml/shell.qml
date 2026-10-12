@@ -237,7 +237,7 @@ ShellRoot {
         function tab(index: int): void {
             if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
-        // By name: map, quests, places, surfaces, workspaces, help, whatsnew, settings, performance.
+        // By name: map, quests, objects, places, surfaces, workspaces, help, whatsnew, settings, performance.
         function tabNamed(name: string): void {
             const index = ShellState.tabKeys.indexOf(name);
             if (ShellState.dev && index >= 0) ShellState.tab = index;
@@ -260,6 +260,39 @@ ShellRoot {
         function mapMarkers(): string {
             if (!ShellState.dev || !ShellState.director) return '[]';
             return JSON.stringify(Audit.findAll(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'mapMarker:'));
+        }
+        // IPC 0.22 preview (dev only): objects.catalog / libraries.list answers and page state.
+        function objectPreview(json: string): void {
+            if (!ShellState.dev) return;
+            ShellState.objectPreview = json ? JSON.parse(json) : null;
+            if (ShellState.objectPreview) ShellState.refreshCatalog();
+        }
+        function objectsView(view: string): void { if (ShellState.dev && (view === 'catalog' || view === 'placed')) ShellState.objectsView = view; }
+        function objectSelect(id: string): void { if (ShellState.dev) ShellState.selectedObject = id; }
+        function objectFilter(source: string, category: string, query: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorObjects');
+            if (!page) return false;
+            page.source = source || 'all'; page.category = category; page.query = query;
+            return true;
+        }
+        // A finished object request as core would answer it: a result object, or an error
+        // {code, message, rule?} (shown as a toast).
+        function objectResult(method: string, params: string, json: string): void {
+            if (!ShellState.dev) return;
+            var answer = JSON.parse(json), echoed = params ? JSON.parse(params) : {};
+            if (answer && answer.code !== undefined && answer.message !== undefined)
+                ShellState.receive({type: 'notice', level: 'warning', code: 'shell.action', method: method, params: echoed,
+                                    message: answer.code + ': ' + answer.message, error: answer});
+            else ShellState.receive({type: 'action', method: method, params: echoed, result: answer});
+        }
+        // Give a named Director control keyboard focus (nested keyboard checks).
+        function focusNamed(name: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var item = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), name);
+            if (!item) return false;
+            item.forceActiveFocus();
+            return true;
         }
         function clockOffset(offset: real): void { if (ShellState.dev) ShellState.receive({type: 'clock', offsetMs: offset}); }
         function monotonicNow(): real { return ShellState.monotonicNow() || 0; }
@@ -367,7 +400,7 @@ ShellRoot {
             if (!ShellState.dev) return '{}';
             var view = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
             var result = {view:{width:view.width,height:view.height}};
-            ['hudToolDeck','hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint','hudPlacementTile','hudPlacementQueue','hudPlacementTitle','hudPlacementClass','hudPlacementSize','hudUnplacedBadge','hudToolHints','hudGhostIndicator','hudCarryOrientation','hudContentScale'].forEach(name => {
+            ['hudToolDeck','hudCursorChip','hudCursorText','hudClimbPrompt','hudClimbText','hudWorldHints','hudToolHint','hudPlacementTile','hudPlacementQueue','hudPlacementTitle','hudPlacementClass','hudPlacementSize','hudPlacementCube','hudPocketObjects','hudUnplacedBadge','hudToolHints','hudGhostIndicator','hudCarryOrientation','hudContentScale'].forEach(name => {
                 var item = Audit.find(view,name);
                 var at = item ? item.mapToItem(view,0,0) : null;
                 result[name] = item ? {visible:true,text:item.text || '',truncated:!!item.truncated,x:at.x,y:at.y,width:item.width,height:item.height} : {visible:false};
@@ -393,6 +426,17 @@ ShellRoot {
                 quests: {selected: ShellState.selectedQuest, list: ShellState.questList.length, detail: ShellState.questDetail ? ShellState.questDetail.title : null,
                          feedback: ShellState.questFeedback, toasts: ShellState.toasts, banners: ShellState.banners, deferred: ShellState.deferredToasts.length,
                          guidance: ShellState.guidanceConfig, mapFocus: ShellState.mapFocus},
+                objects: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var page = ShellState.director ? Audit.find(view, 'directorObjects') : null;
+                    var panel = page ? Audit.find(page, 'objectConfigure') : null;
+                    return {supported: ShellState.objectsSupported, control: ShellState.objectsControl, view: ShellState.objectsView,
+                            catalog: ShellState.objectCatalog.length, catalogRevision: ShellState.objectCatalogRevision, catalogFor: ShellState.objectCatalogFor,
+                            shown: page ? page.shown.length : null, cursor: page ? page.cursor : null, confirm: page ? page.confirm : null,
+                            selected: ShellState.selectedObject, sections: panel ? panel.sectionIds : [], feedback: ShellState.objectFeedback,
+                            pocket: ShellState.unplacedObjects, selectedKind: ShellState.selectedKind, gizmo: ShellState.editorGizmo,
+                            instances: ShellState.objectsState ? ShellState.objectsState.instances.length : 0};
+                })(),
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,

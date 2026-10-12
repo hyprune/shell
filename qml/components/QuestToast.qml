@@ -2,7 +2,7 @@ import QtQuick
 import ".."
 import "../theme"
 
-// One RFC-0012 notification: a small toast under the tracker, or (banner: true) the
+// One RFC-0012 notification (or an RFC-0011 object toast): a small toast under the tracker, or (banner: true) the
 // top-centre quest-completed banner. Shows the head of its queue; reduced motion is instant.
 Item {
     id: root
@@ -10,7 +10,9 @@ Item {
     property bool banner: false
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
-    readonly property color tone: !shown || shown.category !== 'focus' ? Tokens.hudQuest : shown.phase === 'break' ? Tokens.hudBreak : Tokens.hudAccent
+    // Object toasts (IPC 0.22): refusals in the warning colour, the rest in the accent.
+    readonly property color tone: shown && shown.category === 'objects' ? (shown.tone === 'warning' ? Tokens.hudWarning : Tokens.hudAccent)
+                                : !shown || shown.category !== 'focus' ? Tokens.hudQuest : shown.phase === 'break' ? Tokens.hudBreak : Tokens.hudAccent
     implicitHeight: column.implicitHeight + (banner ? 28 : 20)
     opacity: toast ? 1 : 0
     visible: opacity > 0

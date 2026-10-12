@@ -7,6 +7,7 @@ import "PlayerSettings.js" as PlayerSettings
 import "Blueprint.js" as Blueprint
 import "DirectorModel.js" as DirectorModel
 import "Quests.js" as Quests
+import "Objects.js" as Objects
 pragma Singleton
 
 QtObject {
@@ -196,6 +197,73 @@ QtObject {
         }
     }
     onQuestsVisibleChanged: { if (questsVisible) refreshQuests(); }
+    // ---- IPC 0.22 (RFC-0011 P1): object catalog, user placements, libraries ----
+    readonly property var objectsState: state && state.objects ? state.objects : null
+    readonly property bool objectsSupported: (supportsProtocol(22) || dev) && available('objects.catalog')
+    // Changes need the objects.control grant (requested from 0.22); reads need state.read.
+    readonly property bool objectsControl: capabilities.indexOf('objects.control') >= 0 || (dev && previewMethods.indexOf('objects.pocket') >= 0)
+    function objectsCan(method) { return objectsControl && available(method); }
+    readonly property var editorState: state && state.editor ? state.editor : null
+    readonly property string selectedKind: editorState && editorState.selectedKind ? editorState.selectedKind : ''
+    readonly property var editorGizmo: editorState && editorState.gizmo ? editorState.gizmo : null
+    readonly property var unplacedObjects: Objects.pocketObjects(editorState ? editorState.unplaced : null)
+    property var objectCatalog: []
+    property int objectCatalogRevision: -1   // revision of the last objects.catalog result
+    // objects.catalogRevision when the last catalog was requested: a refresh follows a change of
+    // the state value only, whatever revision the result carries.
+    property int objectCatalogFor: -1
+    property bool objectCatalogLoaded: false
+    property var libraries: null             // libraries.list result
+    property string selectedObject: ''       // instance id (Director > Objects > Placed)
+    property string objectsView: 'catalog'   // Director > Objects view: catalog | placed
+    property var objectFeedback: null        // {level, text, at}: last object result or refusal
+    property Timer objectFeedbackTimer: Timer { interval: 8000; onTriggered: root.objectFeedback = null }
+    property var objectPreview: null         // DEV ONLY: objects.catalog / libraries.list answers
+    readonly property bool objectsVisible: director && tab === tabObjects
+    signal objectActionDone(string method, var params, var result)
+    signal objectActionFailed(string method, var params, string message)
+    function refreshCatalog() {
+        if (!objectsSupported) return;
+        objectCatalogFor = objectsState ? objectsState.catalogRevision : -1;
+        action('objects.catalog', {});
+    }
+    property Timer catalogRefresh: Timer { interval: 150; onTriggered: root.refreshCatalog() }
+    function refreshLibraries() { if (available('libraries.list')) action('libraries.list', {}); }
+    function objectAction(method, params) {
+        objectFeedback = null;
+        action(method, params);
+    }
+    function pocketObject(ref) { if (ref) objectAction('objects.pocket', {ref: ref}); }
+    function installLibrary(archive, sha256) { objectAction('libraries.install', {archive: archive, sha256: sha256}); }
+    function removeLibrary(id, version) { objectAction('libraries.remove', {id: id, version: version}); }
+    function sayObjects(text, level) {
+        objectFeedback = text ? {level: level || 'info', text: text, at: Date.now()} : null;
+        if (text) objectFeedbackTimer.restart();
+    }
+    onObjectsVisibleChanged: {
+        if (!objectsVisible) return;
+        refreshCatalog();
+        // A tool selection (editor.selectedKind object) opens in Placed.
+        if (!selectedObject && selectedKind === 'object' && editorState && Objects.selectedInstance(objectsState ? objectsState.instances : [], editorState.selectedId))
+            selectedObject = editorState.selectedId;
+    }
+    function objectResult(method, params, result) {
+        if (!method || !result) return;
+        if (method === 'objects.catalog') { objectCatalog = result.entries; objectCatalogRevision = result.revision; objectCatalogLoaded = true; return; }
+        if (method === 'libraries.list') { libraries = result.libraries; return; }
+        if (!/^(objects|libraries)\./.test(method)) return;
+        if (method === 'objects.pocket') {
+            var entry = Objects.entryFor(objectCatalog, params ? params.ref : '');
+            showToast(Objects.pocketToast(entry ? entry.name : ''));
+        }
+        if (method === 'objects.remove' && params && (params.all || params.id === selectedObject)) {
+            if (params.all) { var mine = Objects.selectedInstance(objectsState ? objectsState.instances : [], selectedObject); if (mine && mine.source === 'user') selectedObject = ''; }
+            else selectedObject = '';
+        }
+        if (method === 'libraries.install' || method === 'libraries.remove') { catalogRefresh.restart(); refreshLibraries(); }
+        sayObjects(Objects.resultText(method, params), 'info');
+        objectActionDone(method, params || null, result);
+    }
     // DEV ONLY (preview IPC): state fields and methods shown without a newer core. The
     // patch is merged into every snapshot; preview-only methods are recorded, never sent.
     property var statePreview: null
@@ -222,13 +290,15 @@ QtObject {
     function dismissNote() { if (notePrompt) send({type: 'capture.dismiss', captureId: notePrompt}); }
     property int tab: 0
     // Director tab indices (Quests sits directly after Map, RFC-0012).
+    // Objects follows Quests (RFC-0011).
     readonly property int tabMap: 0
     readonly property int tabQuests: 1
-    readonly property int tabSettings: 7
-    readonly property int tabPerformance: 8
-    readonly property int tabCount: 9
+    readonly property int tabObjects: 2
+    readonly property int tabSettings: 8
+    readonly property int tabPerformance: 9
+    readonly property int tabCount: 10
     // Stable names for the Director tabs (dev hooks and checks address tabs by name, not position).
-    readonly property var tabKeys: ['map', 'quests', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
+    readonly property var tabKeys: ['map', 'quests', 'objects', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)
@@ -350,7 +420,7 @@ QtObject {
     function action(method, params) {
         if (dev && previewMethods.indexOf(method) >= 0 && methods.indexOf(method) < 0) {
             previewActions = previewActions.concat([{method: method, params: params}]).slice(-16);
-            var answer = questPreview ? previewAnswer(method, params) : null;
+            var answer = previewAnswer(method, params);
             if (answer) Qt.callLater(() => receive({type: 'action', method: method, params: params, result: answer}));
             return;
         }
@@ -363,8 +433,18 @@ QtObject {
 
     }
 
-    // DEV ONLY: answers for preview-only quest reads (questPreview: {list, details, guidance}).
+    // DEV ONLY: answers for preview-only reads (questPreview: {list, details, guidance};
+    // objectPreview: {catalog: {revision, entries}, libraries}; object changes answer a revision).
     function previewAnswer(method, params) {
+        if (objectPreview && /^(objects|libraries)\./.test(method)) {
+            if (method === 'objects.catalog') return objectPreview.catalog || {revision: 0, entries: []};
+            if (method === 'libraries.list') return {libraries: objectPreview.libraries || []};
+            if (method === 'objects.pocket') return {revision: 1, itemId: 'pocket-1'};
+            if (method === 'objects.place') return {revision: 1, id: 'u-0a0b0c'};
+            if (method === 'libraries.install') return {revision: 1, id: 'org.example.preview', version: '1.0.0'};
+            return {revision: 1};
+        }
+        if (!questPreview) return null;
         if (method === 'quests.list') return {quests: questPreview.list || []};
         if (method === 'quests.get') { var d = (questPreview.details || {})[Quests.refKey(params.questRef)]; return d ? {quest: d} : null; }
         if (method === 'guidance.get') return questPreview.guidance || null;
@@ -493,6 +573,7 @@ QtObject {
                 camera = null; outline = null; graphics = null; player = null; previousTimings = null; hudFrame = null; hudPose = null; hudTool = null;
                 menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
                 questList = []; questDetail = null; guidance = null; guidanceRequested = false; clockKnown = false;
+                objectCatalog = []; objectCatalogRevision = -1; objectCatalogFor = -1; objectCatalogLoaded = false; libraries = null; objectFeedback = null;
                 toasts = []; banners = []; deferredToasts = [];
                 methods = [];
                 capabilities = [];
@@ -562,6 +643,8 @@ QtObject {
             if (state.keymap && state.keymap.capture && state.keymap.capture.status === 'captured') inputCapture(state.keymap.capture);
             if (questsVisible && JSON.stringify(previousQuests) !== JSON.stringify(state.quests || null)) questRefresh.restart();
             if (!guidanceRequested && available('guidance.get')) refreshGuidance();
+            // objects.catalogRevision bumps when any catalog source changes.
+            if (objectsVisible && objectsState && objectsState.catalogRevision !== objectCatalogFor && !catalogRefresh.running) catalogRefresh.restart();
             arrive();
             var q = state.movement.orientation;
             var angle = -Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2])) * 180 / Math.PI;
@@ -585,6 +668,7 @@ QtObject {
             if (msg.method === 'player.get' || msg.method === 'player.set') player = msg.result;
             if (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket') pocketFeedback(msg.method, msg.result);
             questResult(msg.method, msg.params, msg.result);
+            objectResult(msg.method, msg.params, msg.result);
             break;
         case 'menu.panel':
             if (msg.panel === 'map') tab = 0;
@@ -617,6 +701,14 @@ QtObject {
                 questActionFailed(msg.method, msg.params || null, questFeedback);
                 if (msg.method === 'quests.get' && msg.params && Quests.refKey(msg.params.questRef) === selectedQuest) questDetail = null;
                 break; // shown on the Quests page, not as a HUD notice
+            }
+            if (msg.code === 'shell.action' && /^(objects|libraries)\./.test(msg.method || '')) {
+                // A short toast with core's words (and the placement rule), and the page line.
+                var refusal = Objects.errorToast(msg.method, msg.error || null, msg.message);
+                showToast(refusal);
+                sayObjects(refusal.line + (refusal.detail ? ' (' + refusal.detail + ')' : ''), 'warning');
+                objectActionFailed(msg.method, msg.params || null, refusal.line);
+                break;
             }
             notice(msg.message, msg.level);
             break;

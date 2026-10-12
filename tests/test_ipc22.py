@@ -448,5 +448,45 @@ class PocketHud(unittest.TestCase):
         self.assertEqual(js('pocketObjects(null)'), [])
 
 
+class Presentation(unittest.TestCase):
+    """The Objects tab and HUD wiring in QML (source checks; the nested captures render them)."""
+
+    def read(self, name): return (ROOT / 'qml' / name).read_text()
+
+    def test_tab_after_quests_and_named_controls(self):
+        director = self.read('components/Director.qml')
+        self.assertRegex(director, r"'Quests', 'Objects', 'Places'")
+        self.assertIn('DirectorObjects { anchors.fill: parent; visible: ShellState.tab === ShellState.tabObjects }', director)
+        page = self.read('components/DirectorObjects.qml')
+        for name in ["objectName: 'directorObjects'", "objectName: 'objectsView'", "objectName: 'objectsSource'", "objectName: 'objectsCategory'",
+                     "objectName: 'objectsSearch'", "objectName: 'objectsCatalog'", "objectName: 'objectsPlaced'", "'placedRow:' + modelData.id",
+                     "objectName: 'objects-reset-all'", "objectName: 'objects-remove-all'", "objectName: 'objectsUsage'"]:
+            self.assertIn(name, page)
+        card = self.read('components/ObjectCard.qml')
+        self.assertIn("objectName: 'objectAdd:' + (card.entry ? card.entry.ref : '')", card)
+        self.assertIn("'file://' + card.entry.thumbnail", card)
+        self.assertIn("ShellState.objectsCan('objects.pocket')", card)
+
+    def test_panel_is_built_from_the_section_list(self):
+        panel = self.read('components/ObjectConfigure.qml')
+        self.assertIn('Objects.panelSections(instance)', panel)
+        self.assertRegex(panel, r"Repeater \{\s*id: sectionRepeater\s*model: panel\.sections")
+        self.assertIn("objectName: 'objectSection:' + modelData.id", panel)
+
+    def test_state_refreshes_catalog_and_toasts_errors(self):
+        state = self.read('ShellState.qml')
+        self.assertIn("action('objects.catalog', {})", state)
+        self.assertIn('objectsState.catalogRevision !== objectCatalogFor', state)
+        self.assertIn("onObjectsVisibleChanged", state)
+        self.assertRegex(state, r"/\^\(objects\|libraries\)\\\\?\.\/\.test\(msg\.method")
+        self.assertIn('Objects.errorToast(msg.method, msg.error || null, msg.message)', state)
+
+    def test_hud_lists_pocket_objects(self):
+        deck = self.read('components/ToolDeck.qml')
+        self.assertIn("objectName: 'hudPocketObjects'", deck)
+        self.assertIn('CubeGlyph', deck)
+        self.assertIn('CubeGlyph', self.read('components/PlacementInfo.qml'))
+
+
 if __name__ == '__main__':
     unittest.main()
