@@ -20,7 +20,10 @@ FocusScope {
     readonly property var plan: job ? job.plan : null
     readonly property var main: plan && plan.packages && plan.packages.length ? plan.packages[0] : null
     readonly property var change: Library.sourceChange(plan)
-    readonly property var reqs: Library.requirements(plan)
+    readonly property var reqs: Library.requirements(plan, ShellState.libraryEntries)
+    readonly property var facts: Library.provenance(main, ShellState.librarySources, job ? job.target.name : '')
+    // The plan replaces system-managed content: phase 1 never passes --override from here.
+    readonly property bool override: !!(plan && plan.override)
     readonly property var error: Library.errorText(job ? job.error : null)
     readonly property string verb: job && job.kind === 'update' ? 'Update' : 'Install'
     readonly property bool cancellable: phase === 'planning' || (phase === 'running' && (job.stage === '' || job.stage === 'resolving' || job.stage === 'downloading'))
@@ -29,6 +32,7 @@ FocusScope {
 
     function primary() {
         if (phase === 'confirm') {
+            if (override) return;
             if (change && !changeAsked) { changeAsked = true; return; }
             ShellState.libraryConfirm(!!change && changeAsked);
         } else if (phase === 'done') openResult();
@@ -130,6 +134,24 @@ FocusScope {
                     }
                 }
 
+                Rectangle {
+                    objectName: 'libraryOverride'
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: overrideText.implicitHeight + 24
+                    visible: root.override
+                    radius: 3
+                    color: Tokens.raised
+                    border.color: Tokens.warning
+                    HudLabel {
+                        id: overrideText
+                        x: 14; y: 12; width: parent.width - 28
+                        wrapMode: Text.Wrap
+                        color: Tokens.warning
+                        font.pixelSize: 13
+                        text: 'This id is managed by the system configuration. Change it there; the Library doesn\'t replace system-managed content.'
+                    }
+                }
+
                 Caption { text: 'PACKAGE' }
                 GridLayout {
                     objectName: 'libraryProvenance'
@@ -138,7 +160,7 @@ FocusScope {
                     columnSpacing: 16
                     rowSpacing: 6
                     Repeater {
-                        model: Library.provenance(root.main, ShellState.librarySources)
+                        model: root.facts
                         delegate: HudLabel {
                             required property var modelData
                             required property int index
@@ -151,7 +173,7 @@ FocusScope {
                         }
                     }
                     Repeater {
-                        model: Library.provenance(root.main, ShellState.librarySources)
+                        model: root.facts
                         delegate: HudLabel {
                             required property var modelData
                             required property int index
@@ -160,8 +182,8 @@ FocusScope {
                             Layout.column: 1
                             Layout.fillWidth: true
                             text: modelData.value
-                            wrapMode: Text.Wrap
-                            font.family: modelData.id === 'hash' || modelData.id === 'id' ? Tokens.mono : Tokens.sans
+                            font.family: modelData.id === 'hash' || modelData.id === 'id' || modelData.id === 'asset' ? Tokens.mono : Tokens.sans
+                            wrapMode: modelData.id === 'asset' ? Text.WrapAnywhere : Text.Wrap
                             font.pixelSize: 13
                             color: modelData.id === 'licence' && root.main && root.main.licenceNote !== 'reviewed' ? Tokens.gold : Tokens.text
                         }
@@ -316,6 +338,7 @@ FocusScope {
                 objectName: 'library-job-primary'
                 primary: true
                 visible: root.phase === 'confirm' || root.phase === 'done'
+                enabled: !(root.phase === 'confirm' && root.override)
                 text: root.phase === 'done' ? (root.job && (root.job.result && root.job.result.type === 'library' || root.job.target.type === 'library') ? 'Open in Objects'
                                                 : ShellState.available('world.load') ? 'Load' : 'Done')
                     : root.change ? (root.changeAsked ? 'Yes, install from ' + root.change.to : 'Change source…')

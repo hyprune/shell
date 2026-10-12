@@ -70,7 +70,8 @@ class Browse(unittest.TestCase):
     def setUpClass(cls):
         cls.cli = FakeCli()
         cls.addClassCleanup(cls.cli.dir.cleanup)
-        cls.entries = cls.cli.doc('browse', '--json')['entries']
+        installs = cls.cli.doc('content', 'list', '--json')['installs']
+        cls.entries = js('mergeInstalls(%s, %s)' % (json.dumps(cls.cli.doc('browse', '--json')['entries']), json.dumps(installs)))
         cls.sources = cls.cli.doc('source', 'list', '--json')['sources']
 
     def entry(self, source, id):
@@ -210,10 +211,16 @@ class Jobs(unittest.TestCase):
         code, lines, _ = self.cli.lines('install', 'com.hyprune.street', '--from', 'official', '--plan', '--json')
         job = replay(self.job('install', 'com.hyprune.street', 'official'), lines, code)
         self.assertEqual(job['phase'], 'confirm')
-        rows = {r['id']: r['value'] for r in js('provenance(%s, [])' % json.dumps(job['plan']['packages'][0]))}
-        self.assertEqual(set(rows), {'name', 'id', 'version', 'type', 'source', 'creator', 'licence', 'size', 'hash'})
+        sources = self.cli.doc('source', 'list', '--json')['sources']
+        rows = {r['id']: r['value'] for r in js('provenance(%s, %s, "Street furniture")' % (json.dumps(job['plan']['packages'][0]), json.dumps(sources)))}
+        self.assertEqual(set(rows), {'name', 'id', 'version', 'type', 'source', 'creator', 'licence', 'size', 'asset', 'hash'})
+        self.assertEqual(rows['name'], 'Street furniture')  # the plan carries no name: the entry's
         self.assertEqual(rows['licence'], 'CC0-1.0  ·  reviewed by Hyprune')
+        # The source URL comes from the source list (by sourceId); the asset URL from the plan.
         self.assertEqual(rows['source'], 'Official  ·  https://hyprune.github.io/registry/v0.1/official.json')
+        self.assertEqual(rows['asset'], 'https://github.com/hyprune/library-street/releases/download/v1.2.0/com.hyprune.street-1.2.0.tar.zst')
+        self.assertEqual(rows['creator'], 'by hyprune  ·  https://github.com/hyprune/library-street')
+        self.assertFalse(job['plan']['override'])
         self.assertTrue(rows['hash'].endswith('…') and len(rows['hash']) == 13)
         self.assertEqual(rows['size'], '3.0 MiB download  ·  7.0 MiB installed')
         self.assertIsNone(js('sourceChange(%s)' % json.dumps(job['plan'])))
@@ -227,11 +234,22 @@ class Jobs(unittest.TestCase):
         self.assertEqual([r['state'] for r in js('stageRows(%s)' % json.dumps(done))], ['done'] * 6)
         self.assertEqual(js('resultText(%s, "Street furniture")' % json.dumps(done)), 'Installed Street furniture v1.2.0.')
 
+    def test_system_managed_plan_needs_override(self):
+        code, lines, _ = self.cli.lines('install', 'com.hyprune.starter', '--from', 'official', '--plan', '--json')
+        job = replay(self.job('install', 'com.hyprune.starter', 'official'), lines, code)
+        self.assertTrue(job['phase'] == 'confirm' and job['plan']['override'])
+        page = (ROOT / 'qml/components/LibraryJob.qml').read_text()
+        self.assertIn("enabled: !(root.phase === 'confirm' && root.override)", page)  # never --override from the page
+        code, lines, _ = self.cli.lines('install', 'com.hyprune.starter', '--from', 'official', '--yes', '--json')
+        self.assertEqual(replay(dict(job, phase='running'), lines, code)['error']['rule'], 'managed.system')
+
     def test_requirements_listed(self):
         code, lines, _ = self.cli.lines('update', 'com.hyprune.lumen-reach', '--plan', '--json')
         job = replay(self.job('update', 'com.hyprune.lumen-reach'), lines, code)
         self.assertEqual(job['phase'], 'confirm')
-        self.assertEqual([r['id'] for r in js('requirements(%s)' % json.dumps(job['plan']))], ['com.hyprune.street'])
+        entries = self.cli.doc('browse', '--json')['entries']
+        self.assertEqual(js('requirements(%s, %s)' % (json.dumps(job['plan']), json.dumps(entries))),
+                         [{'id': 'com.hyprune.street', 'text': 'Street furniture  v1.2.0  ·  Official  ·  Install  ·  3.0 MiB'}])
         self.assertEqual(js('planTotal(%s)' % json.dumps(job['plan'])), 61 * 1048576 + 3 * 1048576 + 40000)
 
     def test_source_change_waits_for_explicit_confirmation(self):
@@ -264,6 +282,8 @@ class Jobs(unittest.TestCase):
         missing = replay(self.job('install', 'a.b'), [], -1)
         self.assertEqual((missing['phase'], missing['error']['rule']), ('failed', 'cli.missing'))
         self.assertEqual([r['state'] for r in js('stageRows(%s)' % json.dumps(missing))][:2], ['failed', 'pending'])
+        usage = replay(self.job('install', 'a.b'), [], 2, 'hyprune: Unknown option --bogus\nhyprune world|library add <id>\nExit codes: 0 ok, 2 usage\n')
+        self.assertEqual(usage['error']['message'], 'hyprune: Unknown option --bogus')  # not the help that follows
         crashed = replay(self.job('install', 'a.b'), ['not json', '{"event":"stage","stage":"resolving"}'], 1, 'warning\nTypeError: x is undefined\n')
         self.assertEqual(crashed['error'], {'rule': '', 'message': 'TypeError: x is undefined'})
         self.assertEqual(crashed['stage'], 'resolving')

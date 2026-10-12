@@ -332,7 +332,7 @@ QtObject {
         var doc = null;
         try { doc = code === 0 ? JSON.parse(text) : null; } catch (e) { doc = null; }
         if (!doc) {
-            var tail = String(errors || '').trim().split('\n').slice(-1)[0];
+            var tail = Library.stderrLine(errors);
             libraryReadError = code < 0 ? 'The hyprune command didn\'t run: set HYPRUNE_CLI or put hyprune on PATH.'
                                         : 'hyprune ' + key + ': ' + (tail || (code === 0 ? 'not a JSON document' : 'exit code ' + code));
             return;

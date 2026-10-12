@@ -29,7 +29,7 @@ FocusScope {
     property string formLabel: ''
     property string formHash: ''
     readonly property string view: ShellState.libraryView
-    readonly property var entries: ShellState.libraryEntries
+    readonly property var entries: Library.mergeInstalls(ShellState.libraryEntries, ShellState.libraryInstalls)
     readonly property var shown: Library.filterEntries(entries, {source: source, type: type, query: query})
     readonly property var choices: Library.sourceChoices(ShellState.librarySources, entries)
     readonly property var installs: ShellState.libraryInstalls

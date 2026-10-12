@@ -17,7 +17,8 @@ download) makes jobs wait there until the file is removed (at most 600 s): still
 `reset` restores the fixtures. Fixture behaviours: Frank's lamps fails verification
 (hash.mismatch); Tidepool from Frank's stuff is a source change (installed from the
 community registry); Orbital garden needs a newer Hyprune; the starter library is
-system-managed (remove refused, managed.system); a source URL containing "broken" is refused.
+system-managed (its plan needs --override; remove refused, managed.system); a source URL
+containing "broken" is refused. Shapes follow the SDK CLI (plan packages carry no name).
 """
 import json
 import os
@@ -91,7 +92,7 @@ def fixtures():
          'previous': {'tag': 'lumen-reach-v0.9.0', 'version': '0.9.0'}, 'pinned': False, 'managed': 'user', 'license': 'CC-BY-4.0'},
         {'id': 'io.github.ada.tidepool', 'type': 'world', 'sourceId': 'community', 'tag': 'v1.1.0', 'version': '1.1.0',
          'previous': None, 'pinned': True, 'managed': 'user', 'license': 'CC-BY-SA-4.0'},
-        {'id': 'com.hyprune.starter', 'type': 'library', 'sourceId': None, 'tag': None, 'version': '0.1.0',
+        {'id': 'com.hyprune.starter', 'type': 'library', 'sourceId': 'system', 'tag': None, 'version': '0.1.0',
          'previous': None, 'pinned': False, 'managed': 'system', 'license': 'CC0-1.0'},
         {'id': 'io.github.dee.lanterns', 'type': 'library', 'sourceId': 'community', 'tag': 'v0.3.0', 'version': '0.3.0',
          'previous': None, 'pinned': False, 'managed': 'user', 'license': 'CC-BY-4.0', 'removedFromSource': True},
@@ -172,8 +173,9 @@ def browse_doc(state, text, type_, source_id):
         if source_id and e['sourceId'] != source_id: continue
         hay = ' '.join([e['name'], e['summary']] + e['tags']).lower()
         if any(w not in hay for w in words): continue
-        latest = dict(e['versions'][0]); latest.pop('status', None); latest.pop('sha256', None)
+        latest = dict(e['versions'][0]); latest.pop('sha256', None); latest.update(prerelease=False, requires=[])
         record = installed_record(state, e['id'])
+        if record and record['managed'] == 'system': record = None  # system content has no install record
         installed = {'tag': record['tag'], 'sourceId': record['sourceId']} if record else None
         update = None
         if record and record['sourceId'] == e['sourceId']:
@@ -191,13 +193,13 @@ def browse_doc(state, text, type_, source_id):
 def content_doc(state):
     installs = []
     for r in state['installs']:
-        source = source_of(state, r['sourceId']) if r['sourceId'] else None
+        source = source_of(state, r['sourceId'])
         newer_tag = None
         if source and source['enabled']:
             e = next((x for x in state['entries'] if x['id'] == r['id'] and x['sourceId'] == r['sourceId']), None)
             best = next((v for v in e['versions'] if v['loadable'] and v['status'] == 'available'), None) if e else None
             if best and newer(best['version'], r['version']): newer_tag = best['tag']
-        installs.append({'id': r['id'], 'type': r['type'], 'sourceId': r['sourceId'], 'display': display(source) if source else None,
+        installs.append({'id': r['id'], 'type': r['type'], 'sourceId': r['sourceId'], 'display': display(source) if source else r['sourceId'].capitalize(),
                          'tag': r['tag'], 'version': r['version'], 'previous': r['previous'], 'pinned': r['pinned'], 'managed': r['managed'],
                          'removedFromSource': bool(r.get('removedFromSource')), 'newerTag': newer_tag, 'license': r['license'],
                          'path': str(STATE_DIR / ('worlds' if r['type'] == 'world' else 'libraries') / (r['id'] if r['type'] == 'world' else r['id'] + '@' + r['version']))})
@@ -247,27 +249,33 @@ def resolve(state, target, source_id):
 def plan_for(state, e, v, kind):
     source = source_of(state, e['sourceId'])
     record = installed_record(state, e['id'])
-    change = None
+    change, override = None, bool(record and record['managed'] == 'system')
+    if override: record = None
     if record and record['sourceId'] != e['sourceId']:
         old = source_of(state, record['sourceId']) if record['sourceId'] else None
         change = {'id': e['id'], 'from': {'sourceId': record['sourceId'], 'display': display(old) if old else 'system'},
                   'to': {'sourceId': e['sourceId'], 'display': display(source)}}
     action = 'install' if not record else 'update' if newer(v['version'], record['version'] or '0.0.0') else 'downgrade' if record['version'] and newer(record['version'], v['version']) else 'install'
-    package = {'id': e['id'], 'name': e['name'], 'type': e['type'], 'tag': v['tag'], 'version': v['version'],
+    # The SDK's plan package (no name: the shell shows the entry's).
+    package = {'id': e['id'], 'type': e['type'], 'tag': v['tag'], 'version': v['version'], 'formatVersion': v['formatVersion'],
                'replaces': record['tag'] if record and record['tag'] else None, 'sourceId': e['sourceId'], 'sourceLabel': display(source),
-               'sourceUrl': source.get('url') or ('github:' + source['repo'] if source.get('repo') else None),
-               'creator': e['creator'], 'repo': e['repo'], 'commit': '3f9c2a17d0b4e85c6a1f2e9d7b3c4a5e6f708192',
-               'license': v['license'], 'licenceNote': note(source), 'bytes': v['bytes'], 'expandedBytes': v['expandedBytes'],
-               'sha256': v['sha256'], 'action': action}
+               'creator': e['creator'], 'repo': e['repo'], 'license': v['license'], 'licenceNote': note(source), 'bytes': v['bytes'],
+               'expandedBytes': v['expandedBytes'], 'sha256': v['sha256'], 'url': asset(e, v), 'action': action, 'requires': []}
     packages = [package]
     if e['type'] == 'world' and e['id'] == 'com.hyprune.lumen-reach':
         street = next(x for x in state['entries'] if x['id'] == 'com.hyprune.street')
         sv = street['versions'][0]
-        packages.append({'id': street['id'], 'name': street['name'], 'type': 'library', 'tag': sv['tag'], 'version': sv['version'],
-                         'sourceId': 'official', 'sourceLabel': 'Official', 'creator': 'hyprune', 'repo': street['repo'],
+        package['requires'] = [street['id'] + '@' + sv['version']]
+        packages.append({'id': street['id'], 'type': 'library', 'tag': sv['tag'], 'version': sv['version'], 'formatVersion': sv['formatVersion'],
+                         'replaces': None, 'sourceId': 'official', 'sourceLabel': 'Official', 'creator': 'hyprune', 'repo': street['repo'],
                          'license': sv['license'], 'licenceNote': 'reviewed', 'bytes': sv['bytes'], 'expandedBytes': sv['expandedBytes'],
-                         'sha256': sv['sha256'], 'action': 'already-installed' if installed_record(state, street['id']) else 'install'})
-    return {'packages': packages, 'sourceChange': change, 'diskFreeAfter': 182536110080}
+                         'sha256': sv['sha256'], 'url': asset(street, sv), 'requires': [],
+                         'action': 'already-installed' if installed_record(state, street['id']) else 'install'})
+    return {'packages': packages, 'sourceChange': change, 'override': override, 'diskFreeAfter': 182536110080}
+
+
+def asset(e, v):
+    return e['repo'] + '/releases/download/' + v['tag'] + '/' + e['id'] + '-' + v['version'] + '.tar.zst'
 
 
 def install_job(state, kind, target, flags):
@@ -285,6 +293,8 @@ def install_job(state, kind, target, flags):
     if plan['sourceChange'] and '--accept-source-change' not in flags:
         fail('source.change', f"{e['id']} is installed from {plan['sourceChange']['from']['display']}; installing it from "
                               f"{plan['sourceChange']['to']['display']} needs --accept-source-change.")
+    if plan['override'] and '--override' not in flags:
+        fail('managed.system', f"{e['id']} is managed by the system configuration; installing your own copy needs --override.")
     if '--yes' not in flags: fail('confirm.required', 'Confirm the plan with --yes.')
     total = v['bytes']
     stage('downloading')
@@ -348,7 +358,7 @@ def source_job(state, verb, args, flags):
         source['repo' if github else 'url'] = url[7:] if github else url
         state['sources'].append(source)
         save(state)
-        out({'event': 'done', 'result': {'id': sid, 'action': 'source.add', 'entries': 0}}); return 0
+        out({'event': 'done', 'result': {**source, 'display': display(source), 'entries': 0, 'skipped': []}}); return 0
     if verb == 'refresh':
         ids = args or [s['id'] for s in state['sources'] if s['enabled']]
         stage('resolving')

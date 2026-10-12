@@ -98,6 +98,17 @@ function loadable(entry) {
     return versions.some(function (v) { return v.loadable !== false && (!v.status || v.status === 'available'); });
 }
 
+// System-managed content has no install record, so browse lists it as not installed; the
+// content list knows it: such entries read as installed by the system (no action).
+function mergeInstalls(entries, installs) {
+    var system = {};
+    (installs || []).forEach(function (i) { if (i.managed === 'system') system[i.type + ':' + i.id] = i; });
+    return (entries || []).map(function (e) {
+        var i = system[e.type + ':' + e.id];
+        return e.installed || !i ? e : Object.assign({}, e, {installed: {tag: i.tag, sourceId: null, system: true}, update: null});
+    });
+}
+
 function installedHere(entry) { return !!(entry && entry.installed && entry.installed.sourceId === entry.sourceId); }
 
 // Badges on a card: installed, update available, needs a newer Hyprune.
@@ -266,11 +277,19 @@ function jobFinished(job, exitCode, stderrText) {
     if (exitCode === 0 && !job.error) { next.phase = 'done'; return next; }
     next.phase = 'failed';
     if (!next.error) {
-        var tail = String(stderrText || '').trim().split('\n').filter(function (l) { return l.trim(); }).slice(-1)[0] || '';
+        var tail = stderrLine(stderrText);
         next.error = exitCode < 0 ? {rule: 'cli.missing', message: 'The hyprune command could not be started. Set HYPRUNE_CLI or put hyprune on PATH.'}
                                   : {rule: '', message: tail || 'The hyprune command ended with exit code ' + exitCode + '.'};
     }
     return next;
+}
+
+// The line worth showing from stderr: the CLI's own `hyprune: …` message (usage errors print
+// the help after it), else the last non-empty line.
+function stderrLine(text) {
+    var lines = String(text || '').split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l; });
+    var own = lines.filter(function (l) { return /^hyprune: /.test(l); });
+    return (own.length ? own[own.length - 1] : lines[lines.length - 1]) || '';
 }
 
 function running(job) { return !!job && (job.phase === 'planning' || job.phase === 'running'); }
@@ -303,14 +322,15 @@ function progressFraction(progress) {
 
 var ACTIONS = {install: 'Install', update: 'Update', downgrade: 'Install an older version', 'already-installed': 'Already installed'};
 
-// Provenance rows for one package of a plan (RFC-0015 confirmation items).
-function provenance(pkg, sources) {
+// Provenance rows for one package of a plan (RFC-0015 confirmation items). name: the entry's
+// name when the plan doesn't carry one.
+function provenance(pkg, sources, name) {
     if (!pkg) return [];
     var source = (sources || []).find(function (s) { return s.id === pkg.sourceId; }) || null;
     var where = pkg.sourceUrl || sourceLocation(source);
     var repo = [pkg.creator ? 'by ' + pkg.creator : '', pkg.repo || ''].filter(function (v) { return v; }).join('  ·  ');
     return [
-        {id: 'name', label: 'Name', value: pkg.name || pkg.id},
+        {id: 'name', label: 'Name', value: pkg.name || name || pkg.id},
         {id: 'id', label: 'Id', value: pkg.id},
         {id: 'version', label: 'Version', value: (pkg.tag || '') + (pkg.version ? '  (' + pkg.version + ')' : '') + (pkg.replaces ? '  ·  replaces ' + pkg.replaces : '')},
         {id: 'type', label: 'Type', value: typeLabel(pkg.type)},
@@ -318,14 +338,17 @@ function provenance(pkg, sources) {
         {id: 'creator', label: 'Creator', value: repo + (pkg.commit ? '  ·  commit ' + String(pkg.commit).slice(0, 10) : '')},
         {id: 'licence', label: 'Licence', value: licenceText(pkg.license, pkg.licenceNote)},
         {id: 'size', label: 'Size', value: [pkg.bytes ? sizeText(pkg.bytes) + ' download' : '', pkg.expandedBytes ? sizeText(pkg.expandedBytes) + ' installed' : ''].filter(function (v) { return v; }).join('  ·  ')},
+        {id: 'asset', label: 'Asset', value: pkg.url || ''},
         {id: 'hash', label: 'sha256', value: shortHash(pkg.sha256)}].filter(function (r) { return r.value; });
 }
 
-// Requirements: every package after the first (libraries the world pulls in).
-function requirements(plan) {
+// Requirements: every package after the first (libraries the world pulls in), named from the
+// entries when the plan carries no name.
+function requirements(plan, entries) {
     if (!plan || !plan.packages) return [];
     return plan.packages.slice(1).map(function (p) {
-        return {id: p.id, text: (p.name || p.id) + '  ' + (p.tag || p.version || '') + '  ·  ' + (p.sourceLabel || p.sourceId || '')
+        var e = entryFor(entries, p.id, p.sourceId) || entryFor(entries, p.id);
+        return {id: p.id, text: (p.name || (e ? e.name : p.id)) + '  ' + (p.tag || p.version || '') + '  ·  ' + (p.sourceLabel || p.sourceId || '')
                 + '  ·  ' + (ACTIONS[p.action] || p.action || '') + (p.action === 'already-installed' ? '' : p.bytes ? '  ·  ' + sizeText(p.bytes) : '')};
     });
 }
@@ -347,7 +370,8 @@ function sourceChange(plan) {
 // The page line and the HUD toast for a finished job.
 function resultText(job, name) {
     if (!job) return '';
-    var who = name || (job.result && job.result.id) || job.target.id || '';
+    var r = job.result || {};
+    var who = name || r.display || r.name || r.id || job.target.id || '';
     var tag = job.result && job.result.tag ? ' ' + job.result.tag : '';
     var verbs = {install: 'Installed', update: 'Updated', rollback: 'Rolled back', pin: 'Pinned', unpin: 'Unpinned', remove: 'Removed',
                  'source.add': 'Added the source', 'source.refresh': 'Refreshed', 'source.enable': 'Enabled', 'source.disable': 'Disabled', 'source.remove': 'Removed the source'};
