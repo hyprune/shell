@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/hyprune/schema",
+  "commit": "ce517ea22d90b96c7e2eb9e00903c99be62f2f86",
+  "file": "v0.22/ipc.schema.json",
+  "sha256": "ac0cb5e1eaecc8ec61e2a793b45e710f2b6cda45f98af42549dc929f22cca0f8",
+  "protocol": "0.22"
+}
