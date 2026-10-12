@@ -1,3 +1,22 @@
+# IPC 0.23 characters, routes and interactions — 2026-10-12
+
+`python3 -m unittest discover -s tests`: **277 pass**, including `tests/test_ipc23.py`
+(34): 0.23 adds no grant, the 0.23 allowlist, every character, path and interaction request
+built by the shell and every result against the 0.23 pin (and refused by 0.22), the npcs
+state, 0.23 instance, editor path, reticle and graphics shapes, world format 0.9, the
+bridge's choice-list input (exclusive overlay taken and released, Director and note prompt
+keep theirs, core's Escape ends the interaction) and panel interaction, and the
+`qml/Npcs.js` helpers. `./dev/run npcs` (nested, SDK mock with dev preview data) captures
+the Catalog with character cards, the spawn step and the Characters view at 1920×1080,
+1280×720, 2560×1440 at scale 2 and 3840×2160, the caption and aimed prompt at each size,
+every spawn path (route with settings, Stand here by keyboard, stops saved, Draw a new
+route), the drawing hint and bar (Done, Cancel), disable / enable, rebind, remove, the
+motion setting, a paused reason, a refusal, the choice list driven by keys, guide and
+waypoint toasts and panel interactions, with the layout audit clean and no QML runtime
+errors. `./dev/run objects` still passes.
+
+---
+
 # IPC 0.22 object catalog and user placements — 2026-10-12
 
 `python3 -m unittest discover -s tests`: **243 pass**, including `tests/test_ipc22.py`

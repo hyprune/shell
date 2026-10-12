@@ -3,7 +3,7 @@
 > **Hyprune** is an explorable, world-driven desktop environment for Hyprland: your workspaces become places you can walk through, with live windows on the walls. This repository is the reference **shell**: the Quickshell HUD, Director, settings and overlays. Install Hyprune through the [hyprune](https://github.com/hyprune/hyprune) repository (starter kits, Nix, Arch); learn more at [hyprune.com](https://hyprune.com). Licence: MIT.
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.22 (one vendored pin per version under `protocol/`). The shell launcher
+IPC 0.1–0.23 (one vendored pin per version under `protocol/`) and world formats up to 0.9. The shell launcher
 defaults to the newest pin; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
@@ -60,6 +60,35 @@ message and the placement rule. The bridge requests `objects.control` only at 0.
 `./dev/run objects` captures all of it from the mock with dev preview data
 (`HYPRUNE_DEV_PREVIEW=nested` captures on the nested window's output where the GPU can't
 allocate headless buffers; stills go to `HYPRUNE_OBJECTS_SHOTS`, default under `/tmp`).
+
+IPC 0.23 (RFC-0011 P2) adds characters. In **Objects → Catalog** a character entry shows
+**Spawn**: the step that opens lists, under "Choose route", **Stand here** (a spot in front of
+the player), this world's package and user routes from `paths.list` (each with its source;
+routes core reports as not walkable, or already walked by 8 characters, are disabled with
+core's first problem) and **Draw a new route**. Optional settings follow: speed (0.25–2),
+start phase, direction, an accent colour and, for one of the player's own routes, its stops
+(per point: seconds, a gesture or a seat id), saved with `paths.set`. Confirm sends
+`npcs.spawn`, or `paths.draw {use: "route", spawn}` and closes the Director so the route is
+drawn with tool 3; while `npcs.drawing` is set the HUD shows a hint and Objects shows a bar
+with **Done** (`paths.finish`) and **Cancel** (`paths.remove` of the path being drawn).
+**Objects → Characters** lists this world's characters (authored and the player's own) with
+route or seat, activity and state; **Disable / Enable** (`npcs.disable`) works on both,
+**Rebind route** (`npcs.bind`, or a freshly drawn route) and **Remove** (`npcs.remove`) on the
+player's own; the motion setting (`graphics.set` `npc_motion`: auto, always, still, off) sits
+on top with core's pause reason. Keys: V cycles the views; D disable, B rebind, Delete remove;
+in the spawn step Up / Down choose, Enter confirms, Esc goes back. Characters no longer
+appear in Placed.
+
+On the HUD, the aimed character (`npcs.aimed`) shows a prompt under the reticle: "E  Talk"
+(the prompt of its only interaction) or "E  Talk to <name>". A running interaction
+(`npcs.interaction`) is presented by type: `say` as a compact caption (speaker, line n / m,
+"E · next"); `choose` as a choice list that takes the keyboard (the bridge holds exclusive
+input as for the capture note; Up / Down, Enter, 1–8 or a click call `interaction.choose`,
+Esc ends it with `null`); `panel` opens the Director on that tab (`map`, `quests`,
+`objects`, `characters`, `help`, … ; unknown ids only end the interaction); `waypoint` and
+`guide` show a short toast. Character and route refusals and the `npc.*` / `path.*` notices
+are toasts with core's words. `./dev/run npcs` captures all of it from the mock with dev
+preview data (stills go to `HYPRUNE_NPCS_SHOTS`, default under `/tmp`).
 
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,

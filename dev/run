@@ -44,7 +44,7 @@ hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" output create headless HYPRUNE-PREVIEW
 target_output=HYPRUNE-PREVIEW
 # HYPRUNE_DEV_PREVIEW=nested captures on the nested window's output instead (GPUs whose GBM
 # can't allocate headless buffers); capture scripts read HYPRUNE_PREVIEW_OUTPUT.
-if [[ ${HYPRUNE_DEV_PREVIEW:-headless} == nested || ( "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director && "$mode" != quests && "$mode" != objects ) ]]; then
+if [[ ${HYPRUNE_DEV_PREVIEW:-headless} == nested || ( "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director && "$mode" != quests && "$mode" != objects && "$mode" != npcs ) ]]; then
     target_output=$(hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" monitors -j | python3 -c 'import json,sys; print(next(m["name"] for m in json.load(sys.stdin) if m["name"]!="HYPRUNE-PREVIEW"))')
 fi
 [[ "$target_output" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
@@ -92,6 +92,8 @@ elif [[ "$mode" == quests ]]; then
     python3 "$ROOT/dev/quests-shots.py"
 elif [[ "$mode" == objects ]]; then
     python3 "$ROOT/dev/objects-shots.py"
+elif [[ "$mode" == npcs ]]; then
+    python3 "$ROOT/dev/npcs-shots.py"
 elif [[ "$mode" == polish ]]; then
     python3 "$ROOT/dev/polish-mock.py"
 elif [[ "$mode" == capture ]]; then
