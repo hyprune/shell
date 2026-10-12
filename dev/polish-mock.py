@@ -29,8 +29,8 @@ for w,h in [(1920,1080),(2560,1440),(3840,2160)]:
   ui('curvature',.6);shot(prefix+'-hud-curved')
   ui('open');time.sleep(.7)
   assert json.loads(ui('status'))['director']
-  for i,name in enumerate(['map','quests','places','surfaces','workspaces','help','whats-new','settings']):
-   ui('tab',i);shot(prefix+'-'+name)
+  for name in ['map','quests','objects','places','surfaces','workspaces','help','whats-new','settings']:
+   ui('tabNamed',name.replace('-',''));shot(prefix+'-'+name)
   ui('theme','true');shot(prefix+'-settings-paper');ui('theme','false')
   ui('warp');time.sleep(.5);shot(prefix+'-warp')
   for _ in range(100):

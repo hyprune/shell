@@ -50,7 +50,7 @@ for w, h, scale, suffix in [(1920, 1080, 1, ''), (1920, 1080, 2, '-s2')]:
     time.sleep(1.2)
     ui('open'); time.sleep(.8)
     assert status()['director']
-    ui('tab', 7)
+    ui('tabNamed', 'settings')
     ui('playerPreview', '')
     ui('settingsSection', 3); time.sleep(.3)
     if not suffix: taken.append(shot('settings-unsupported-night'))  # < 0.19: note only, no section buttons

@@ -14,7 +14,7 @@ ui('worldStyles','true');time.sleep(.7)
 assert json.loads(ui('status'))['worldStyle']=='com.hyprune.observatory'
 subprocess.run(['grim','-o','HYPRUNE-PREVIEW',str(shots/'world-style.png')],check=True)
 ui('worldStyles','false');time.sleep(.7);assert json.loads(ui('status'))['worldStyle'] is None
-ui('open');time.sleep(.6);ui('tab',7);ui('settingsSection',0);time.sleep(.3)
+ui('open');time.sleep(.6);ui('tabNamed', 'settings');ui('settingsSection',0);time.sleep(.3)
 audit=json.loads(ui('layoutAudit'));assert not audit['failures'],audit
 errors=(root/'.run/shell.log').read_text()
 assert not any(x in errors for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Error decoding','Cannot load font']),errors

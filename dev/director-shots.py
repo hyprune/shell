@@ -85,7 +85,7 @@ ui('open'); time.sleep(.8)
 assert status()['director']
 
 # Help: Walk / Fly bound to movement.modeId; Climbing shown active, not selectable.
-ui('tab', 5)
+ui('tabNamed', 'help')
 for name, mode, state in [('help-walk', 'com.hyprune.walk', 'grounded'), ('help-fly', 'com.hyprune.fly', 'flying'),
                           ('help-climbing', 'com.hyprune.walk', 'climbing')]:
     preview(mode, state)
@@ -101,7 +101,7 @@ shot('help-walk-refused-by-mock')
 
 # Surfaces: two pocketed windows (one only in the pocket list), two placed.
 preview()
-ui('tab', 3); ui('scrollPage', 0)
+ui('tabNamed', 'surfaces'); ui('scrollPage', 0)
 shot('surfaces-pocket')
 ui('scrollPage', 1); shot('surfaces-placed'); ui('scrollPage', 0)
 ui('pocketResult', 'surface-music', 'surface.unpocket', json.dumps({'revision': 9, 'placed': False}))
@@ -114,7 +114,7 @@ preview(editor={**EDITOR, 'unplaced': {'count': 0, 'windows': [], 'selectedId': 
 shot('surfaces-none-pocketed')
 
 # Map: auto level follows the feet; manual pick; zoom and pan; Paper theme; no levels.
-ui('tab', 0)
+ui('tabNamed', 'map')
 preview(position=(0, 1.7, 4), heading=40)
 view = json.loads(ui('mapView', 1, 0, 0, 'auto')); assert view['level'] == 'ground' and view['themed'], view
 shot('map-ground-auto')

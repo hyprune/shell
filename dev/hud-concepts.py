@@ -161,7 +161,7 @@ def acceptance(client,children,args,shell_token,socketpath):
                 for home in ['sun-court','rime-vault']:
                     pose(client,homes[home]);time.sleep(.5)
                     shot(f'{concept.lower()}-{home}-{height}p-s{scale}-v2')
-            opened();ui('tab',8);ui('scrollPage',0);shot(f'performance-{height}p-s{scale}-v2')
+            opened();ui('tabNamed', 'performance');ui('scrollPage',0);shot(f'performance-{height}p-s{scale}-v2')
             ui('scrollPage',1);shot(f'performance-effects-{height}p-s{scale}-v2');closed()
             print('PASS review resolution',height,scale,flush=True)
             if os.environ.get('HYPRUNE_HUD_QUICK'): break
@@ -169,7 +169,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         ui('curvature',0);shot('adventure-sun-court-flat-v2');ui('curvature',.8);shot('adventure-sun-court-curved-v2')
         # Auto exercises the blocked USB-C policy without requesting offload On.
         client.call('graphics.set',{'patch':{'offload':'auto'}})
-        opened();ui('tab',8);ui('scrollPage',0);time.sleep(1);shot('performance-renderer-auto-policy-v2')
+        opened();ui('tabNamed', 'performance');ui('scrollPage',0);time.sleep(1);shot('performance-renderer-auto-policy-v2')
         client.call('graphics.set',{'patch':{'offload':'off'}})
         errors=(s.STATE/'shell.log').read_text()
         assert not any(x in errors for x in ['ERROR','ReferenceError','TypeError','Binding loop','Unable to assign','Presentation:']),errors[-6000:]
@@ -187,7 +187,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         print('PASS waypoint and workspace event banners',flush=True)
         return
     if os.environ.get('HYPRUNE_PERFORMANCE_ONLY'):
-        opened();ui('tab',7);ui('settingsSection',1);wait(lambda:status()['tab']==8);ui('scrollPage',0);wait(lambda:status().get('graphics',{}).get('performance'))
+        opened();ui('tabNamed', 'settings');ui('settingsSection',1);wait(lambda:status()['tabName']=='performance');ui('scrollPage',0);wait(lambda:status().get('graphics',{}).get('performance'))
         def select_value(key,position):
             assert ui('graphicsFocus',key)=='true'
             keys('-k','space','-k',position,'-k','Return');time.sleep(.3)
@@ -237,9 +237,9 @@ def acceptance(client,children,args,shell_token,socketpath):
                 pose(client,position);time.sleep(.5)
                 name=f'{concept.lower()}-{home}-{height}p-s{scale}'
                 shot(name);evidence['captures'].append(name)
-        opened();ui('tab',8);ui('scrollPage',0);shot(f'performance-{height}p-s{scale}')
+        opened();ui('tabNamed', 'performance');ui('scrollPage',0);shot(f'performance-{height}p-s{scale}')
         ui('scrollPage',1);shot(f'performance-effects-{height}p-s{scale}')
-        ui('tab',7);ui('settingsSection',0);shot(f'appearance-{height}p-s{scale}');closed()
+        ui('tabNamed', 'settings');ui('settingsSection',0);shot(f'appearance-{height}p-s{scale}');closed()
         print('PASS resolution',height,scale,flush=True)
         if os.environ.get('HYPRUNE_HUD_QUICK'): break
     resolution(1920,1080,1);pose(client,homes['sun-court']);ui('concept','Adventure')
@@ -250,7 +250,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         before=status()['subtype'];pointer('scroll',1);wait(lambda:status()['subtype']!=before)
         shot('tool-'+str(slot)+'-wheel');evidence['tool'+str(slot)]={'before':before,'after':status()['subtype']}
     # Real Settings keyboard controls, independently verified against core.
-    opened();ui('tab',8);ui('scrollPage',0)
+    opened();ui('tabNamed', 'performance');ui('scrollPage',0)
     assert ui('graphicsFocus','quality')=='true'
     keys('-k','space','-k','End','-k','Return');wait(lambda:client.call('graphics.get',{})['config']['quality']=='ultra')
     ui('scrollPage',1);assert ui('graphicsFocus','bloom')=='true'
@@ -274,8 +274,8 @@ def acceptance(client,children,args,shell_token,socketpath):
                     for i in range(2):pointer('scroll',1);time.sleep(1.1)
                 ui('concept','Instrument');time.sleep(3);pose(client,homes['rime-vault']);time.sleep(4)
                 ui('concept','Minimal');time.sleep(3);keys('-k','3');pointer('scroll',1);time.sleep(3)
-                opened();ui('tab',7);ui('settingsSection',0);time.sleep(3)
-                ui('tab',8);ui('scrollPage',0);time.sleep(3);ui('scrollPage',1);time.sleep(3)
+                opened();ui('tabNamed', 'settings');ui('settingsSection',0);time.sleep(3)
+                ui('tabNamed', 'performance');ui('scrollPage',0);time.sleep(3);ui('scrollPage',1);time.sleep(3)
                 closed();pose(client,homes['sun-court']);keys('-k','5');time.sleep(max(1,53-(time.monotonic()-start)))
             finally:rec.send_signal(signal.SIGINT);rec.wait(timeout=20)
             subprocess.run(['ffmpeg','-y','-loglevel','error','-i',str(raw),'-an','-vf','scale=1920:1080:in_range=pc:out_range=tv,fps=30','-c:v','libx264','-crf','21','-preset','medium','-pix_fmt','yuv420p','-color_range','tv','-movflags','+faststart',str(encoded)],check=True)

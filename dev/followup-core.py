@@ -101,7 +101,7 @@ def acceptance(client,children,args,shell_token,socketpath):
     keys('-k','F3');wait(lambda:s.camera()['debug'])
     before = client.call('graphics.get',{})
     shot('graphics-'+PROTOCOL+'-before-f3')
-    opened();ui('tab',7);ui('settingsSection',1)
+    opened();ui('tabNamed', 'settings');ui('settingsSection',1)
     wait(lambda:status().get('graphics'))
     def choose(key, moves):
         assert ui('graphicsFocus',key) == 'true'
@@ -120,7 +120,7 @@ def acceptance(client,children,args,shell_token,socketpath):
     persisted = json.loads(pathlib.Path(changed['path']).read_text())
     assert persisted['quality']=='ultra' and persisted['bloom']=='off'
     evidence['graphics']={'before':before,'after':changed,'renderer':s.camera()['config']['graphics'],'persisted':persisted,'via':'Settings ComboBox real nested keyboard events'}
-    opened();ui('tab',4)
+    opened();ui('tabNamed', 'workspaces')
     for width,height,scale in [(1920,1080,2),(2560,1440,1),(3840,2160,2)]:
         resolution(width,height,scale)
         audit=json.loads(ui('layoutAudit'));assert audit['apps'] >= 2 and not audit['failures'],audit

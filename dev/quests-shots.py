@@ -155,14 +155,14 @@ for w, h, scale, suffix in [(1920, 1080, 1, ''), (1280, 720, 1, '-720p'), (2560,
     wait(lambda: status()['quests']['guidance'] is not None)  # guidance.get on connect
     shot('hud-tracker-focus-work' + suffix)
     if suffix:  # smaller logical viewports: the page and the form must still fit
-        ui('open'); time.sleep(.8); ui('tab', 1)
+        ui('open'); time.sleep(.8); ui('tabNamed', 'quests')
         wait(lambda: status()['quests']['list'] == len(LIST))
         ui('questSelect', 'personal/release-notes')
         wait(lambda: status()['quests']['detail'] == NOTES['title'])
         shot('quests-page' + suffix)
         ui('questForm', json.dumps({'edit': True})); shot('quests-form-edit' + suffix)
         assert ui('press', 'quest-form-cancel') == 'true'
-        ui('tab', 7); ui('settingsSection', 5); shot('settings-guidance' + suffix)
+        ui('tabNamed', 'settings'); ui('settingsSection', 5); shot('settings-guidance' + suffix)
         ui('close'); time.sleep(.5)
         continue
     event('quest.progress', {'questRef': ref('release-notes'), 'kind': 'step', 'title': NOTES['title'], 'stepId': 'draft',
@@ -197,7 +197,7 @@ for w, h, scale, suffix in [(1920, 1080, 1, ''), (1280, 720, 1, '-720p'), (2560,
     preview(focus_state())
     ui('open'); time.sleep(.8)
     assert status()['director']
-    ui('tab', 1)
+    ui('tabNamed', 'quests')
     wait(lambda: status()['quests']['list'] == len(LIST))
     ui('questSelect', 'personal/release-notes')
     wait(lambda: status()['quests']['detail'] == NOTES['title'])
@@ -236,11 +236,11 @@ for w, h, scale, suffix in [(1920, 1080, 1, ''), (1280, 720, 1, '-720p'), (2560,
     preview(focus_state('idle', 0, 0, 0, 0))
     shot('quests-page-focus-idle')
     if ui('press', 'quest-map-write') == 'true':
-        wait(lambda: status()['tab'] == 0)
+        wait(lambda: status()['tabName'] == 'map')
         shot('map-quest-focus')
-        ui('tab', 1)
+        ui('tabNamed', 'quests')
     # Settings > Guidance.
-    ui('tab', 7); ui('settingsSection', 5); time.sleep(.5)
+    ui('tabNamed', 'settings'); ui('settingsSection', 5); time.sleep(.5)
     shot('settings-guidance')
     ui('settingsScroll', 1); shot('settings-guidance-end'); ui('settingsScroll', 0)
     ui('close'); time.sleep(.5)

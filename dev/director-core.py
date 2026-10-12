@@ -73,7 +73,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     director(); park()
 
     # Help: the segmented control drives core's movement mode; core's mode drives the control.
-    ui('tab', 5)
+    ui('tabNamed', 'help')
     client.call('movement.set', {'modeId': 'com.hyprune.walk'}); wait(lambda: state()['movement']['modeId'] == 'com.hyprune.walk')
     shot('core-help-walk')
     assert ui('press', 'segment:fly') == 'true'; wait(lambda: state()['movement']['modeId'] == 'com.hyprune.fly')
@@ -82,7 +82,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     assert ui('press', 'segment:fly') == 'true'; wait(lambda: state()['movement']['modeId'] == 'com.hyprune.fly')
 
     # Surfaces: pocket one window through the shell, then take it out where no spot fits.
-    ui('tab', 3); ui('scrollPage', 0)
+    ui('tabNamed', 'surfaces'); ui('scrollPage', 0)
     notes, music = ids['Notes · field journal'], ids['Music · ambient']
     shot('core-surfaces-before')
     assert ui('press', 'pocketButton:' + music) == 'true'; wait(lambda: music in pocketed(), 5)
@@ -99,7 +99,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     shot('core-surfaces-placed-again')
 
     # Map: blueprint levels from the package; auto follows the feet, manual pick, zoom and pan.
-    ui('tab', 0)
+    ui('tabNamed', 'map')
     levels = (state()['spatial']['map'] or {}).get('levels') or []
     if levels:
         t = state()['spatial']['map']['worldToMap']

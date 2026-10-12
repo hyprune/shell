@@ -37,7 +37,7 @@ def acceptance(client,children,args,shell_token,socketpath):
     def shot(name):
         time.sleep(.6);subprocess.run([str(s.HERE/'ctl.py'),'shot',str(SHOTS/(name+'.png'))],check=True)
     keys('-P','Tab','-s','1150','-p','Tab');wait(lambda:status().get('director'))
-    ui('tab',7);ui('settingsSection',1);shot('shell-graphics-upscaler-preset')
+    ui('tabNamed', 'settings');ui('settingsSection',1);shot('shell-graphics-upscaler-preset')
     ui('settingsScroll',1);shot('shell-graphics-upscaler-preset-detail')  # native scale: Preset shows "Active: Bilinear (native scale)"
     ui('graphicsPatch',json.dumps({'upscaler':'bilinear'}))
     wait(lambda:status()['graphics']['config'].get('upscaler')=='bilinear')

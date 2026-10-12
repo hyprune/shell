@@ -38,7 +38,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         time.sleep(.6);subprocess.run([str(s.HERE/'ctl.py'),'shot',str(SHOTS/(name+'.png'))],check=True)
     def graphics():return status()['graphics']
     keys('-P','Tab','-s','1150','-p','Tab');wait(lambda:status().get('director'))
-    ui('tab',7);ui('settingsSection',1);ui('settingsScroll',1)
+    ui('tabNamed', 'settings');ui('settingsSection',1);ui('settingsScroll',1)
     assert graphics()['config'].get('offload_power_cap_w',0) is None and graphics()['config'].get('offload_device')=='auto',graphics()['config']
     perf=graphics()['performance'];assert perf.get('capSource') and 'device' in perf,perf
     shot('shell-offload-cap-automatic')

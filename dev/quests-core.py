@@ -120,7 +120,7 @@ def acceptance(client, children, args, shell_token, socketpath):
     # Quests tab: create through the form, track/untrack, mark done, edit, delete.
     def quest_page():
         director()
-        ui('tab', 1); wait(lambda: status().get('tab') == 1)
+        ui('tabNamed', 'quests'); wait(lambda: status().get('tabName') == 'quests')
         ui('questForm', json.dumps({'title': 'Ship the release notes', 'summary': 'For the next release.',
                                     'steps': 'Draft at the workshop\nReview\nPublish', 'targetKind': 'area', 'targetValue': 'array-hall',
                                     'sessions': {'Review': 1}}))
@@ -167,7 +167,7 @@ def acceptance(client, children, args, shell_token, socketpath):
 
     # Map: core's markers.list on the shown level, the tracked step among them.
     def map_markers():
-        ui('tab', 0); time.sleep(1)
+        ui('tabNamed', 'map'); time.sleep(1)
         listed_ids = {m['id'] for m in state()['markers']['list'] if m['position'] and m['kind'] != 'place'}
         drawn = set(json.loads(ui('mapMarkers')))
         tracked = [m['id'] for m in state()['markers']['list'] if m['tracked']]
@@ -179,7 +179,7 @@ def acceptance(client, children, args, shell_token, socketpath):
 
     # Settings > Guidance: a toggle and a reset go through guidance.set and the file.
     def guidance():
-        ui('tab', 7); ui('settingsSection', 5)
+        ui('tabNamed', 'settings'); ui('settingsSection', 5)
         wait(lambda: (status().get('quests') or {}).get('guidance'), 5)
         assert press('guidance-focus.desktop_chip')
         on = wait(lambda: client.call('guidance.get', {})['config']['focus.desktop_chip'] is True, 5)
@@ -196,7 +196,7 @@ def acceptance(client, children, args, shell_token, socketpath):
 
     # Focus session from the quest's focus objective; the HUD chip counts down and turns to the break.
     def focus_session():
-        ui('tab', 1); ui('questSelect', 'personal/ship-the-release-notes')
+        ui('tabNamed', 'quests'); ui('questSelect', 'personal/ship-the-release-notes')
         wait(lambda: (status().get('quests') or {}).get('detail') == 'Ship the release notes 0.21', 5)
         time.sleep(.5)
         current = state()['workspaces']['currentId']

@@ -133,8 +133,8 @@ def check(client,children,ui,status,state,shot,resolution,opened,closed):
             ui('concept',concept);shot(f'{concept.lower()}-pocket-{h}p-s{scale}-ipc015')
     resolution(1920,1080,1);ui('concept','Adventure')
     # Inspect updated Help and Appearance in the actual Director.
-    opened();ui('tab',6);shot('help-placement-ipc015');ui('scrollPage',1);shot('help-placement-bindings-ipc015')
-    ui('tab',7);ui('settingsSection',0);shot('appearance-adventure-ipc015');closed()
+    opened();ui('tabNamed', 'whatsnew');shot('help-placement-ipc015');ui('scrollPage',1);shot('help-placement-bindings-ipc015')
+    ui('tabNamed', 'settings');ui('settingsSection',0);shot('appearance-adventure-ipc015');closed()
     client.call('runtime.exit',{});wait(lambda:not state()['runtime']['active'])
     client.call('world.load',{'worldId':'com.hyprune.switchyard'})
     wait(lambda:status()['readyText'])
