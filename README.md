@@ -123,7 +123,10 @@ checks, but nobody has reviewed them." All index text is plain text and no link 
 Keys: V switches the view, / searches, Up / Down move, Enter installs or updates, U update
 and P pin (Installed), R refresh (Sources); in the plan Enter confirms and Esc goes back.
 `./dev/run library` captures all of it against `dev/fake-hyprune-cli.py` (stills go to
-`HYPRUNE_LIBRARY_SHOTS`, default under `/tmp`).
+`HYPRUNE_LIBRARY_SHOTS`, default under `/tmp`). `dev/library-core.py` runs the real CLI
+(`HYPRUNE_CLI`) against a nested core inside core's harness: a loopback index lists a
+library archive (`HYPRUNE_LIBRARY_ARCHIVE`), and the page refreshes, installs it, finds its
+objects in Objects > Catalog, lists it under Installed and removes it (see its docstring).
 
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,
