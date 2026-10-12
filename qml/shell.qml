@@ -237,6 +237,11 @@ ShellRoot {
         function tab(index: int): void {
             if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
+        // By name: map, quests, places, surfaces, workspaces, help, whatsnew, settings, performance.
+        function tabNamed(name: string): void {
+            const index = ShellState.tabKeys.indexOf(name);
+            if (ShellState.dev && index >= 0) ShellState.tab = index;
+        }
         // IPC 0.21 preview (dev only): quests.list/get and guidance.get answers, events, keys.
         function questPreview(json: string): void {
             if (!ShellState.dev) return;
@@ -392,7 +397,7 @@ ShellRoot {
                 captured: ShellState.lastCapturedInput,
                 status: ShellState.status, protocol: ShellState.protocol, screen: ShellState.screenName,
                 lease: ShellState.lease, director: ShellState.director, notePrompt: ShellState.notePrompt, noteText: ShellState.noteText,
-                revision: ShellState.revision, tab: ShellState.tab,
+                revision: ShellState.revision, tab: ShellState.tab, tabName: ShellState.tabKeys[ShellState.tab] || '',
                 warp: ShellState.warpActive, phase: ShellState.transition.phase,
                 world: ShellState.state && ShellState.state.world ? ShellState.state.world.id : null,
                 mode: ShellState.state && ShellState.state.interaction ? ShellState.state.interaction.mode : null,

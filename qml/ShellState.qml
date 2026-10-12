@@ -227,6 +227,8 @@ QtObject {
     readonly property int tabSettings: 7
     readonly property int tabPerformance: 8
     readonly property int tabCount: 9
+    // Stable names for the Director tabs (dev hooks and checks address tabs by name, not position).
+    readonly property var tabKeys: ['map', 'quests', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)
