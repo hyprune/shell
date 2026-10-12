@@ -35,7 +35,7 @@ FocusScope {
             if (override) return;
             if (change && !changeAsked) { changeAsked = true; return; }
             ShellState.libraryConfirm(!!change && changeAsked);
-        } else if (phase === 'done') openResult();
+        } else if (phase === 'done') { if (job.nothing) ShellState.libraryClose(); else openResult(); }
         else if (phase === 'failed') ShellState.libraryClose();
     }
     function openResult() {
@@ -316,7 +316,7 @@ FocusScope {
                 Layout.fillWidth: true
                 visible: root.phase === 'done'
                 text: root.job ? Library.resultText(root.job, root.main && root.main.name ? root.main.name : root.job.target.name)
-                                 + (root.job.target.type === 'library' ? ' Its objects are in Objects > Catalog.' : '') : ''
+                                 + (root.job.target.type === 'library' && !root.job.nothing ? ' Its objects are in Objects > Catalog.' : '') : ''
                 color: Tokens.positive; font.pixelSize: 15; wrapMode: Text.Wrap
             }
 
@@ -339,7 +339,8 @@ FocusScope {
                 primary: true
                 visible: root.phase === 'confirm' || root.phase === 'done'
                 enabled: !(root.phase === 'confirm' && root.override)
-                text: root.phase === 'done' ? (root.job && (root.job.result && root.job.result.type === 'library' || root.job.target.type === 'library') ? 'Open in Objects'
+                text: root.phase === 'done' ? (root.job && root.job.nothing ? 'Done'
+                                                : root.job && (root.job.result && root.job.result.type === 'library' || root.job.target.type === 'library') ? 'Open in Objects'
                                                 : ShellState.available('world.load') ? 'Load' : 'Done')
                     : root.change ? (root.changeAsked ? 'Yes, install from ' + root.change.to : 'Change source…')
                     : root.verb + (root.main ? ' ' + root.main.tag : '')

@@ -291,6 +291,14 @@ class Jobs(unittest.TestCase):
         self.assertEqual(js('progressText(%s)' % json.dumps(progress['progress'])), '1.5 MiB  /  3.0 MiB')
         self.assertEqual(js('progressFraction(%s)' % json.dumps(progress['progress'])), 0.5)
 
+    def test_update_with_nothing_to_do(self):
+        # The SDK ends `update <id> --plan` of a pinned or current install with done {status}, no plan.
+        lines = [json.dumps({'event': 'done', 'result': {'id': 'a.b', 'type': 'library', 'tag': 'v1.0.0', 'action': 'update', 'status': 'pinned', 'newerTag': None}})]
+        job = replay(self.job('update', 'a.b'), lines, 0)
+        self.assertEqual((job['phase'], job['nothing']), ('done', True))
+        self.assertEqual(js('resultText(%s, "Lamps")' % json.dumps(job)), 'Lamps: nothing to update (pinned).')
+        self.assertEqual({r['state'] for r in js('stageRows(%s)' % json.dumps(job))}, {'pending'})
+
     def test_simple_jobs(self):
         code, lines, _ = self.cli.lines('rollback', 'com.hyprune.lumen-reach', '--yes', '--json')
         job = replay(js('newJob("rollback", {id: "com.hyprune.lumen-reach", name: "Lumen Reach"}, [])'), lines, code)
@@ -299,6 +307,9 @@ class Jobs(unittest.TestCase):
         self.assertEqual(js('resultText(%s, "Lumen Reach")' % json.dumps(job)), 'Rolled back Lumen Reach to lumen-reach-v0.9.0 and pinned it.')
         installs = {i['id']: i for i in self.cli.doc('content', 'list', '--json')['installs']}
         self.assertTrue(installs['com.hyprune.lumen-reach']['pinned'])
+        # pin / unpin / remove may end with no done line at all: the exit code decides.
+        pinned = replay(js('newJob("pin", {id: "x", name: "X"}, [])'), [], 0)
+        self.assertEqual((pinned['phase'], js('resultText(%s, "X")' % json.dumps(pinned))), ('done', 'Pinned X.'))
         toast = js('toast(%s, "Lumen Reach")' % json.dumps(job))
         self.assertEqual((toast['title'], toast['tone'], toast['category']), ('Library', 'info', 'objects'))
 
