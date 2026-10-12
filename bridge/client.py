@@ -80,6 +80,10 @@ class Client:
         self.resyncing = False
         self.director = False
         self.note_id = None  # capture awaiting a note (IPC 0.17 prompt); owns exclusive input
+        # IPC 0.23: the open character choice list (npcs.interaction type choose) shown with
+        # the keyboard, keyed by object and choices; choice_grab: this prompt took exclusive input.
+        self.choice_key = None
+        self.choice_grab = False
         self.overlay_revision = -1
         self.ui_epoch = 0
         self.ready = False
@@ -341,6 +345,7 @@ class Client:
             elif msg['method'] == 'ui.closed':
                 if p['leaseId'] == self.lease and p['outputId'] == self.output and p['revision'] >= self.overlay_revision:
                     self.end_note('dismissed')  # core's Escape (menu exit): no note
+                    self.end_choice(dismiss=True)  # and closes a character's choice list
                     self.ui_epoch += 1
                     self.overlay_revision = p['revision']
                     self.director = False
@@ -403,6 +408,7 @@ class Client:
                                       (own and self.output not in own['outputs']))
             if invalid or not runtime['active']:
                 self.end_note('lost')
+                self.end_choice()
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
                 if self.lease and 'shell.release' in self.hello['methods']:
@@ -415,6 +421,8 @@ class Client:
             # A cleared exclusive flag means lock/exit/lease loss: unmap immediately.
             if self.note_id and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
                 self.end_note('lost')
+            if self.choice_grab and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
+                self.end_choice()  # lock, exit or core's own close: the list goes, the key stays
             if self.director and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
@@ -437,6 +445,64 @@ class Client:
                     raise
                 self.emit({'type':'hud.bound'})
                 self.bound_child = (self.lease,self.wayland_pid)
+            await self.sync_choice()
+
+    def npc_interaction(self):
+        """The running character interaction (IPC 0.23 npcs.interaction), or None."""
+        if not at_least(self.protocol, 23) or not self.state: return None
+        return (self.state.get('npcs') or {}).get('interaction')
+
+    async def sync_choice(self):
+        """A choice list (npcs.interaction type choose) takes the keyboard like the note
+        prompt: exclusive input for the shell's Wayland child, then the list is shown. It is
+        released when core ends the interaction. Called from reconcile (ui_lock held)."""
+        current = self.npc_interaction()
+        want = current if current and current['type'] == 'choose' and self.lease and self.state['runtime']['active'] else None
+        key = json.dumps([want['objectId'], want['choices']], sort_keys=True) if want else None
+        if key == self.choice_key:
+            return
+        if key is None:
+            grabbed = self.choice_grab
+            self.end_choice()
+            self.choice_key = None
+            if grabbed and self.lease and not self.director and not self.note_id:
+                result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                           'visible': False, 'exclusiveInput': False})
+                self.overlay_revision = max(self.overlay_revision, result['revision'])
+            return
+        self.choice_key = key
+        if not self.choice_grab and not self.director and not self.note_id:
+            # Hold the keyboard before the list is shown: number keys and Enter go to it.
+            if not self.wayland_pid: raise RuntimeError('Wayland child unavailable')
+            await self.call('shell.bind', {'leaseId': self.lease, 'pid': self.wayland_pid})
+            result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
+                                                       'visible': True, 'exclusiveInput': True})
+            self.overlay_revision = max(self.overlay_revision, result['revision'])
+            if self.choice_key != key: return  # ended meanwhile
+            self.choice_grab = True
+        self.emit({'type': 'interaction.prompt', 'value': want})
+
+    def end_choice(self, dismiss=False):
+        """Hide the choice list. dismiss: core's Escape closed the overlay, so the
+        interaction is ended for core too (interaction.choose with null)."""
+        if self.choice_grab or (dismiss and self.choice_key):
+            self.emit({'type': 'interaction.prompt', 'value': None})
+        self.choice_grab = False
+        current = self.npc_interaction()
+        if dismiss and self.choice_key and current and current['type'] == 'choose' and 'interaction.choose' in self.hello.get('methods', []):
+            self.spawn(self.call('interaction.choose', {'objectId': current['objectId'], 'interactionId': None}))
+
+    async def interaction_panel(self, object_id):
+        """A character's panel interaction (IPC 0.23): open the Director, then end the
+        interaction (interaction.choose with null). Only while core runs one for that object."""
+        current = self.npc_interaction()
+        if not current or current['type'] != 'panel' or current['objectId'] != object_id:
+            raise ValueError('No panel interaction for ' + object_id)
+        try:
+            if self.lease and not self.director and 'ui.open' in self.hello.get('methods', []):
+                await self.call('ui.open', {'leaseId': self.lease, 'outputId': self.output, 'panel': 'overview'})
+        finally:
+            await self.call('interaction.choose', {'objectId': object_id, 'interactionId': None})
 
     def hud_event(self, method, params):
         if method not in ['ui.hud.cycle','hud.frame','hud.pose','zone.entered','zone.exited','tool.changed']:
@@ -592,6 +658,8 @@ class Client:
                 self.clock_offset = None
                 self.ready = self.director = False
                 self.end_note('lost')
+                self.end_choice()
+                self.choice_key = None
                 self.resyncing = False
                 self.overlay_revision = -1
                 self.ui_epoch += 1

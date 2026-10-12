@@ -62,7 +62,8 @@ def shell_actions(protocol):
             (['player.get', 'player.set'] if at_least(protocol, 19) else []) +
             (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []) +
             (QUEST_ACTIONS if at_least(protocol, 21) else []) +
-            (OBJECT_ACTIONS if at_least(protocol, 22) else []))
+            (OBJECT_ACTIONS if at_least(protocol, 22) else []) +
+            (NPC_ACTIONS if at_least(protocol, 23) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
@@ -76,8 +77,13 @@ QUEST_ACTIONS = ['markers.reveal', 'guidance.get', 'guidance.set',
 OBJECT_ACTIONS = ['objects.catalog', 'objects.pocket', 'objects.place', 'objects.transform', 'objects.remove',
                   'objects.hide', 'objects.reset', 'objects.configure',
                   'libraries.list', 'libraries.install', 'libraries.remove']
-# Results and refusals that echo their params (a reply is matched to its quest or object).
-ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS
+# RFC-0011 P2 (IPC 0.23): characters, user paths (routes) and character interactions.
+# No new grant: npcs.* and the path changes need objects.control, paths.list state.read,
+# interaction.choose world.control.
+NPC_ACTIONS = ['npcs.spawn', 'npcs.bind', 'npcs.disable', 'npcs.remove',
+               'paths.list', 'paths.set', 'paths.remove', 'paths.draw', 'paths.finish', 'interaction.choose']
+# Results and refusals that echo their params (a reply is matched to its quest, object or character).
+ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS
 
 
 def action_event(method, params, result):
@@ -115,8 +121,9 @@ def action_notice(cmd, error):
     notice = {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
               **({'method': method} if isinstance(method, str) else {}),
               **({'params': cmd.get('params')} if method in ECHO_ACTIONS else {})}
-    if method in OBJECT_ACTIONS and isinstance(error, CoreError):
-        # Object refusals become short toasts: core's own words and the placement rule.
+    if (method in OBJECT_ACTIONS or method in NPC_ACTIONS) and isinstance(error, CoreError):
+        # Object and character refusals become short toasts: core's own words and the
+        # placement or walkability rule.
         notice['error'] = {'code': error.code, 'message': error.message[:512],
                            **({'rule': error.rule} if error.rule else {})}
     return notice
@@ -238,6 +245,10 @@ async def main(args):
                 await client.capture_note(cmd['captureId'], note, bool(cmd.get('release', True)))
             elif cmd['type'] == 'capture.dismiss' and at_least(args.protocol, 17):
                 await client.capture_release(cmd['captureId'])
+            elif cmd['type'] == 'interaction.panel' and at_least(args.protocol, 23):
+                # A character's panel interaction: open the Director, then end the interaction.
+                if not isinstance(cmd.get('objectId'), str): raise ValueError('objectId must be text')
+                await client.interaction_panel(cmd['objectId'])
             elif cmd['type'] == 'dev.warp' and fixture and at_least(args.protocol, 2):
                 await client.call('world.load', {'worldId': cmd['worldId']})
             elif cmd['type'] == 'dev.open' and fixture:
