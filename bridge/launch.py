@@ -13,7 +13,7 @@ import socket
 import signal
 import stat
 import tempfile
-from client import Client, OutgoingInvalid
+from client import Client, CoreError, OutgoingInvalid
 from preferences import Preferences
 from world_style import load as load_world_style
 from protocol import SUPPORTED_PROTOCOLS, at_least
@@ -61,7 +61,8 @@ def shell_actions(protocol):
             (['camera.get'] if at_least(protocol, 13) else []) +
             (['player.get', 'player.set'] if at_least(protocol, 19) else []) +
             (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []) +
-            (QUEST_ACTIONS if at_least(protocol, 21) else []))
+            (QUEST_ACTIONS if at_least(protocol, 21) else []) +
+            (OBJECT_ACTIONS if at_least(protocol, 22) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
@@ -71,11 +72,19 @@ QUEST_ACTIONS = ['markers.reveal', 'guidance.get', 'guidance.set',
                  'focus.start', 'focus.pause', 'focus.resume', 'focus.skip', 'focus.stop', 'focus.history']
 
 
+# RFC-0011 P1 (IPC 0.22): the object catalog, user placements and object libraries.
+OBJECT_ACTIONS = ['objects.catalog', 'objects.pocket', 'objects.place', 'objects.transform', 'objects.remove',
+                  'objects.hide', 'objects.reset', 'objects.configure',
+                  'libraries.list', 'libraries.install', 'libraries.remove']
+# Results and refusals that echo their params (a reply is matched to its quest or object).
+ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS
+
+
 def action_event(method, params, result):
-    """The presentation event for an action result. Quest, focus and guidance results echo
-    their params so QML can tell which quest a reply (or a later error) belongs to."""
+    """The presentation event for an action result. Quest, focus, guidance and object results
+    echo their params so QML can tell which quest or object a reply (or a later error) belongs to."""
     event = {'type': 'action', 'method': method, 'result': result}
-    if method in QUEST_ACTIONS:
+    if method in ECHO_ACTIONS:
         event['params'] = params
     return event
 
@@ -103,9 +112,14 @@ def action_notice(cmd, error):
         message = 'Core response does not match the negotiated protocol.'
     else:
         message = str(error)[:512]
-    return {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
-            **({'method': method} if isinstance(method, str) else {}),
-            **({'params': cmd.get('params')} if method in QUEST_ACTIONS else {})}
+    notice = {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
+              **({'method': method} if isinstance(method, str) else {}),
+              **({'params': cmd.get('params')} if method in ECHO_ACTIONS else {})}
+    if method in OBJECT_ACTIONS and isinstance(error, CoreError):
+        # Object refusals become short toasts: core's own words and the placement rule.
+        notice['error'] = {'code': error.code, 'message': error.message[:512],
+                           **({'rule': error.rule} if error.rule else {})}
+    return notice
 
 
 def catalog(paths):

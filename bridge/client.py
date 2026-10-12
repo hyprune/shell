@@ -19,9 +19,22 @@ from protocol import frame, read_frame, validate_response, VALIDATORS, SUPPORTED
 class OutgoingInvalid(ValueError):
     """A request this shell built does not match the negotiated protocol (never sent)."""
 
+
+class CoreError(RuntimeError):
+    """A JSON-RPC error from core. str() stays "<code>: <message>"; data keeps the
+    validated error.data (IPC 0.22: {retryable, rule?})."""
+
+    def __init__(self, code, message, data=None):
+        super().__init__(str(code) + ': ' + message)
+        self.code, self.message, self.data = code, message, data or {}
+
+    @property
+    def rule(self):
+        return self.data.get('rule')
+
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 # Grants that exist only from a protocol on: older cores reject unknown capabilities.
-VERSIONED_GRANTS = [(6, 'input.control'), (21, 'quest.control')]
+VERSIONED_GRANTS = [(6, 'input.control'), (21, 'quest.control'), (22, 'objects.control')]
 # RFC-0012 presentation hints (IPC 0.21): forwarded to QML, never replayed.
 QUEST_EVENTS = ['quest.progress', 'focus.phase']
 
@@ -283,7 +296,7 @@ class Client:
                     continue
                 if 'error' in msg:
                     err = msg['error']
-                    future.set_exception(RuntimeError(str(err['code']) + ': ' + err['message']))
+                    future.set_exception(CoreError(err['code'], err['message'], err.get('data')))
                 else:
                     method = self.pending_methods[msg['id']]
                     if method in ('state.subscribe','state.snapshot') and msg['result']['snapshot']['sessionId'] != self.session:
