@@ -311,7 +311,7 @@ QtObject {
     // Listings print one JSON document; jobs print JSON lines (stage, plan, progress, done,
     // error). Install and update run with --plan first; --yes (and --accept-source-change after
     // the page's second confirmation) only once the user confirms the plan.
-    readonly property var libraryCli: Library.cliCommand(Quickshell.env('HYPRUNE_CLI'))
+    property var libraryCli: Library.cliCommand(Quickshell.env('HYPRUNE_CLI'))   // dev hook libraryCommand may replace it
     property string libraryView: 'browse'     // Director > Library view: browse | installed | sources
     property var librarySources: []
     property var libraryEntries: []
@@ -326,7 +326,7 @@ QtObject {
     onLibraryVisibleChanged: { if (libraryVisible) refreshLibrary(); }
     function refreshLibrary() {
         libraryReadError = '';
-        [libraryReadSources, libraryReadBrowse, libraryReadInstalls].forEach(p => { if (!p.running) p.running = true; });
+        [libraryReadSources, libraryReadBrowse, libraryReadInstalls].forEach(p => { if (!p.running) { p.started = false; p.running = true; } });
     }
     function libraryDocument(key, text, code, errors) {
         var doc = null;
@@ -352,7 +352,7 @@ QtObject {
         stderr: StdioCollector { id: readErr }
         onStarted: started = true
         onExited: (code) => Qt.callLater(() => root.libraryDocument(reader.key, readOut.text, code, readErr.text))
-        onRunningChanged: { if (running) started = false; else if (!started) root.libraryDocument(key, '', -1, ''); }
+        onRunningChanged: { if (!running && !started) root.libraryDocument(key, '', -1, ''); }
     }
     property LibraryRead libraryReadSources: LibraryRead { key: 'sources'; args: ['source', 'list', '--json'] }
     property LibraryRead libraryReadBrowse: LibraryRead { key: 'browse'; args: ['browse', '--json'] }
@@ -363,13 +363,15 @@ QtObject {
         stderr: StdioCollector { id: libraryRunErr }
         onStarted: started = true
         onExited: (code) => Qt.callLater(() => root.libraryEnded(code, libraryRunErr.text))
-        onRunningChanged: { if (running) started = false; else if (!started) root.libraryEnded(-1, ''); }
+        onRunningChanged: { if (!running && !started) root.libraryEnded(-1, ''); }
     }
     function libraryStart(job) {
         if (libraryBusy) return false;
         libraryFeedback = null;
         libraryJob = job;
         libraryRun.command = libraryCli.concat(job.args);
+        // A command that can't start drops running without started (and never exits).
+        libraryRun.started = false;
         libraryRun.running = true;
         return true;
     }

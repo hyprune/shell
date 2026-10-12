@@ -221,6 +221,17 @@ for w, h, scale, suffix in sizes:
     press('source-remove:ada-two'); assert library()['confirm'] == 'source:ada-two'
     press('source-remove:ada-two'); idle(); wait(lambda: library()['sources'] == 5)
 
+    # A CLI that can't start: the page says so, and an install fails with that reason.
+    ui('libraryCommand', 'hyprune-missing-command')
+    wait(lambda: 'HYPRUNE_CLI' in library()['readError'])
+    ui('libraryView', 'browse'); time.sleep(.3)
+    shot('cli-missing')
+    press('libraryAct:community/io.github.ben.workshop')  # the last listing stays; the job can't start
+    wait(lambda: job() and job()['phase'] == 'failed' and job()['error']['rule'] == 'cli.missing')
+    shot('cli-missing-install')
+    press('library-job-back'); wait(lambda: library()['job'] is None)
+    ui('libraryCommand', ''); wait(lambda: not library()['readError'] and library()['loaded']); idle()
+
     # A job finishing while the Director is closed shows a HUD toast.
     ui('libraryView', 'installed'); ui('librarySelect', 'io.github.ada.tidepool'); time.sleep(.3)
     hold('committing')

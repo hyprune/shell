@@ -285,6 +285,7 @@ function errorText(error) {
 function stageRows(job) {
     if (!job) return [];
     var at = STAGES.findIndex(function (s) { return s.id === job.stage; });
+    if (at < 0 && job.phase === 'failed') at = 0;  // failed before its first stage (the CLI didn't start)
     return STAGES.map(function (s, i) {
         var state = job.phase === 'done' ? 'done' : i < at ? 'done' : i === at ? (job.phase === 'failed' ? 'failed' : 'current') : 'pending';
         return {id: s.id, label: s.label, state: state};

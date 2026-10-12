@@ -263,6 +263,7 @@ class Jobs(unittest.TestCase):
     def test_process_failures(self):
         missing = replay(self.job('install', 'a.b'), [], -1)
         self.assertEqual((missing['phase'], missing['error']['rule']), ('failed', 'cli.missing'))
+        self.assertEqual([r['state'] for r in js('stageRows(%s)' % json.dumps(missing))][:2], ['failed', 'pending'])
         crashed = replay(self.job('install', 'a.b'), ['not json', '{"event":"stage","stage":"resolving"}'], 1, 'warning\nTypeError: x is undefined\n')
         self.assertEqual(crashed['error'], {'rule': '', 'message': 'TypeError: x is undefined'})
         self.assertEqual(crashed['stage'], 'resolving')

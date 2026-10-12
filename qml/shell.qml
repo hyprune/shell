@@ -6,6 +6,7 @@ import "theme"
 import "components"
 import "components/LayoutAudit.js" as Audit
 import "Quests.js" as Quests
+import "Library.js" as Library
 
 ShellRoot {
     id: root
@@ -339,6 +340,8 @@ ShellRoot {
         // RFC-0015 Library (dev only): view, Browse filters, the selected install, the Add source form.
         function libraryView(view: string): void { if (ShellState.dev && ['browse', 'installed', 'sources'].indexOf(view) >= 0) ShellState.libraryView = view; }
         function libraryRefresh(): void { if (ShellState.dev) ShellState.refreshLibrary(); }
+        // Another CLI command line ('' restores $HYPRUNE_CLI / hyprune), e.g. a missing one.
+        function libraryCommand(line: string): void { if (ShellState.dev) { ShellState.libraryCli = Library.cliCommand(line || Quickshell.env('HYPRUNE_CLI')); ShellState.refreshLibrary(); } }
         function libraryFilter(source: string, type: string, query: string): bool {
             if (!ShellState.dev || !ShellState.director) return false;
             var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorLibrary');
