@@ -259,7 +259,7 @@ ShellRoot {
         function tab(index: int): void {
             if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
-        // By name: map, quests, objects, places, surfaces, workspaces, help, whatsnew, settings, performance.
+        // By name: map, quests, objects, library, places, surfaces, workspaces, help, whatsnew, settings, performance.
         function tabNamed(name: string): void {
             const index = ShellState.tabKeys.indexOf(name);
             if (ShellState.dev && index >= 0) ShellState.tab = index;
@@ -335,6 +335,30 @@ ShellRoot {
                 ShellState.receive({type: 'notice', level: 'warning', code: 'shell.action', method: method, params: echoed,
                                     message: answer.code + ': ' + answer.message, error: answer});
             else ShellState.receive({type: 'action', method: method, params: echoed, result: answer});
+        }
+        // RFC-0015 Library (dev only): view, Browse filters, the selected install, the Add source form.
+        function libraryView(view: string): void { if (ShellState.dev && ['browse', 'installed', 'sources'].indexOf(view) >= 0) ShellState.libraryView = view; }
+        function libraryRefresh(): void { if (ShellState.dev) ShellState.refreshLibrary(); }
+        function libraryFilter(source: string, type: string, query: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorLibrary');
+            if (!page) return false;
+            page.source = source || 'all'; page.type = type || 'all'; page.query = query;
+            return true;
+        }
+        function librarySelect(id: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorLibrary');
+            if (!page) return false;
+            if (ShellState.libraryView === 'sources') page.selectedSource = id; else page.selected = id;
+            return true;
+        }
+        function libraryForm(url: string, label: string, sha256: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+            var fields = [['source-url', url], ['source-label', label], ['source-sha256', sha256]];
+            fields.forEach(f => { var field = Audit.find(view, f[0]); if (field) field.text = f[1]; });
+            return !!Audit.find(view, 'source-url');
         }
         // Give a named Director control keyboard focus (nested keyboard checks).
         function focusNamed(name: string): bool {
@@ -499,6 +523,17 @@ ShellRoot {
                             drawing: ShellState.npcDrawing, prompt: text('hudNpcPromptText'), line: text('hudNpcLine'), drawingText: text('hudNpcDrawingText'),
                             toast: text('hudToastLine'),
                             interactionKey: ShellState.npcInteractionKey};
+                })(),
+                library: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var page = ShellState.director ? Audit.find(view, 'directorLibrary') : null;
+                    var job = ShellState.libraryJob;
+                    return {view: ShellState.libraryView, cli: ShellState.libraryCli, loaded: ShellState.libraryLoaded, readError: ShellState.libraryReadError,
+                            sources: ShellState.librarySources.length, entries: ShellState.libraryEntries.length, installs: ShellState.libraryInstalls.map(i => i.id + '@' + (i.tag || i.version) + (i.pinned ? ':pinned' : '')),
+                            shown: page ? page.shown.length : null, cursor: page ? page.cursor : null, confirm: page ? page.confirm : null,
+                            form: page ? page.form : null, busy: ShellState.libraryBusy, feedback: ShellState.libraryFeedback,
+                            job: job ? {kind: job.kind, phase: job.phase, stage: job.stage, stages: job.stages, args: job.args, progress: job.progress,
+                                        error: job.error, result: job.result, sourceChange: job.plan ? job.plan.sourceChange : null} : null};
                 })(),
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,
