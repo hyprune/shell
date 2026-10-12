@@ -19,8 +19,11 @@ QtObject {
     readonly property var editor: ShellState.state ? ShellState.state.editor : null
     readonly property int tool: manipulation.placement.active ? 5 : ShellState.hudTool ? ShellState.hudTool.slot : editor && editor.tool <= 5 ? editor.tool : 1
     readonly property string subtype: ShellState.hudTool ? ShellState.hudTool.subtype : editor && editor.submode !== 'reserved' ? editor.submode : 'normal'
-    readonly property var subtypes: tool === 2 ? ['place','lock'] : tool === 3 ? ['open line','open curve','open arc','closed line','closed curve','closed arc'] : tool === 4 ? ['move','rotate','scale'] : ['normal']
+    readonly property var subtypes: tool === 2 ? ['place','lock'] : tool === 3 ? ['open line','open curve','open arc','closed line','closed curve','closed arc'] : tool === 4 ? (editor && editor.gizmo ? ['universal','move','rotate','scale'] : ['move','rotate','scale']) : ['normal']
     readonly property string toolName: ['Navigate','Window','Path','Position','Placement'][tool-1]
+    // IPC 0.22 gizmo settings (tool 4): {space: world|local, pivot: centre|base, snap}.
+    readonly property var gizmo: editor && editor.gizmo ? editor.gizmo : null
+    readonly property string gizmoText: gizmo ? [gizmo.space, gizmo.pivot].concat(gizmo.snap ? ['snap'] : []).join(' · ').toUpperCase() : ''
     readonly property var timings: ShellState.graphics ? ShellState.graphics.timings : null
     readonly property real fps: ShellState.hudFrame ? (typeof ShellState.hudFrame.fps === 'number' ? ShellState.hudFrame.fps : -1) : timings && typeof timings.deliveredFPS === 'number' ? timings.deliveredFPS : -1
     readonly property real frameMs: ShellState.hudFrame ? (typeof ShellState.hudFrame.frameMs === 'number' ? ShellState.hudFrame.frameMs : -1) : timings && typeof timings.frameMs === 'number' ? timings.frameMs : -1

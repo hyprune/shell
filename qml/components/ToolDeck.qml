@@ -15,7 +15,10 @@ Item {
     // Visibility is inherited from feedbackRows: using the child's effective
     // visible value here would prevent a scale-only update from opening it.
     readonly property bool feedback: (HudData.carry.active || scaleFeedback.showing) && HudData.worldPrompts
-    readonly property real detailsBottom: liveHints.visible ? liveHints.y+liveHints.implicitHeight+24 : HudData.placing ? placeSize+90 : minimal ? (HudData.climbing ? 174 : 155) : 203
+    // IPC 0.22: pocketed objects (editor.unplaced.objects) list under the placement card.
+    readonly property var pocketObjects: HudData.placement.objects || []
+    readonly property real objectsRow: HudData.placing && pocketObjects.length ? (dense ? 22 : 26)+(dense ? 6 : 8) : 0
+    readonly property real detailsBottom: liveHints.visible ? liveHints.y+liveHints.implicitHeight+24 : HudData.placing ? placeSize+objectsRow+90 : minimal ? (HudData.climbing ? 174 : 155) : 203
     implicitHeight: detailsBottom+(feedback ? 52 : 0)
     property string displayedSubtype: HudData.subtype
     Connections {
@@ -57,6 +60,27 @@ Item {
         visible:HudData.placing; x:root.placeSize+(root.dense ? 8 : 18); width:parent.width-x; height:root.placeSize
         technical:root.technical; minimal:root.minimal; dense:root.dense; opacity:HudData.freeCursor ? .55 : 1
     }
+    ListView {
+        id: objectChips; objectName: 'hudPocketObjects'
+        visible: HudData.placing && root.pocketObjects.length > 0
+        y: root.placeSize+(root.dense ? 6 : 8); width: parent.width; height: root.dense ? 22 : 26
+        orientation: ListView.Horizontal; spacing: 5; clip: true; interactive: false
+        opacity: HudData.freeCursor ? .55 : 1
+        model: root.pocketObjects
+        readonly property int selectedIndex: root.pocketObjects.findIndex(o => o.selected)
+        onSelectedIndexChanged: if (selectedIndex >= 0) positionViewAtIndex(selectedIndex, ListView.Contain)
+        delegate: HudTile {
+            required property var modelData
+            objectName: 'hudPocketObject:'+modelData.itemId
+            height: objectChips.height
+            width: Math.min(190, Math.ceil(chipMetrics.advanceWidth)+chipText.rightPadding+height+12)
+            color: Qt.rgba(Tokens.hudScrim.r, Tokens.hudScrim.g, Tokens.hudScrim.b, .78)
+            borderColor: modelData.selected ? Tokens.hudAccent : 'transparent'; borderWidth: modelData.selected ? 1.5 : 0
+            TextMetrics { id: chipMetrics; font: chipText.font; text: chipText.text }
+            CubeGlyph { x: 5; anchors.verticalCenter: parent.verticalCenter; width: parent.height-8; height: width; stroke: 2.4; tint: modelData.selected ? Tokens.hudAccent : Tokens.hudMuted }
+            HudText { id: chipText; x: parent.height; anchors.verticalCenter: parent.verticalCenter; width: parent.width-x-4; text: modelData.name; font.pixelSize: root.dense ? 11 : 12; color: modelData.selected ? Tokens.hudAccent : Tokens.hudWhite }
+        }
+    }
     Item {
         id: subtypeScene
         visible: !HudData.placing
@@ -64,7 +88,7 @@ Item {
         x: root.gridSize+18; width: parent.width-x; height: root.gridSize
         Rectangle { anchors.fill: parent; color: Qt.rgba(Tokens.hudScrim.r,Tokens.hudScrim.g,Tokens.hudScrim.b,.5); border.color: root.technical ? '#608dbfc8' : 'transparent' }
         Rectangle { width: 2; height: parent.height; color: Tokens.hudAccent }
-        HudText { x: 14; y: 5; width: parent.width-24; text: HudData.toolName.toUpperCase(); font.pixelSize: 13; font.letterSpacing: 2; color: Tokens.hudMuted }
+        HudText { x: 14; y: 5; width: parent.width-24; text: HudData.toolName.toUpperCase()+(HudData.tool === 4 && HudData.gizmoText ? '  ·  '+HudData.gizmoText : ''); font.pixelSize: 13; font.letterSpacing: 2; color: Tokens.hudMuted }
         Item {
             id: subtypeContent
             x: 14; y: 25; width: parent.width-24; height: parent.height-29
@@ -102,11 +126,11 @@ Item {
     ToolHints {
         id:liveHints; objectName:'hudToolHints'
         visible:HudData.worldPrompts && !HudData.climbing && actions.length>0
-        y:HudData.placing ? root.placeSize+(root.dense ? 6 : 10) : root.condensed ? root.gridSize+10 : root.gridSize+65; width:parent.width; dense:root.dense
+        y:HudData.placing ? root.placeSize+root.objectsRow+(root.dense ? 6 : 10) : root.condensed ? root.gridSize+10 : root.gridSize+65; width:parent.width; dense:root.dense
     }
     HudText {
         objectName:'hudGhostIndicator'; visible:HudData.placing && HudData.worldPrompts
-        y:liveHints.visible ? liveHints.y+liveHints.implicitHeight+5 : root.placeSize+10; width:parent.width
+        y:liveHints.visible ? liveHints.y+liveHints.implicitHeight+5 : root.placeSize+root.objectsRow+10; width:parent.width
         text:HudData.placement.count===0 ? 'POCKET EMPTY' : HudData.placement.ghost ? '◇ GHOST PREVIEW' : '◇ PREVIEW UNAVAILABLE'
         font.pixelSize:12;color:Tokens.hudAccent
     }
