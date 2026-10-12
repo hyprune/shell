@@ -18,6 +18,7 @@ from preferences import Preferences
 from world_style import load as load_world_style
 from protocol import SUPPORTED_PROTOCOLS, at_least
 from outline import OutlineController
+from sources import Sources, control_path, default_config
 from jsonschema.exceptions import ValidationError
 from protocol import decode, WORLD_VALIDATORS
 
@@ -193,7 +194,11 @@ async def main(args):
 
     emit({'type':'preferences', 'value':preferences.value})
     bindings = dict(pair.split('=', 1) for pair in args.output)
-    client = Client(socket_path(args.socket), emit, token_source if tokens else None, bindings, args.protocol, args.client_id)
+    core_socket = socket_path(args.socket)
+    client = Client(core_socket, emit, token_source if tokens else None, bindings, args.protocol, args.client_id)
+    # Machine data sources: sources.json and the source helper beside core's socket (local,
+    # not core IPC, so the same at every protocol).
+    sources = Sources(control_path(core_socket, args.sources_control), default_config())
     outline = OutlineController(client)
     worlds = catalog(args.world_package)
     for manifest in args.world_package:
@@ -249,6 +254,9 @@ async def main(args):
                 # A character's panel interaction: open the Director, then end the interaction.
                 if not isinstance(cmd.get('objectId'), str): raise ValueError('objectId must be text')
                 await client.interaction_panel(cmd['objectId'])
+            elif isinstance(cmd.get('type'), str) and cmd['type'].startswith('sources.'):
+                # Answers one {type: 'sources', op} event, also when the helper is missing.
+                emit(await sources.handle(cmd))
             elif cmd['type'] == 'dev.warp' and fixture and at_least(args.protocol, 2):
                 await client.call('world.load', {'worldId': cmd['worldId']})
             elif cmd['type'] == 'dev.open' and fixture:
@@ -378,6 +386,8 @@ if __name__ == '__main__':
     parser.add_argument('--presentation', help='DEV ONLY: local camera/map fixture, never IPC fields')
     parser.add_argument('--client-id', default=os.environ.get('HYPRUNE_CLIENT_ID', 'com.hyprune.shell'))
     parser.add_argument('--tour', action='store_true')
+    parser.add_argument('--sources-control', default=os.environ.get('HYPRUNE_SOURCES_CONTROL'),
+                        help="The source helper's control socket (default: sources.sock beside core's socket)")
     args = parser.parse_args()
     try: asyncio.run(main(args))
     except KeyboardInterrupt: pass
