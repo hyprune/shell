@@ -265,6 +265,36 @@ QtObject {
         sayObjects(Objects.resultText(method, params), 'info');
         objectActionDone(method, params || null, result);
     }
+    // ---- Machine data sources (RFC-0013 draft): sources.json and the source helper ----
+    // Local to this machine, not core IPC: the bridge (bridge/sources.py) edits sources.json
+    // and talks to the helper's control socket. Every request answers one 'sources' message.
+    // IPC 0.24 adds state `live` (per bound instance: inputs, values, conditions).
+    readonly property var liveState: state && state.live ? state.live : null
+    property var sourcesStatus: null        // last status answer {ok, helper, status?, error?}
+    property int sourcesSeq: 0
+    property int sourcesStatusSeq: 0        // status request in flight (0: none)
+    property real sourcesStatusAt: 0
+    property bool sourcesWanted: false      // a Data source section is showing (polls ~1 s)
+    signal sourcesReply(var reply)
+    function sourcesRequest(type, payload) {
+        if (!socket.connected) return 0;
+        sourcesSeq += 1;
+        send(Object.assign({}, payload || {}, {type: type, seq: sourcesSeq}));
+        return sourcesSeq;
+    }
+    function pollSources() {
+        // One status request at a time (a hung helper times out in the bridge after 2 s).
+        if (sourcesStatusSeq && Date.now() - sourcesStatusAt < 4000) return;
+        sourcesStatusAt = Date.now();
+        sourcesStatusSeq = sourcesRequest('sources.status', {});
+    }
+    property Timer sourcesPoll: Timer {
+        interval: 1000; repeat: true; triggeredOnStart: true
+        running: root.sourcesWanted && root.objectsVisible && root.socket.connected
+        onTriggered: root.pollSources()
+    }
+    onSourcesWantedChanged: { if (!sourcesWanted) { sourcesStatusSeq = 0; } }
+
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')
@@ -764,6 +794,10 @@ QtObject {
             questResult(msg.method, msg.params, msg.result);
             objectResult(msg.method, msg.params, msg.result);
             npcResult(msg.method, msg.params, msg.result);
+            break;
+        case 'sources':
+            if (msg.op === 'status') { sourcesStatus = msg; if (msg.seq === sourcesStatusSeq) sourcesStatusSeq = 0; }
+            sourcesReply(msg);
             break;
         case 'interaction.prompt':
             npcChoice = msg.value || null;

@@ -7,8 +7,9 @@ import "../Objects.js" as Objects
 
 // Director > Objects > Placed: the configure panel of one instance (RFC-0011 P1). It is
 // built from per-trait sections in a fixed order (Objects.SECTIONS): Transform, Lock,
-// Remove / Reset and Data (RFC-0013 data bindings: a machine's data source id), so a later
-// section joins without changing the panel. The header shows the instance id.
+// Remove / Reset and Data source (RFC-0013: a machine's inputs, live values and its
+// sources.json command, ObjectDataSource), so a later section joins without changing the
+// panel. The header shows the instance id.
 ColumnLayout {
     id: panel
     objectName: 'objectConfigure'
@@ -155,6 +156,7 @@ ColumnLayout {
             function focusFirst() {
                 if (modelData.id === 'transform' && transformBody.focusFirst()) return true;
                 if (modelData.id === 'lock' && lockButton.enabled) { lockButton.forceActiveFocus(); return true; }
+                if (modelData.id === 'data' && dataLoader.item) return (dataLoader.item as ObjectDataSource).focusFirst();
                 return false;
             }
             objectName: 'objectSection:' + modelData.id
@@ -214,20 +216,17 @@ ColumnLayout {
                         + 'Reset puts it back where the world placed it.'
                 color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
             }
-            // Data (RFC-0013 draft): where a machine reads its inputs; other objects hide it.
-            HudLabel {
-                objectName: 'objectDataSource'
-                visible: section.modelData.id === 'data' && !!section.modelData.source
+            // Data source (RFC-0013 draft): a machine's inputs, live values, source and the
+            // sources.json editor; other objects hide it. Loaded only for that section.
+            Loader {
+                id: dataLoader
                 Layout.fillWidth: true
-                text: section.modelData.source ? section.modelData.source.line : ''
-                font.family: Tokens.mono; font.pixelSize: 13
-            }
-            HudLabel {
-                objectName: 'objectDataHint'
-                visible: section.modelData.id === 'data' && !!section.modelData.source
-                Layout.fillWidth: true
-                text: section.modelData.source ? section.modelData.source.hint : ''
-                color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
+                active: section.modelData.id === 'data' && section.modelData.visible
+                visible: active
+                sourceComponent: ObjectDataSource {
+                    instance: panel.instance
+                    section: section.modelData
+                }
             }
         }
     }

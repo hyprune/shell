@@ -18,8 +18,8 @@ var RULES = {
     window: 'covers a window', approach: 'blocks the space in front of a screen', zone: 'outside the placement zones',
     'keep-clear': 'blocks a spawn or a climb', player: 'overlaps you', reach: 'out of reach',
     budget: 'over the object budget', 'library.conflict': 'another copy of that library is installed'};
-// The configure panel's sections, in this order. 'data' is reserved for RFC-0013 data
-// bindings: it is always listed and shows only for machines (their data source).
+// The configure panel's sections, in this order. 'data' is RFC-0013's Data source: it is always
+// listed and shows only for machines (their inputs, live values and the sources.json editor).
 var SECTIONS = ['transform', 'lock', 'remove', 'data'];
 // RFC-0013 draft (machines): every placed machine reads source com.hyprune.sources.<instance
 // id> by default; the source helper publishes a sources.json entry with that id there.
@@ -241,7 +241,12 @@ function panelSections(instance, entry) {
                                                    : (hideable ? [{id: 'hide', label: hidden ? 'Show' : 'Hide', hidden: !hidden, enabled: !locked}] : [])
                                                      .concat([{id: 'reset', label: 'Reset', enabled: true}])};
         var source = dataSource(instance, entry); // RFC-0013 data bindings
-        return source ? {id: id, title: 'Data', visible: true, editable: false, source: source} : {id: id, title: 'Data', visible: false, editable: false};
+        if (!source) return {id: id, title: 'Data', visible: false, editable: false};
+        // IPC 0.24 catalog entries carry `machine` ({primary, inputs}); 0.23 ones don't, and the
+        // section then shows the source id and the editor only.
+        var declared = !!entry && entry.machine !== undefined;
+        return {id: id, title: 'Data source', visible: true, editable: source.publishable, source: source,
+                declared: declared, machine: declared ? entry.machine : null};
     });
 }
 

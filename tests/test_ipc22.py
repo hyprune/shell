@@ -343,7 +343,8 @@ class Placed(unittest.TestCase):
         self.assertEqual((odd['publishable'], odd['line'], odd['hint']),
                          (False, 'Data source id: Court.Rack_1', 'Bind it to a source in machines.json.'))
         data = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(entry())))[3]
-        self.assertEqual((data['id'], data['title'], data['visible'], data['source']), ('data', 'Data', True, rack))
+        # A 0.22 / 0.23 catalog entry declares no inputs: the section shows the source and the editor.
+        self.assertEqual((data['id'], data['title'], data['visible'], data['source'], data['declared']), ('data', 'Data source', True, rack, False))
         other = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(LANTERN)))[3]
         self.assertEqual((other['visible'], 'source' in other), (False, False))
 
@@ -488,9 +489,11 @@ class Presentation(unittest.TestCase):
         panel = self.read('components/ObjectConfigure.qml')
         self.assertIn('Objects.panelSections(instance, entry)', panel)
         self.assertIn('onEntryChanged: refreshSections()', panel)
-        for name in ["objectName: 'objectId'", 'Objects.idText(panel.instance)', "objectName: 'objectDataSource'",
-                     "objectName: 'objectDataHint'", 'section.modelData.source.line', 'section.modelData.source.hint']:
+        for name in ["objectName: 'objectId'", 'Objects.idText(panel.instance)', 'ObjectDataSource {']:
             self.assertIn(name, panel)
+        body = self.read('components/ObjectDataSource.qml')  # the Data source section (tests/test_sources.py)
+        for name in ["objectName: 'objectDataSource'", "objectName: 'objectDataHint'", 'body.source.line', 'body.source.hint']:
+            self.assertIn(name, body)
         page = self.read('components/DirectorObjects.qml')
         self.assertIn("objectName: 'placedId'", page)
         self.assertIn("text: row.modelData.id", page)
