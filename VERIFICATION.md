@@ -1,3 +1,20 @@
+# IPC 0.22 object catalog and user placements — 2026-10-12
+
+`python3 -m unittest discover -s tests`: **243 pass**, including `tests/test_ipc22.py`
+(33): hello capabilities validate against every vendored pin (`objects.control` only from
+0.22), the 0.22 allowlist, every object and library request built by the shell and every
+result against the 0.22 pin (and refused by 0.21), error data rules reaching QML, the
+`qml/Objects.js` helpers (catalog filters and search, card facts, grid cursor, configure
+panel section order including the reserved Data slot, transform params, usage, toasts) and
+object items in the tool 5 queue. `./dev/run objects` (nested, SDK mock with dev preview
+data; `HYPRUNE_DEV_PREVIEW=nested` on a headless parent whose GPU can't allocate headless
+buffers) captures the Catalog and Placed views at 1920×1080, 1280×720, 2560×1440 at scale 2
+and 3840×2160 at scale 1 and 2 with the layout audit clean, filters and search, Add by
+keyboard and button, every configure action, the confirm step, a refusal, the budget toast
+and the tool 5 HUD in all three concepts, with no QML runtime errors.
+
+---
+
 # IPC 0.21 quests, focus sessions and guidance — 2026-10-12
 
 `python3 -m unittest discover -s tests`: **207 pass**, including `tests/test_ipc21.py`

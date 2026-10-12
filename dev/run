@@ -42,10 +42,13 @@ export WAYLAND_DISPLAY=${session[1]}
 [[ "$HYPRLAND_INSTANCE_SIGNATURE" != "$outer_signature" && "$WAYLAND_DISPLAY" != "$outer_display" && -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] || { echo 'Refusing unsafe session target' >&2; exit 1; }
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" output create headless HYPRUNE-PREVIEW > "$ROOT/dev/.run/output.log"
 target_output=HYPRUNE-PREVIEW
-if [[ "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director && "$mode" != quests ]]; then
+# HYPRUNE_DEV_PREVIEW=nested captures on the nested window's output instead (GPUs whose GBM
+# can't allocate headless buffers); capture scripts read HYPRUNE_PREVIEW_OUTPUT.
+if [[ ${HYPRUNE_DEV_PREVIEW:-headless} == nested || ( "$mode" != check && "$mode" != capture && "$mode" != polish && "$mode" != hud-check && "$mode" != placement-sizes && "$mode" != brand && "$mode" != player && "$mode" != director && "$mode" != quests && "$mode" != objects ) ]]; then
     target_output=$(hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" monitors -j | python3 -c 'import json,sys; print(next(m["name"] for m in json.load(sys.stdin) if m["name"]!="HYPRUNE-PREVIEW"))')
 fi
 [[ "$target_output" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
+export HYPRUNE_PREVIEW_OUTPUT=$target_output
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" eval "hl.dispatch(hl.dsp.focus({ monitor = \"$target_output\" }))" >/dev/null
 hyprctl -i "$HYPRLAND_INSTANCE_SIGNATURE" dismissnotify -1 >/dev/null
 qs -p "$ROOT/dev/background.qml" --no-color > "$ROOT/dev/.run/background.log" 2>&1 &
@@ -87,6 +90,8 @@ elif [[ "$mode" == director ]]; then
     python3 "$ROOT/dev/director-shots.py"
 elif [[ "$mode" == quests ]]; then
     python3 "$ROOT/dev/quests-shots.py"
+elif [[ "$mode" == objects ]]; then
+    python3 "$ROOT/dev/objects-shots.py"
 elif [[ "$mode" == polish ]]; then
     python3 "$ROOT/dev/polish-mock.py"
 elif [[ "$mode" == capture ]]; then

@@ -3,7 +3,7 @@
 > **Hyprune** is an explorable, world-driven desktop environment for Hyprland: your workspaces become places you can walk through, with live windows on the walls. This repository is the reference **shell**: the Quickshell HUD, Director, settings and overlays. Install Hyprune through the [hyprune](https://github.com/hyprune/hyprune) repository (starter kits, Nix, Arch); learn more at [hyprune.com](https://hyprune.com). Licence: MIT.
 
 Quickshell HUD and Director for a world-driven desktop. Shell 0.2.0 supports exact
-IPC 0.1–0.21 (one vendored pin per version under `protocol/`). The shell launcher
+IPC 0.1–0.22 (one vendored pin per version under `protocol/`). The shell launcher
 defaults to the newest pin; `--protocol` or
 `HYPRUNE_PROTOCOL` can explicitly select an older contract. The first real session runs against core through the
 locked `../core/dev/hyprune-dev up|smoke|record` launcher. Core supplies the current
@@ -39,6 +39,27 @@ Against a real 0.21 core, `dev/quests-core.py` runs inside core's nested harness
 hosts: `python3 $CORE/dev/nested/isolated.py dev/quests-core.py`, `HYPRUNE_CORE_DIR`
 selects the core checkout) and reports each check; `dev/quests-demo.py OUT.mkv` records the
 same features in Lumen Reach.
+
+IPC 0.22 (RFC-0011 P1) adds an **Objects** tab directly after Quests with two views.
+**Catalog** shows every catalog entry (`objects.catalog`, refreshed when the tab opens and
+when `objects.catalogRevision` changes) as a card: thumbnail (or a cube), name, a World /
+Library / Mine badge, size in metres, trait chips, triangles and GPU memory; filters by
+source and category and a search over names and tags; entries that can't be placed are
+dimmed with core's reason and invalid ones list their errors. **Add to pocket** (or Enter on
+the focused card) calls `objects.pocket`; core selects tool 5 and a toast says so.
+**Placed** lists this world's authored and user instances with their state (blocked ones
+name the placement rule) and a lock badge; the configure panel is built from sections in a
+fixed order (Transform, Lock, Remove / Reset or Hide / Reset, and a reserved Data slot for
+RFC-0013 that renders nothing yet), with "Show and reset authored objects" and "Remove my
+objects" behind a second press, and user placement usage against core's limits. Keys: Up /
+Down move, Enter adds or edits, / searches, V switches the view, L lock, H hide, R reset,
+Delete remove. The tool 5 HUD lists pocketed objects (cube glyph, the selected one
+highlighted) and shows a selected object item in the placement card; tool 4 shows the
+gizmo space, pivot and snap. Object and library refusals become short toasts with core's
+message and the placement rule. The bridge requests `objects.control` only at 0.22.
+`./dev/run objects` captures all of it from the mock with dev preview data
+(`HYPRUNE_DEV_PREVIEW=nested` captures on the nested window's output where the GPU can't
+allocate headless buffers; stills go to `HYPRUNE_OBJECTS_SHOTS`, default under `/tmp`).
 
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,
