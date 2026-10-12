@@ -182,7 +182,7 @@ for w, h, scale, suffix in sizes:
     assert ui('press', 'objectAdd:user/potted-fern') == 'true'
     assert actions('objects.pocket')[-1] == {'ref': 'user/potted-fern'}
     assert ui('press', 'objectAdd:user/guide') == 'false'  # not placeable: disabled
-    call('wtype', '-k', 'Right'); wait(lambda: status()['tabName'] == 'places')  # Left/Right still change views
+    call('wtype', '-k', 'Right'); wait(lambda: status()['tabName'] == 'library')  # Left/Right still change views
     call('wtype', '-k', 'Left'); wait(lambda: status()['tabName'] == 'objects')
     ui('theme', 'true'); shot('catalog-paper'); ui('theme', 'false')
 
