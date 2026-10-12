@@ -185,6 +185,28 @@ ShellRoot {
         }
     }
 
+    // IPC 0.23 character choice list. The bridge took exclusive input for it (like the note
+    // prompt, same namespace), so it has the keyboard and the pointer; never with the Director.
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            required property var modelData
+            screen: modelData
+            visible: ShellState.active && !!ShellState.npcChoice && !ShellState.director && !ShellState.warpActive &&
+                     modelData.name === ShellState.screenName
+            anchors { bottom: true }
+            margins.bottom: 190
+            implicitWidth: npcChoice.implicitWidth
+            implicitHeight: npcChoice.implicitHeight
+            color: 'transparent'
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: 'hyprune-director'
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            NpcChoice { id: npcChoice; anchors.fill: parent }
+        }
+    }
+
     // A jump is presentation only: it cannot intercept emergency input.
     Variants {
         model: Quickshell.screens

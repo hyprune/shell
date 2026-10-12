@@ -512,6 +512,18 @@ class Presentation(unittest.TestCase):
         for needle in ["objectName: 'npcMotion'", 'Npcs.stateText(root.npcs)', 'ShellState.startRebind', "'npcs.remove', {all: true}"]:
             self.assertIn(needle, panel)
 
+    def test_hud_and_choice_window(self):
+        self.assertIn('NpcHud { anchors.fill:parent; z:3; leftLimit:deck.x+deck.width+40; inset:root.inset }', self.read('components/Hud.qml'))
+        self.assertIn('shown: questColumn.height > 0 || ShellState.toasts.length > 0', self.read('components/Hud.qml'))
+        hud = self.read('components/NpcHud.qml')
+        self.assertIn('Tokens.reducedMotion ? 0', hud)
+        for name in ['hudNpcPrompt', 'hudNpcCaption', 'hudNpcDrawing']:
+            self.assertIn("objectName: '" + name + "'", hud)
+        shell = self.read('shell.qml')
+        self.assertRegex(shell, r"visible: ShellState\.active && !!ShellState\.npcChoice && !ShellState\.director[\s\S]{0,600}WlrKeyboardFocus\.Exclusive")
+        choice = self.read('components/NpcChoice.qml')
+        self.assertIn('Keys.onEscapePressed: ShellState.chooseInteraction(null)', choice)
+
     def test_state_routes_interactions(self):
         state = self.read('ShellState.qml')
         for needle in ["case 'interaction.prompt':", 'handleInteraction(interaction)', "send({type: 'interaction.panel', objectId: effect.objectId})",

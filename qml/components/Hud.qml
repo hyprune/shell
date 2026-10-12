@@ -60,7 +60,9 @@ Item {
         width: root.compact ? 236 : 300; height: questColumn.height
         edgeX: 1; edgeY: -.6
         curvatureScale: .35
-        shown: questColumn.height > 0
+        // A toast arriving while the column is empty must show it: children of a hidden
+        // cluster are invisible, so the column alone would stay at height 0.
+        shown: questColumn.height > 0 || ShellState.toasts.length > 0
         Column {
             id: questColumn
             width: parent.width
@@ -85,6 +87,8 @@ Item {
         edgeX:-1; edgeY:1
         ToolDeck { id:toolDeck; anchors.fill:parent; compact:root.compact; dense:HudData.placing && root.denseDeck }
     }
+    // IPC 0.23: aimed character prompt, say caption and the route drawing hint.
+    NpcHud { anchors.fill:parent; z:3; leftLimit:deck.x+deck.width+40; inset:root.inset }
     HudCluster {
         x:root.inset; y:deck.y-height-30; width:Math.min(640,root.width*.65); height:zoneColumn.height
         edgeX:-1; edgeY:.5; shown:ShellState.zone !== '' && (!root.compact || deck.y-zoneColumn.height-30>root.inset+172)
