@@ -10,6 +10,7 @@ import "Quests.js" as Quests
 import "Objects.js" as Objects
 import "Npcs.js" as Npcs
 import "Companion.js" as Companion
+import "Library.js" as Library
 pragma Singleton
 
 QtObject {
@@ -305,6 +306,122 @@ QtObject {
     function chooseCompanion(ref) { var r = Companion.choose(ref); if (objectsCan(r.method)) objectAction(r.method, r.params); }
     function companionMode(mode) { if (objectsCan('companion.mode')) objectAction('companion.mode', {mode: mode}); }
 
+    // ---- RFC-0015 phase 1: Director > Library over the hyprune CLI (no core IPC) ----
+    // The command is $HYPRUNE_CLI (a command line split on spaces), else hyprune on PATH.
+    // Listings print one JSON document; jobs print JSON lines (stage, plan, progress, done,
+    // error). Install and update run with --plan first; --yes (and --accept-source-change after
+    // the page's second confirmation) only once the user confirms the plan.
+    readonly property var libraryCli: Library.cliCommand(Quickshell.env('HYPRUNE_CLI'))
+    property string libraryView: 'browse'     // Director > Library view: browse | installed | sources
+    property var librarySources: []
+    property var libraryEntries: []
+    property var libraryInstalls: []
+    property bool libraryLoaded: false
+    property string libraryReadError: ''
+    property var libraryJob: null             // Library.newJob(): the running or last panel job
+    property var libraryFeedback: null        // {level, text}: the last finished job
+    property Timer libraryFeedbackTimer: Timer { interval: 8000; onTriggered: root.libraryFeedback = null }
+    readonly property bool libraryBusy: Library.running(libraryJob)
+    readonly property bool libraryVisible: director && tab === tabLibrary
+    onLibraryVisibleChanged: { if (libraryVisible) refreshLibrary(); }
+    function refreshLibrary() {
+        libraryReadError = '';
+        [libraryReadSources, libraryReadBrowse, libraryReadInstalls].forEach(p => { if (!p.running) p.running = true; });
+    }
+    function libraryDocument(key, text, code, errors) {
+        var doc = null;
+        try { doc = code === 0 ? JSON.parse(text) : null; } catch (e) { doc = null; }
+        if (!doc) {
+            var tail = String(errors || '').trim().split('\n').slice(-1)[0];
+            libraryReadError = code < 0 ? 'The hyprune command didn\'t run: set HYPRUNE_CLI or put hyprune on PATH.'
+                                        : 'hyprune ' + key + ': ' + (tail || (code === 0 ? 'not a JSON document' : 'exit code ' + code));
+            return;
+        }
+        if (key === 'sources') librarySources = doc.sources || [];
+        else if (key === 'browse') libraryEntries = doc.entries || [];
+        else if (key === 'installed') libraryInstalls = doc.installs || [];
+        libraryLoaded = true;
+    }
+    component LibraryRead: Process {
+        id: reader
+        property string key: ''
+        property var args: []
+        property bool started: false
+        command: root.libraryCli.concat(args)
+        stdout: StdioCollector { id: readOut }
+        stderr: StdioCollector { id: readErr }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.libraryDocument(reader.key, readOut.text, code, readErr.text))
+        onRunningChanged: { if (running) started = false; else if (!started) root.libraryDocument(key, '', -1, ''); }
+    }
+    property LibraryRead libraryReadSources: LibraryRead { key: 'sources'; args: ['source', 'list', '--json'] }
+    property LibraryRead libraryReadBrowse: LibraryRead { key: 'browse'; args: ['browse', '--json'] }
+    property LibraryRead libraryReadInstalls: LibraryRead { key: 'installed'; args: ['content', 'list', '--json'] }
+    property Process libraryRun: Process {
+        property bool started: false
+        stdout: SplitParser { onRead: (line) => root.libraryJob = Library.jobEvent(root.libraryJob, line) }
+        stderr: StdioCollector { id: libraryRunErr }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.libraryEnded(code, libraryRunErr.text))
+        onRunningChanged: { if (running) started = false; else if (!started) root.libraryEnded(-1, ''); }
+    }
+    function libraryStart(job) {
+        if (libraryBusy) return false;
+        libraryFeedback = null;
+        libraryJob = job;
+        libraryRun.command = libraryCli.concat(job.args);
+        libraryRun.running = true;
+        return true;
+    }
+    function libraryTarget(item) {
+        var e = Library.entryFor(libraryEntries, item.id, item.sourceId) || Library.entryFor(libraryEntries, item.id);
+        return {id: item.id, sourceId: item.sourceId || '', type: item.type || '', name: e ? e.name : item.id};
+    }
+    // Install or update: the plan first (--plan), shown for confirmation.
+    function libraryPlan(kind, item) {
+        if (!item || (kind !== 'install' && kind !== 'update')) return false;
+        var target = libraryTarget(item);
+        return libraryStart(Library.newJob(kind, target, Library.jobArgs(kind, target.id, kind === 'install' ? target.sourceId : '', 'plan')));
+    }
+    // The confirmed plan runs with --yes; a source change only with acceptChange (the second dialog).
+    function libraryConfirm(acceptChange) {
+        var job = libraryJob;
+        if (!job || job.phase !== 'confirm') return false;
+        var change = !!Library.sourceChange(job.plan);
+        if (change && !acceptChange) return false;
+        var next = Library.newJob(job.kind, job.target, Library.jobArgs(job.kind, job.target.id, job.kind === 'install' ? job.target.sourceId : '', 'yes', change));
+        return libraryStart(Object.assign(next, {phase: 'running', plan: job.plan}));
+    }
+    // rollback | pin | unpin | remove of an install (the page asks before removing).
+    function libraryInstallAction(kind, install) {
+        if (!install || ['rollback', 'pin', 'unpin', 'remove'].indexOf(kind) < 0) return false;
+        var target = libraryTarget(install);
+        return libraryStart(Library.newJob(kind, target, Library.jobArgs(kind, target.id, '', 'yes')));
+    }
+    // Sources: refresh [id] | enable id | disable id | remove id | add (Library.sourceForm args).
+    function librarySource(verb, id, args) {
+        var source = librarySources.find(s => s.id === id) || null;
+        var target = {id: id || '', sourceId: id || '', type: '', name: source ? Library.tierLabel(source) : id || ''};
+        var argv = verb === 'add' ? args : ['source', verb].concat(id ? [id] : []).concat(['--json']);
+        return libraryStart(Library.newJob('source.' + verb, target, argv));
+    }
+    function libraryCancel() { if (libraryBusy && libraryRun.running) { libraryJob = Object.assign({}, libraryJob, {cancelled: true}); libraryRun.signal(15); } }
+    function libraryClose() { if (!libraryBusy) libraryJob = null; }
+    function libraryEnded(code, errors) {
+        if (!libraryJob) return;
+        var job = Library.jobFinished(libraryJob, code, errors);
+        if (job.cancelled && job.phase === 'failed') job.error = {rule: '', message: 'Cancelled.'};
+        libraryJob = job.panel || job.phase === 'confirm' ? job : null;
+        if (job.phase === 'confirm') return;
+        var e = Library.errorText(job.error);
+        libraryFeedback = job.phase === 'done' ? {level: 'info', text: Library.resultText(job, job.target.name)} : {level: 'warning', text: e.line + (e.detail ? '  (' + e.detail + ')' : '')};
+        libraryFeedbackTimer.restart();
+        if (!libraryVisible) showToast(Library.toast(job, job.target.name));
+        // A library change shows in Objects: refresh core's catalog and library list.
+        var type = job.result && job.result.type ? job.result.type : job.target.type;
+        if (job.phase === 'done' && type === 'library') { catalogRefresh.restart(); refreshLibraries(); }
+        refreshLibrary();
+    }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')
@@ -412,11 +529,13 @@ QtObject {
     readonly property int tabMap: 0
     readonly property int tabQuests: 1
     readonly property int tabObjects: 2
-    readonly property int tabSettings: 8
-    readonly property int tabPerformance: 9
-    readonly property int tabCount: 10
+    // Library follows Objects (RFC-0015).
+    readonly property int tabLibrary: 3
+    readonly property int tabSettings: 9
+    readonly property int tabPerformance: 10
+    readonly property int tabCount: 11
     // Stable names for the Director tabs (dev hooks and checks address tabs by name, not position).
-    readonly property var tabKeys: ['map', 'quests', 'objects', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
+    readonly property var tabKeys: ['map', 'quests', 'objects', 'library', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)

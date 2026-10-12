@@ -7,7 +7,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
+    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Library', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
@@ -197,11 +197,12 @@ Item {
             DirectorMap { anchors.fill: parent; visible: ShellState.tab === ShellState.tabMap }
             DirectorQuests { anchors.fill: parent; visible: ShellState.tab === ShellState.tabQuests }
             DirectorObjects { anchors.fill: parent; visible: ShellState.tab === ShellState.tabObjects }
-            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 3 }
-            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 4 }
-            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 5 }
-            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 6 }
-            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 7 }
+            DirectorLibrary { anchors.fill: parent; visible: ShellState.tab === ShellState.tabLibrary }
+            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 4 }
+            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 5 }
+            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 7 }
+            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 8 }
             DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === ShellState.tabPerformance }
             DirectorSettings { anchors.fill: parent; visible: ShellState.tab === ShellState.tabSettings }
         }
@@ -236,6 +237,11 @@ Item {
                          : ShellState.objectsView === 'placed' ? '↑ ↓  Move    Enter  Edit    L  Lock    H  Hide    R  Reset    Del  Remove    V  View    Esc  Close'
                          : ShellState.objectsView === 'characters' ? '↑ ↓  Move    D  Disable    B  Rebind    Del  Remove    V  View    Esc  Close'
                          : '↑ ↓  Move    Enter  Add or spawn    /  Search    V  Placed    ← →  Views    Esc  Close')
+                      : ShellState.tab === ShellState.tabLibrary
+                      ? (ShellState.libraryJob && ShellState.libraryJob.panel ? 'Enter  Confirm    Esc  Back'
+                         : ShellState.libraryView === 'browse' ? '↑ ↓  Move    Enter  Install or update    /  Search    V  View    ← →  Views    Esc  Close'
+                         : ShellState.libraryView === 'installed' ? '↑ ↓  Move    U  Update    P  Pin    V  View    ← →  Views    Esc  Close'
+                         : '↑ ↓  Move    R  Refresh    V  View    ← →  Views    Esc  Close')
                       : '← →  Views      Tab  Focus      Esc  Close'
                 font.family: Tokens.mono
                 font.pixelSize: 11

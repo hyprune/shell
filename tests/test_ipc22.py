@@ -473,7 +473,7 @@ class Presentation(unittest.TestCase):
 
     def test_tab_after_quests_and_named_controls(self):
         director = self.read('components/Director.qml')
-        self.assertRegex(director, r"'Quests', 'Objects', 'Places'")
+        self.assertRegex(director, r"'Quests', 'Objects', '")  # Library (RFC-0015) follows Objects
         self.assertIn('DirectorObjects { anchors.fill: parent; visible: ShellState.tab === ShellState.tabObjects }', director)
         page = self.read('components/DirectorObjects.qml')
         for name in ["objectName: 'directorObjects'", "objectName: 'objectsView'", "objectName: 'objectsSource'", "objectName: 'objectsCategory'",
