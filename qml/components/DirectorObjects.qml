@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../Objects.js" as Objects
+import "../Npcs.js" as Npcs
 
 // Director > Objects (RFC-0011 P1, IPC 0.22). Catalog: every source (World, Library, Mine)
 // as cards with source and category filters and a search over names and tags; Add puts the
@@ -11,6 +12,9 @@ import "../Objects.js" as Objects
 // instances with the configure panel. Keys: Up/Down move, Enter adds (Catalog) or edits
 // (Placed), / searches, V switches the view, L lock, H hide or show, R reset, Delete removes;
 // Left/Right still change the Director view and Esc leaves the menu.
+// IPC 0.23: character entries spawn (NpcSpawn: choose a route, then settings) instead of
+// going to the pocket; Characters lists this world's characters (NpcPanel); while a route is
+// being drawn (npcs.drawing) a bar offers Done (paths.finish) and Cancel.
 FocusScope {
     id: root
     objectName: 'directorObjects'
@@ -24,7 +28,10 @@ FocusScope {
     readonly property var shown: Objects.filterCatalog(entries, {source: source, category: category, query: query})
     readonly property var cats: Objects.categories(entries)
     readonly property var objectsState: ShellState.objectsState
-    readonly property var instances: objectsState ? objectsState.instances : []
+    // Characters have their own view (IPC 0.23); Placed lists the other objects.
+    readonly property var instances: objectsState ? objectsState.instances.filter(i => i.character !== true) : []
+    readonly property bool spawning: ShellState.spawnRef !== '' || ShellState.rebindId !== ''
+    readonly property var views: ['catalog', 'placed'].concat(ShellState.npcsSupported ? ['characters'] : [])
     readonly property var selected: Objects.selectedInstance(instances, ShellState.selectedObject)
     readonly property bool hasUser: instances.some(i => i.source === 'user')
     readonly property bool hasAuthored: instances.some(i => i.source === 'authored')
@@ -35,7 +42,13 @@ FocusScope {
         confirm = '';
         Qt.callLater(focusView);
     }
-    function focusView() { if (view === 'placed') placedList.forceActiveFocus(); else grid.forceActiveFocus(); }
+    function focusView() {
+        if (spawning) spawnPanel.forceActiveFocus();
+        else if (view === 'placed') placedList.forceActiveFocus();
+        else if (view === 'characters') npcPanel.focusList();
+        else grid.forceActiveFocus();
+    }
+    onSpawningChanged: Qt.callLater(focusView)
     onVisibleChanged: { if (visible && ShellState.director) Qt.callLater(focusView); }
     onShownChanged: cursor = Math.max(0, Math.min(cursor, shown.length - 1))
     onInstancesChanged: syncSelection()
@@ -46,7 +59,10 @@ FocusScope {
         if (view === 'placed' && !selected && instances.length) ShellState.selectedObject = instances[0].id;
     }
 
-    function add(entry) { if (Objects.canAdd(entry) && ShellState.objectsCan('objects.pocket')) ShellState.pocketObject(entry.ref); }
+    function add(entry) {
+        if (Npcs.isCharacter(entry)) { if (Npcs.canSpawn(entry) && ShellState.npcsSupported) ShellState.startSpawn(entry.ref); return; }
+        if (Objects.canAdd(entry) && ShellState.objectsCan('objects.pocket')) ShellState.pocketObject(entry.ref);
+    }
     function moveCursor(key) {
         var next = Objects.gridMove(cursor, shown.length, grid.columns, key);
         if (next < 0) return;
@@ -75,9 +91,9 @@ FocusScope {
     Timer { id: confirmTimer; interval: 6000; onTriggered: root.confirm = '' }
 
     Keys.onPressed: (event) => {
-        if (!ShellState.objectsSupported) return;
+        if (!ShellState.objectsSupported || root.spawning) return;
         if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return;
-        if (event.key === Qt.Key_V) { root.setView(root.view === 'catalog' ? 'placed' : 'catalog'); event.accepted = true; }
+        if (event.key === Qt.Key_V) { root.setView(root.views[(root.views.indexOf(root.view) + 1) % root.views.length]); event.accepted = true; }
         else if (root.view === 'catalog' && event.key === Qt.Key_Slash) { search.forceActiveFocus(); event.accepted = true; }
         else if (root.view === 'placed' && root.selected) {
             var map = {}; map[Qt.Key_L] = 'lock'; map[Qt.Key_H] = 'hide'; map[Qt.Key_R] = 'reset'; map[Qt.Key_Delete] = 'remove';
@@ -104,8 +120,9 @@ FocusScope {
             spacing: 16
             Segmented {
                 objectName: 'objectsView'
-                Layout.preferredWidth: 300
+                Layout.preferredWidth: ShellState.npcsSupported ? 450 : 300
                 model: [{id: 'catalog', label: 'Catalog'}, {id: 'placed', label: 'Placed  ·  ' + root.instances.length}]
+                       .concat(ShellState.npcsSupported ? [{id: 'characters', label: 'Characters  ·  ' + ShellState.characterInstances.length}] : [])
                 current: root.view
                 onPicked: (id) => root.setView(id)
             }
@@ -142,11 +159,51 @@ FocusScope {
             }
         }
 
+        // ---- A route being drawn (paths.draw in progress) ----
+        Rectangle {
+            objectName: 'npcDrawing'
+            Layout.fillWidth: true
+            Layout.preferredHeight: 56
+            visible: !!ShellState.npcDrawing
+            radius: 3
+            color: Tokens.raised
+            border.color: Tokens.gold
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 16; anchors.rightMargin: 8
+                spacing: 12
+                HudLabel { text: '✎'; color: Tokens.gold; font.pixelSize: 18 }
+                HudLabel {
+                    Layout.fillWidth: true
+                    text: ShellState.drawingHint ? ShellState.drawingHint.title + '  ·  ' + ShellState.drawingHint.pathId + (ShellState.drawingHint.detail ? '  ·  ' + ShellState.drawingHint.detail : '') : ''
+                    font.pixelSize: 14; elide: Text.ElideRight
+                }
+                ActionButton { objectName: 'npc-draw-done'; primary: true; text: 'Done'; enabled: ShellState.npcsCan('paths.finish'); onClicked: ShellState.finishDrawing() }
+                ActionButton { objectName: 'npc-draw-cancel'; text: 'Cancel'; enabled: ShellState.npcsCan('paths.remove'); onClicked: ShellState.cancelDrawing() }
+            }
+        }
+
+        // ---- Spawn / rebind (IPC 0.23) ----
+        NpcSpawn {
+            id: spawnPanel
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.spawning
+        }
+
+        // ---- Characters (IPC 0.23) ----
+        NpcPanel {
+            id: npcPanel
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.view === 'characters' && !root.spawning
+        }
+
         // ---- Catalog ----
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.view === 'catalog'
+            visible: root.view === 'catalog' && !root.spawning
             spacing: root.compact ? 8 : 12
 
             RowLayout {
@@ -232,6 +289,7 @@ FocusScope {
                         current: grid.activeFocus && parent.index === root.cursor
                         onPicked: { root.cursor = parent.index; grid.forceActiveFocus(); }
                         onAdd: root.add(parent.modelData)
+                        onSpawn: root.add(parent.modelData)
                     }
                 }
 
@@ -251,7 +309,7 @@ FocusScope {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.view === 'placed'
+            visible: root.view === 'placed' && !root.spawning
             spacing: 20
 
             Rectangle {

@@ -232,8 +232,10 @@ Item {
                 text: ShellState.tab === ShellState.tabQuests && ShellState.questsSupported
                       ? '↑ ↓  Move    Enter  Open    T  Track    Space  Done    F  Focus    N  New    ← →  Views    Esc  Close'
                       : ShellState.tab === ShellState.tabObjects && ShellState.objectsSupported
-                      ? (ShellState.objectsView === 'placed' ? '↑ ↓  Move    Enter  Edit    L  Lock    H  Hide    R  Reset    Del  Remove    V  View    Esc  Close'
-                                                              : '↑ ↓  Move    Enter  Add    /  Search    V  Placed    ← →  Views    Esc  Close')
+                      ? (ShellState.spawnRef !== '' || ShellState.rebindId !== '' ? '↑ ↓  Route    Enter  Confirm    Esc  Back'
+                         : ShellState.objectsView === 'placed' ? '↑ ↓  Move    Enter  Edit    L  Lock    H  Hide    R  Reset    Del  Remove    V  View    Esc  Close'
+                         : ShellState.objectsView === 'characters' ? '↑ ↓  Move    D  Disable    B  Rebind    Del  Remove    V  View    Esc  Close'
+                         : '↑ ↓  Move    Enter  Add or spawn    /  Search    V  Placed    ← →  Views    Esc  Close')
                       : '← →  Views      Tab  Focus      Esc  Close'
                 font.family: Tokens.mono
                 font.pixelSize: 11

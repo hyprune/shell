@@ -492,5 +492,33 @@ class Feedback(unittest.TestCase):
         self.assertIsNone(call('noticeToast', {'code': 'runtime.ready', 'message': 'x'}))
 
 
+class Presentation(unittest.TestCase):
+    """QML wiring (source checks; the nested captures render it)."""
+
+    def read(self, name): return (ROOT / 'qml' / name).read_text()
+
+    def test_objects_tab(self):
+        page = self.read('components/DirectorObjects.qml')
+        for needle in ["{id: 'characters', label: 'Characters  ·  '", 'NpcSpawn {', 'NpcPanel {', "objectName: 'npcDrawing'",
+                       "objectName: 'npc-draw-done'", "objectName: 'npc-draw-cancel'", 'i.character !== true']:
+            self.assertIn(needle, page)
+        card = self.read('components/ObjectCard.qml')
+        self.assertIn("objectName: 'objectSpawn:' + (card.entry ? card.entry.ref : '')", card)
+        self.assertIn("ShellState.objectsCan('npcs.spawn')", card)
+        spawn = self.read('components/NpcSpawn.qml')
+        for needle in ["kind: 'stand'", "kind: 'draw'", 'Npcs.routeOptions(ShellState.pathList)', "objectName: 'npcStops'", 'Npcs.stopsRequest']:
+            self.assertIn(needle, spawn)
+        panel = self.read('components/NpcPanel.qml')
+        for needle in ["objectName: 'npcMotion'", 'Npcs.stateText(root.npcs)', 'ShellState.startRebind', "'npcs.remove', {all: true}"]:
+            self.assertIn(needle, panel)
+
+    def test_state_routes_interactions(self):
+        state = self.read('ShellState.qml')
+        for needle in ["case 'interaction.prompt':", 'handleInteraction(interaction)', "send({type: 'interaction.panel', objectId: effect.objectId})",
+                       "action('paths.list', {})", 'Npcs.errorToast(msg.method, msg.error || null, msg.message)', 'Npcs.noticeToast(msg)',
+                       "npcAction('paths.finish', {})", "npcAction('paths.remove', {id: npcDrawing.pathId})"]:
+            self.assertIn(needle, state)
+
+
 if __name__ == '__main__':
     unittest.main()

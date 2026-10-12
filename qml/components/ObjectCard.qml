@@ -4,20 +4,26 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../Objects.js" as Objects
+import "../Npcs.js" as Npcs
 
 // Director > Objects > Catalog: one catalog entry (IPC 0.22 objects.catalog). Thumbnail
 // (or a cube), name, source badge, size, trait chips and triangles; entries that can't be
 // placed are dimmed with core's reason, invalid ones list their errors. Add pockets it.
+// Characters (IPC 0.23) are never pocketed: Spawn opens the route step instead.
 Rectangle {
     id: card
     property var entry: null
     property bool current: false
     property bool compact: false
     signal add()
+    signal spawn()
     signal picked()
     readonly property bool addable: Objects.canAdd(entry)
-    readonly property var note: Objects.entryNote(entry)
-    readonly property real dim: addable ? 1 : 0.55
+    readonly property bool character: Npcs.isCharacter(entry)
+    readonly property bool spawnable: Npcs.canSpawn(entry) && ShellState.npcsSupported
+    readonly property var note: !character ? Objects.entryNote(entry) : spawnable ? {level: '', lines: []}
+                              : {level: entry.state === 'invalid' ? 'error' : 'muted', lines: [ShellState.npcsSupported ? Npcs.spawnNote(entry) : 'Characters need core IPC 0.23.']}
+    readonly property real dim: addable || spawnable ? 1 : 0.55
     objectName: 'objectCard:' + (entry ? entry.ref : '')
     color: current ? Tokens.raised : Tokens.panel
     radius: Tokens.radius
@@ -27,7 +33,7 @@ Rectangle {
     Accessible.name: entry ? entry.name : ''
     Accessible.description: entry ? Objects.sourceLabel(entry.source) + (addable ? '' : ' · ' + card.note.lines.join(' ')) : ''
 
-    TapHandler { onTapped: card.picked(); onDoubleTapped: { card.picked(); if (card.addable) card.add(); } }
+    TapHandler { onTapped: card.picked(); onDoubleTapped: { card.picked(); if (card.spawnable) card.spawn(); else if (card.addable) card.add(); } }
 
     ColumnLayout {
         anchors.fill: parent
@@ -144,6 +150,19 @@ Rectangle {
         Item { Layout.fillWidth: true; Layout.fillHeight: true }
 
         ActionButton {
+            objectName: 'objectSpawn:' + (card.entry ? card.entry.ref : '')
+            Accessible.name: card.entry ? 'Spawn ' + card.entry.name : 'Spawn'
+            visible: card.character
+            Layout.fillWidth: true
+            implicitHeight: card.compact ? 32 : 38
+            text: card.spawnable ? 'Spawn' : card.entry && card.entry.state === 'invalid' ? 'Invalid' : 'Can\'t spawn'
+            primary: card.current && card.spawnable
+            enabled: card.spawnable && ShellState.objectsCan('npcs.spawn')
+            onClicked: card.spawn()
+        }
+
+        ActionButton {
+            visible: !card.character
             objectName: 'objectAdd:' + (card.entry ? card.entry.ref : '')
             Accessible.name: card.entry ? 'Add ' + card.entry.name + ' to the pocket' : 'Add'
             Layout.fillWidth: true

@@ -267,7 +267,35 @@ ShellRoot {
             ShellState.objectPreview = json ? JSON.parse(json) : null;
             if (ShellState.objectPreview) ShellState.refreshCatalog();
         }
-        function objectsView(view: string): void { if (ShellState.dev && (view === 'catalog' || view === 'placed')) ShellState.objectsView = view; }
+        function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'placed', 'characters'].indexOf(view) >= 0) ShellState.objectsView = view; }
+        // IPC 0.23 preview (dev only): paths.list answer, spawn / rebind panel, characters, choice list.
+        // json: {"paths": [...]} (qs ipc splits a top-level [list] argument).
+        function pathPreview(json: string): void {
+            if (!ShellState.dev) return;
+            ShellState.pathPreview = json ? JSON.parse(json).paths : null;
+            ShellState.refreshPaths();
+        }
+        function npcSpawn(ref: string): void { if (ShellState.dev) ShellState.startSpawn(ref); }
+        function npcRebind(id: string): void { if (ShellState.dev) ShellState.startRebind(id); }
+        function npcSelect(id: string): void { if (ShellState.dev) ShellState.selectedCharacter = id; }
+        function npcRoute(index: int): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var panel = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'npcSpawn');
+            if (!panel || index < 0 || index >= panel.rows.length) return false;
+            panel.cursor = index;
+            return true;
+        }
+        function npcSettings(json: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var panel = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'npcSpawn');
+            if (!panel) return false;
+            var s = JSON.parse(json);
+            ['speed', 'phase', 'reverse', 'accent', 'stops'].forEach(k => { if (s[k] !== undefined) panel[k] = s[k]; });
+            return true;
+        }
+        // The bridge's interaction.prompt event (a choice list), or null.
+        function npcChoice(json: string): void { if (ShellState.dev) ShellState.receive({type: 'interaction.prompt', value: json ? JSON.parse(json) : null}); }
+        function npcNotice(code: string, message: string): void { if (ShellState.dev) ShellState.receive({type: 'notice', level: 'info', code: code, message: message}); }
         function objectSelect(id: string): void { if (ShellState.dev) ShellState.selectedObject = id; }
         function objectFilter(source: string, category: string, query: string): bool {
             if (!ShellState.dev || !ShellState.director) return false;
@@ -436,6 +464,19 @@ ShellRoot {
                             selected: ShellState.selectedObject, sections: panel ? panel.sectionIds : [], feedback: ShellState.objectFeedback,
                             pocket: ShellState.unplacedObjects, selectedKind: ShellState.selectedKind, gizmo: ShellState.editorGizmo,
                             instances: ShellState.objectsState ? ShellState.objectsState.instances.length : 0};
+                })(),
+                npcs: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var spawn = ShellState.director ? Audit.find(view, 'npcSpawn') : null;
+                    var hud = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
+                    function text(name) { var item = hud ? Audit.find(hud, name) : null; return item ? item.text : null; }
+                    return {supported: ShellState.npcsSupported, paths: ShellState.pathList.length, spawnRef: ShellState.spawnRef, rebindId: ShellState.rebindId,
+                            rows: spawn ? spawn.rows.map(r => r.kind === 'route' ? r.ref : r.kind) : [], cursor: spawn ? spawn.cursor : null,
+                            request: spawn ? spawn.request : null, ready: spawn ? spawn.ready : null, stops: spawn ? spawn.stops : [],
+                            selected: ShellState.selectedCharacter, characters: ShellState.characterInstances.length, choice: ShellState.npcChoice,
+                            drawing: ShellState.npcDrawing, prompt: text('hudNpcPromptText'), line: text('hudNpcLine'), drawingText: text('hudNpcDrawingText'),
+                            toast: text('hudToastLine'),
+                            interactionKey: ShellState.npcInteractionKey};
                 })(),
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,
                 captured: ShellState.lastCapturedInput,

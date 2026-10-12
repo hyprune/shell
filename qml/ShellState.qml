@@ -8,6 +8,7 @@ import "Blueprint.js" as Blueprint
 import "DirectorModel.js" as DirectorModel
 import "Quests.js" as Quests
 import "Objects.js" as Objects
+import "Npcs.js" as Npcs
 pragma Singleton
 
 QtObject {
@@ -264,6 +265,83 @@ QtObject {
         sayObjects(Objects.resultText(method, params), 'info');
         objectActionDone(method, params || null, result);
     }
+    // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
+    readonly property var npcsState: state && state.npcs ? state.npcs : null
+    readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')
+    // Character and path changes need objects.control; paths.list state.read; choosing world.control.
+    function npcsCan(method) { return method === 'paths.list' || method === 'interaction.choose' || method === 'graphics.set' ? available(method) : objectsCan(method); }
+    readonly property var characterInstances: Npcs.characters(objectsState ? objectsState.instances : [])
+    property var pathList: []                // paths.list result: package and user paths of this world
+    property bool pathsLoaded: false
+    property string selectedCharacter: ''    // Director > Objects > Characters
+    // The spawn panel: a catalog character ref (spawn) or a user character id (rebind); '' = closed.
+    property string spawnRef: ''
+    property string rebindId: ''
+    property var npcChoice: null             // the choice list on screen (bridge interaction.prompt)
+    property string npcInteractionKey: ''    // the last npcs.interaction acted on (panel, waypoint, guide)
+    property string pathsSignature: ''
+    property var pathPreview: null           // DEV ONLY: paths.list answer
+    readonly property var npcDrawing: npcsState ? npcsState.drawing : null
+    readonly property var drawingHint: Npcs.drawingHint(npcDrawing, drawingName())
+    function drawingName() {
+        if (!npcDrawing) return '';
+        if (npcDrawing.spawn) { var e = Objects.entryFor(objectCatalog, npcDrawing.spawn.ref); return e ? e.name : ''; }
+        var i = npcDrawing.bind ? Objects.selectedInstance(objectsState ? objectsState.instances : [], npcDrawing.bind) : null;
+        return i ? i.name : '';
+    }
+    function characterName(objectId) {
+        var i = Objects.selectedInstance(objectsState ? objectsState.instances : [], objectId);
+        if (i) return i.name;
+        return npcsState && npcsState.aimed && npcsState.aimed.objectId === objectId ? npcsState.aimed.name : '';
+    }
+    function refreshPaths() { if (npcsSupported) action('paths.list', {}); }
+    property Timer pathsRefresh: Timer { interval: 150; onTriggered: root.refreshPaths() }
+    function npcAction(method, params) {
+        if (!npcsCan(method)) return;
+        objectFeedback = null;
+        action(method, params);
+    }
+    function startSpawn(ref) { rebindId = ''; spawnRef = ref || ''; if (spawnRef) refreshPaths(); }
+    function startRebind(id) { spawnRef = ''; rebindId = id || ''; if (rebindId) refreshPaths(); }
+    function closeSpawn() { spawnRef = ''; rebindId = ''; }
+    function finishDrawing() { npcAction('paths.finish', {}); }
+    // There is no paths.cancel: Cancel removes the path being drawn.
+    function cancelDrawing() { if (npcDrawing) npcAction('paths.remove', {id: npcDrawing.pathId}); }
+    function setNpcMotion(motion) { var r = Npcs.motionRequest(motion); if (r && available(r.method)) action(r.method, r.params); }
+    function chooseInteraction(choiceId) {
+        var params = Npcs.chooseParams(npcChoice || (npcsState ? npcsState.interaction : null), choiceId);
+        if (params) action('interaction.choose', params);
+    }
+    // A new npcs.interaction: panel opens the Director there (unknown ids just end it),
+    // waypoint and guide show a toast. Choice lists come from the bridge (exclusive input);
+    // the say caption is drawn from state by the HUD.
+    function handleInteraction(interaction) {
+        var effect = Npcs.interactionEffect(interaction, characterName(interaction.objectId), tabKeys);
+        if (effect.kind === 'toast') showToast(effect.toast);
+        else if (effect.kind === 'end') action('interaction.choose', {objectId: effect.objectId, interactionId: null});
+        else if (effect.kind === 'panel') {
+            tab = effect.tab;
+            if (effect.view) objectsView = effect.view;
+            if (dev && previewMethods.indexOf('interaction.choose') >= 0 && methods.indexOf('interaction.choose') < 0) {
+                send({type: 'dev.open'}); // DEV ONLY: the mock has no 0.23 bridge command
+                action('interaction.choose', {objectId: effect.objectId, interactionId: null});
+            } else send({type: 'interaction.panel', objectId: effect.objectId});
+        }
+    }
+    function npcResult(method, params, result) {
+        if (!method || !result) return;
+        if (method === 'paths.list') { pathList = result.paths; pathsLoaded = true; return; }
+        if (!/^(npcs|paths)\./.test(method)) return;
+        if (method === 'npcs.spawn') { closeSpawn(); objectsView = 'characters'; selectedCharacter = result.id; }
+        if (method === 'npcs.bind') closeSpawn();
+        if (method === 'npcs.remove' && params && (params.all || params.id === selectedCharacter)) selectedCharacter = '';
+        if (method === 'paths.draw') { closeSpawn(); if (director) close(); } // tool 3 draws in the world
+        sayObjects(Npcs.resultText(method, params, result), 'info');
+        pathsRefresh.restart();
+        objectActionDone(method, params || null, result);
+    }
+    readonly property bool charactersVisible: objectsVisible && (objectsView === 'characters' || spawnRef !== '' || rebindId !== '')
+    onCharactersVisibleChanged: { if (charactersVisible) refreshPaths(); }
     // DEV ONLY (preview IPC): state fields and methods shown without a newer core. The
     // patch is merged into every snapshot; preview-only methods are recorded, never sent.
     property var statePreview: null
@@ -444,6 +522,14 @@ QtObject {
             if (method === 'libraries.install') return {revision: 1, id: 'org.example.preview', version: '1.0.0'};
             return {revision: 1};
         }
+        if (/^(npcs|paths|interaction)\./.test(method)) {
+            if (method === 'paths.list') return {paths: pathPreview || []};
+            if (method === 'npcs.spawn') return {revision: 1, id: 'u-npc001'};
+            if (method === 'paths.draw') return {revision: 1, id: 'path-9'};
+            if (method === 'paths.set') return {revision: 1, id: params.path.id || 'path-9'};
+            if (method === 'paths.finish') return {revision: 1, id: 'path-9', bound: null};
+            return {revision: 1};
+        }
         if (!questPreview) return null;
         if (method === 'quests.list') return {quests: questPreview.list || []};
         if (method === 'quests.get') { var d = (questPreview.details || {})[Quests.refKey(params.questRef)]; return d ? {quest: d} : null; }
@@ -574,6 +660,7 @@ QtObject {
                 menuHold = null; readyText=''; readyWorld='';readyTimer.stop();
                 questList = []; questDetail = null; guidance = null; guidanceRequested = false; clockKnown = false;
                 objectCatalog = []; objectCatalogRevision = -1; objectCatalogFor = -1; objectCatalogLoaded = false; libraries = null; objectFeedback = null;
+                pathList = []; pathsLoaded = false; npcChoice = null; npcInteractionKey = ''; pathsSignature = ''; spawnRef = ''; rebindId = '';
                 toasts = []; banners = []; deferredToasts = [];
                 methods = [];
                 capabilities = [];
@@ -645,6 +732,13 @@ QtObject {
             if (!guidanceRequested && available('guidance.get')) refreshGuidance();
             // objects.catalogRevision bumps when any catalog source changes.
             if (objectsVisible && objectsState && objectsState.catalogRevision !== objectCatalogFor && !catalogRefresh.running) catalogRefresh.restart();
+            // IPC 0.23: act once on each new character interaction; refresh routes when paths change.
+            var interaction = state.npcs ? state.npcs.interaction : null;
+            var interactionKey = Npcs.interactionKey(interaction);
+            if (interactionKey !== npcInteractionKey) { npcInteractionKey = interactionKey; if (interaction) handleInteraction(interaction); }
+            var editorPaths = state.editor && state.editor.paths ? state.editor.paths : [];
+            var nextPaths = editorPaths.map(p => p.id + ':' + p.points.length + ':' + (p.stops ? p.stops.length : 0)).join(',') + '|' + JSON.stringify(state.npcs ? state.npcs.drawing : null);
+            if (nextPaths !== pathsSignature) { pathsSignature = nextPaths; if (charactersVisible) pathsRefresh.restart(); }
             arrive();
             var q = state.movement.orientation;
             var angle = -Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2])) * 180 / Math.PI;
@@ -669,6 +763,10 @@ QtObject {
             if (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket') pocketFeedback(msg.method, msg.result);
             questResult(msg.method, msg.params, msg.result);
             objectResult(msg.method, msg.params, msg.result);
+            npcResult(msg.method, msg.params, msg.result);
+            break;
+        case 'interaction.prompt':
+            npcChoice = msg.value || null;
             break;
         case 'menu.panel':
             if (msg.panel === 'map') tab = 0;
@@ -701,6 +799,19 @@ QtObject {
                 questActionFailed(msg.method, msg.params || null, questFeedback);
                 if (msg.method === 'quests.get' && msg.params && Quests.refKey(msg.params.questRef) === selectedQuest) questDetail = null;
                 break; // shown on the Quests page, not as a HUD notice
+            }
+            if (msg.code === 'shell.action' && /^(npcs|paths|interaction)\./.test(msg.method || '')) {
+                var npcRefusal = Npcs.errorToast(msg.method, msg.error || null, msg.message);
+                showToast(npcRefusal);
+                sayObjects(npcRefusal.line + (npcRefusal.detail ? ' (' + npcRefusal.detail + ')' : ''), 'warning');
+                objectActionFailed(msg.method, msg.params || null, npcRefusal.line);
+                break;
+            }
+            if (Npcs.noticeToast(msg)) {
+                // Character and route notices (IPC 0.23 runtime.notice codes) are short toasts.
+                showToast(Npcs.noticeToast(msg));
+                if (charactersVisible) pathsRefresh.restart();
+                break;
             }
             if (msg.code === 'shell.action' && /^(objects|libraries)\./.test(msg.method || '')) {
                 // A short toast with core's words (and the placement rule), and the page line.
