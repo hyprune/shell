@@ -19,8 +19,12 @@ var RULES = {
     'keep-clear': 'blocks a spawn or a climb', player: 'overlaps you', reach: 'out of reach',
     budget: 'over the object budget', 'library.conflict': 'another copy of that library is installed'};
 // The configure panel's sections, in this order. 'data' is reserved for RFC-0013 data
-// bindings: it is always listed and renders nothing in IPC 0.22.
+// bindings: it is always listed and shows only for machines (their data source).
 var SECTIONS = ['transform', 'lock', 'remove', 'data'];
+// RFC-0013 draft (machines): every placed machine reads source com.hyprune.sources.<instance
+// id> by default; the source helper publishes a sources.json entry with that id there.
+var SOURCES_CLIENT = 'com.hyprune.sources';
+var SOURCE_SLUG = /^[a-z][a-z0-9-]*$/;
 var POCKET_ITEM = /^pocket-[0-9]+$/;
 var SCALE_MIN = 0.25, SCALE_MAX = 4, POSITION_MAX = 100000;
 var TOAST_MS = 4000;
@@ -206,9 +210,25 @@ function transformParams(instance, draft, scaleRange) {
     return {params: params};
 }
 
+function isMachine(entry) { return !!entry && (entry.traits || []).indexOf('machine') >= 0; }
+
+// The instance id as the configure panel and the Placed list show it ('' without one).
+function idText(instance) { return instance && instance.id ? 'ID  ' + instance.id : ''; }
+
+// Where a machine instance reads its data (null for other objects): its default source and
+// what to do with it. Ids that cannot be a sources.json id need a machines.json binding.
+function dataSource(instance, entry) {
+    if (!instance || !instance.id || !isMachine(entry)) return null;
+    var publishable = SOURCE_SLUG.test(instance.id);
+    return {id: instance.id, sourceId: SOURCES_CLIENT + '.' + instance.id, publishable: publishable,
+            line: 'Data source id: ' + instance.id,
+            hint: publishable ? 'Publish to it from sources.json.' : 'Bind it to a source in machines.json.'};
+}
+
 // The configure panel for an instance: every section in SECTIONS order, each with
-// visibility, whether it can be edited now and its actions.
-function panelSections(instance) {
+// visibility, whether it can be edited now and its actions. With its catalog entry, a
+// machine's Data section shows its data source.
+function panelSections(instance, entry) {
     if (!instance) return [];
     var user = instance.source === 'user', locked = !!instance.locked, hidden = instance.state === 'hidden';
     var hideable = !user && (instance.movable || hidden);
@@ -220,7 +240,8 @@ function panelSections(instance) {
                                      actions: user ? [{id: 'remove', label: 'Remove', enabled: !locked}, {id: 'reset', label: 'Reset', enabled: !locked}]
                                                    : (hideable ? [{id: 'hide', label: hidden ? 'Show' : 'Hide', hidden: !hidden, enabled: !locked}] : [])
                                                      .concat([{id: 'reset', label: 'Reset', enabled: true}])};
-        return {id: id, title: 'Data', visible: false, editable: false}; // RFC-0013 data bindings
+        var source = dataSource(instance, entry); // RFC-0013 data bindings
+        return source ? {id: id, title: 'Data', visible: true, editable: false, source: source} : {id: id, title: 'Data', visible: false, editable: false};
     });
 }
 

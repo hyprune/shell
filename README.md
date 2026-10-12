@@ -48,9 +48,11 @@ source and category and a search over names and tags; entries that can't be plac
 dimmed with core's reason and invalid ones list their errors. **Add to pocket** (or Enter on
 the focused card) calls `objects.pocket`; core selects tool 5 and a toast says so.
 **Placed** lists this world's authored and user instances with their state (blocked ones
-name the placement rule) and a lock badge; the configure panel is built from sections in a
-fixed order (Transform, Lock, Remove / Reset or Hide / Reset, and a reserved Data slot for
-RFC-0013 that renders nothing yet), with "Show and reset authored objects" and "Remove my
+name the placement rule), their instance id and a lock badge; the configure panel shows the
+instance id (`ID  u-3f9a1c`) and is built from sections in a fixed order (Transform, Lock,
+Remove / Reset or Hide / Reset, and Data: for a machine, `Data source id: u-3f9a1c`, the
+`com.hyprune.sources.<id>` source it reads by default, which a sources.json entry with that
+id publishes; RFC-0013 draft), with "Show and reset authored objects" and "Remove my
 objects" behind a second press, and user placement usage against core's limits. Keys: Up /
 Down move, Enter adds or edits, / searches, V switches the view, L lock, H hide, R reset,
 Delete remove. The tool 5 HUD lists pocketed objects (cube glyph, the selected one

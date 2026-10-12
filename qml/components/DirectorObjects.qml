@@ -353,7 +353,7 @@ FocusScope {
                             objectName: 'placedRow:' + modelData.id
                             Accessible.role: Accessible.ListItem
                             Accessible.name: modelData.name
-                            Accessible.description: Objects.sourceLabel(modelData.source) + ' · ' + Objects.stateText(modelData) + (modelData.locked ? ' · locked' : '')
+                            Accessible.description: Objects.sourceLabel(modelData.source) + ' · ' + Objects.stateText(modelData) + (modelData.locked ? ' · locked' : '') + ' · ID ' + modelData.id
                             Accessible.selected: selected
                             width: placedList.width - 8
                             height: 60
@@ -385,11 +385,22 @@ FocusScope {
                                         HudLabel { id: lockText; anchors.centerIn: parent; leftPadding: 6; rightPadding: 6; text: 'LOCKED'; font.pixelSize: 9; font.letterSpacing: 1.2; color: Tokens.gold }
                                     }
                                 }
-                                HudLabel {
+                                RowLayout {
                                     width: parent.width
-                                    text: Objects.sourceLabel(row.modelData.source) + '  ·  ' + Objects.stateText(row.modelData)
-                                    font.pixelSize: 12
-                                    color: row.level === 'warning' ? Tokens.warning : row.level === 'busy' ? Tokens.accent : Tokens.muted
+                                    spacing: 8
+                                    HudLabel {
+                                        Layout.fillWidth: true
+                                        text: Objects.sourceLabel(row.modelData.source) + '  ·  ' + Objects.stateText(row.modelData)
+                                        font.pixelSize: 12
+                                        color: row.level === 'warning' ? Tokens.warning : row.level === 'busy' ? Tokens.accent : Tokens.muted
+                                    }
+                                    // The instance id (machines read source com.hyprune.sources.<id>).
+                                    HudLabel {
+                                        objectName: 'placedId'
+                                        Layout.maximumWidth: parent.width / 2
+                                        text: row.modelData.id
+                                        font.family: Tokens.mono; font.pixelSize: 11; color: Tokens.muted
+                                    }
                                 }
                             }
                             MouseArea {

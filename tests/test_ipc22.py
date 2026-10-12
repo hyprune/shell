@@ -327,8 +327,25 @@ class Placed(unittest.TestCase):
             sections = js('panelSections(%s)' % json.dumps(subject))
             self.assertEqual([s['id'] for s in sections], ['transform', 'lock', 'remove', 'data'])
             data = sections[3]
-            self.assertEqual((data['title'], data['visible']), ('Data', False))  # listed, renders nothing in 0.22
+            self.assertEqual((data['title'], data['visible']), ('Data', False))  # listed; shown only for machines (with their catalog entry)
         self.assertEqual(js('panelSections(null)'), [])
+
+    def test_instance_id_and_machine_data_source(self):
+        self.assertEqual(js('idText(%s)' % json.dumps(instance())), 'ID  u-7c2e91')
+        self.assertEqual(js('[idText(null), idText({})]'), ['', ''])
+        rack = js('dataSource(%s, %s)' % (json.dumps(instance()), json.dumps(entry())))
+        self.assertEqual(rack, {'id': 'u-7c2e91', 'sourceId': 'com.hyprune.sources.u-7c2e91', 'publishable': True,
+                                'line': 'Data source id: u-7c2e91', 'hint': 'Publish to it from sources.json.'})
+        self.assertIsNone(js('dataSource(%s, %s)' % (json.dumps(instance(ref='user/street-lantern')), json.dumps(LANTERN))))
+        self.assertIsNone(js('dataSource(%s, null)' % json.dumps(instance())))
+        # An authored id that is not a sources.json slug: bind it in machines.json instead.
+        odd = js('dataSource(%s, %s)' % (json.dumps(instance(id='Court.Rack_1', source='authored')), json.dumps(entry())))
+        self.assertEqual((odd['publishable'], odd['line'], odd['hint']),
+                         (False, 'Data source id: Court.Rack_1', 'Bind it to a source in machines.json.'))
+        data = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(entry())))[3]
+        self.assertEqual((data['id'], data['title'], data['visible'], data['source']), ('data', 'Data', True, rack))
+        other = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(LANTERN)))[3]
+        self.assertEqual((other['visible'], 'source' in other), (False, False))
 
     def test_sections_follow_source_lock_and_movable(self):
         user = {s['id']: s for s in js('panelSections(%s)' % json.dumps(instance()))}
@@ -469,7 +486,14 @@ class Presentation(unittest.TestCase):
 
     def test_panel_is_built_from_the_section_list(self):
         panel = self.read('components/ObjectConfigure.qml')
-        self.assertIn('Objects.panelSections(instance)', panel)
+        self.assertIn('Objects.panelSections(instance, entry)', panel)
+        self.assertIn('onEntryChanged: refreshSections()', panel)
+        for name in ["objectName: 'objectId'", 'Objects.idText(panel.instance)', "objectName: 'objectDataSource'",
+                     "objectName: 'objectDataHint'", 'section.modelData.source.line', 'section.modelData.source.hint']:
+            self.assertIn(name, panel)
+        page = self.read('components/DirectorObjects.qml')
+        self.assertIn("objectName: 'placedId'", page)
+        self.assertIn("text: row.modelData.id", page)
         self.assertRegex(panel, r"Repeater \{\s*id: sectionRepeater\s*model: panel\.sections")
         self.assertIn("objectName: 'objectSection:' + modelData.id", panel)
 

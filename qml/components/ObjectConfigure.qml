@@ -7,8 +7,8 @@ import "../Objects.js" as Objects
 
 // Director > Objects > Placed: the configure panel of one instance (RFC-0011 P1). It is
 // built from per-trait sections in a fixed order (Objects.SECTIONS): Transform, Lock,
-// Remove / Reset and the reserved Data slot (RFC-0013 data bindings, empty in IPC 0.22),
-// so a later section joins without changing the panel.
+// Remove / Reset and Data (RFC-0013 data bindings: a machine's data source id), so a later
+// section joins without changing the panel. The header shows the instance id.
 ColumnLayout {
     id: panel
     objectName: 'objectConfigure'
@@ -18,10 +18,11 @@ ColumnLayout {
     property var sections: []
     readonly property var sectionIds: sections.map(s => s.id)
     function refreshSections() {
-        var next = Objects.panelSections(instance);
+        var next = Objects.panelSections(instance, entry);
         if (JSON.stringify(next) !== JSON.stringify(sections)) sections = next;
     }
     onInstanceChanged: refreshSections()
+    onEntryChanged: refreshSections()
     Component.onCompleted: refreshSections()
     spacing: 14
 
@@ -131,6 +132,13 @@ ColumnLayout {
         font.family: Tokens.mono; font.pixelSize: 12; color: Tokens.muted
     }
     HudLabel {
+        objectName: 'objectId'
+        Layout.fillWidth: true
+        visible: text !== ''
+        text: Objects.idText(panel.instance)
+        font.family: Tokens.mono; font.pixelSize: 12; color: Tokens.muted
+    }
+    HudLabel {
         Layout.fillWidth: true
         visible: text !== ''
         text: panel.entry ? [Objects.sizeText(panel.entry.bounds, panel.instance ? panel.instance.scale : 1), Objects.trianglesText(panel.entry.triangles)].filter(v => v).join('  ·  ') : ''
@@ -206,7 +214,21 @@ ColumnLayout {
                         + 'Reset puts it back where the world placed it.'
                 color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
             }
-            // 'data' (RFC-0013 data bindings) renders nothing in IPC 0.22.
+            // Data (RFC-0013 draft): where a machine reads its inputs; other objects hide it.
+            HudLabel {
+                objectName: 'objectDataSource'
+                visible: section.modelData.id === 'data' && !!section.modelData.source
+                Layout.fillWidth: true
+                text: section.modelData.source ? section.modelData.source.line : ''
+                font.family: Tokens.mono; font.pixelSize: 13
+            }
+            HudLabel {
+                objectName: 'objectDataHint'
+                visible: section.modelData.id === 'data' && !!section.modelData.source
+                Layout.fillWidth: true
+                text: section.modelData.source ? section.modelData.source.hint : ''
+                color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
+            }
         }
     }
 }
