@@ -257,6 +257,53 @@ for w, h, scale, suffix in sizes:
     ui('concept', 'Adventure')
     preview()
 
+# Data source (IPC 0.24 catalog machine inputs and state live; the source helper is
+# dev/sources_fake.py on HYPRUNE_SOURCES_CONTROL, set for the bridge by the caller).
+SOURCES = os.environ.get('HYPRUNE_SOURCES_CONTROL')
+if SOURCES:
+    (THUMBS / 'sources.json').write_text(json.dumps({'sources': [{'id': 'u-3f9a1c', 'kind': 'command', 'intervalS': 10,
+                                                                   'argv': ['/home/user/bin/ram-gauge', '--json']}]}, indent=2) + '\n')
+    fake = subprocess.Popen(['python3', str(ROOT / 'dev/sources_fake.py'), SOURCES, '--config', str(THUMBS / 'sources.json')])
+    try:
+        GAUGE = 'library/com.hyprune.starter@0.2.0/gauge-tube'
+        inputs = [{'id': 'value', 'type': 'number', 'min': 0, 'max': 100, 'default': 0, 'label': 'Value', 'explain': 'The liquid height, 0 (empty) to 100 (full).'},
+                  {'id': 'display', 'type': 'text', 'maxLength': 12, 'label': 'Display', 'explain': 'The large text on the plate, such as 71%.'},
+                  {'id': 'label', 'type': 'text', 'maxLength': 16, 'label': 'Label', 'explain': 'What it measures, such as RAM.'},
+                  {'id': 'level', 'type': 'enum', 'values': ['ok', 'warn', 'fail'], 'default': 'ok', 'label': 'Level', 'explain': 'Tints the liquid.'},
+                  {'id': 'average', 'type': 'number', 'min': 0, 'max': 100, 'label': 'Average (optional)', 'explain': 'Replaces the running average.'}]
+        catalog = CATALOG + [entry(GAUGE, 'library', 'Gauge: tube', 'machines', ['collidable', 'machine', 'movable'], (0.5, 1.4, 0.5), 2860,
+                                   thumbnail('gauge', (240, 170, 60, 255), 'lamp'), machine={'primary': 'level', 'inputs': inputs})]
+        catalog = [dict(e, machine=e.get('machine')) for e in catalog]
+        now = int(time.time() * 1000)
+        source = 'com.hyprune.sources.u-3f9a1c'
+        def live_input(key, value, at=now - 4000, condition='fresh'):
+            return {'source': source, 'key': key, 'value': value, 'raw': value, 'condition': condition, 'publishedAt': at}
+        live = {'instances': [{'id': 'u-3f9a1c', 'asset': 'gauge-tube', 'ref': GAUGE, 'source': source, 'status': 'ok', 'error': None, 'stale': False,
+                               'inputs': {'value': live_input('value', 71), 'display': live_input('display', '71%'), 'label': live_input('label', 'RAM'),
+                                          'level': live_input('level', 'ok'),
+                                          'average': {'source': source, 'key': 'average', 'value': 0, 'raw': None, 'condition': 'missing', 'publishedAt': None}}}]}
+        gauge = instance('u-3f9a1c', 'user', GAUGE, 'Gauge: tube', 1.5, -2)
+        ctl(f'hl.monitor({{output="{OUTPUT}",mode="1920x1080@60",position="{"1280x0" if OUTPUT == "HYPRUNE-PREVIEW" else "0x0"}",scale=1}})')
+        time.sleep(1.2)
+        ui('objectPreview', json.dumps({'catalog': {'revision': 4, 'entries': catalog}, 'libraries': []}))
+        preview({'live': live, 'objects': {'catalogRevision': 4, 'instances': INSTANCES + [gauge], 'pocket': POCKET, 'usage': USAGE,
+                                           'limits': LIMITS}})
+        ui('close'); time.sleep(.4); ui('open'); time.sleep(.8)
+        ui('tabNamed', 'objects'); ui('objectsView', 'placed'); ui('objectSelect', 'u-3f9a1c')
+        wait(lambda: objects()['sections'] == ['transform', 'lock', 'remove', 'data'])
+        time.sleep(2.5)  # the helper status poll and the sources.json read
+        shot('placed-data-source')
+        ui('scrollPage', '0.6'); time.sleep(.5)
+        shot('placed-data-source-editor')
+        wait(lambda: ui('press', 'source-test') == 'true', 8)  # enabled once the helper answered
+        time.sleep(1.5)
+        ui('scrollPage', '1'); time.sleep(.5)
+        shot('placed-data-source-test')
+        ui('theme', 'true'); shot('placed-data-source-paper'); ui('theme', 'false')
+        ui('close'); time.sleep(.4)
+    finally:
+        fake.terminate()
+
 ui('statePreview', '', ''); ui('objectPreview', '')
 shutil.rmtree(THUMBS, ignore_errors=True)
 logs = (ROOT / 'dev/.run/shell.log').read_text()

@@ -343,21 +343,21 @@ class Validation(unittest.TestCase):
         self.assertTrue(v['ok'])
         self.assertEqual([r['level'] for r in v['rows']], ['ok'] * 5)
         self.assertEqual((v['unknown'], v['missing'], v['reserved']), ([], [], {'_status': 'ok'}))
-        self.assertEqual(v['summary'], '5 of 5 inputs fit')
+        self.assertEqual(v['summary'], '5 of 5 inputs sent and fit')
 
     def test_mismatches_unknown_and_missing(self):
         v = call('validateTest', {'values': {'value': '71', 'display': '71 percent of RAM', 'level': 'busy', 'ram': 3, 'average': 140}, 'exitCode': 0}, GAUGE)
         rows = {r['key']: r for r in v['rows']}
         self.assertEqual((rows['value']['level'], rows['value']['problems']), ('error', ['expected a number, got text']))
         self.assertEqual((rows['display']['level'], rows['display']['problems']), ('warning', ['longer than 12 (cut)']))
-        self.assertEqual(rows['label']['problems'], ['missing'])
+        self.assertEqual((rows['label']['level'], rows['label']['problems']), ('muted', ['not sent']))
         self.assertEqual(rows['level']['problems'], ['not one of ok, warn, fail'])
         self.assertEqual(rows['average']['problems'], ['above 100'])
         self.assertEqual((v['unknown'], v['missing'], v['ok']), (['ram'], ['label'], False))
-        self.assertEqual(v['summary'], '1 of 5 inputs fit · 3 mismatches · 1 missing · 1 unknown key')
+        self.assertEqual(v['summary'], '1 of 5 inputs sent and fit · 3 mismatches · 1 not sent · 1 unknown key')
         missing = call('validateTest', {'values': {}}, GAUGE)
-        self.assertEqual(missing['rows'][0]['problems'], ['missing: shows 0'])
-        self.assertEqual(missing['rows'][3]['problems'], ['missing: shows ok'])
+        self.assertEqual(missing['rows'][0]['problems'], ['not sent: shows 0'])
+        self.assertEqual(missing['rows'][3]['problems'], ['not sent: shows ok'])
 
     def test_types(self):
         v = call('validateTest', {'values': {'health.1': 'ok', 'health.2': 'warn', 'health.3': 3, 'name': 'r1', 'units': 4.5, 'on': 'yes', 'started': 12}}, RACK)
@@ -459,6 +459,9 @@ class Panel(unittest.TestCase):
         panel = (ROOT / 'qml/components/ObjectConfigure.qml').read_text()
         self.assertIn("active: section.modelData.id === 'data' && section.modelData.visible", panel)
         self.assertIn('sourceComponent: ObjectDataSource', panel)
+        # Inside ObjectDataSource `section` names its own property: binding `section:
+        # section.modelData` there binds it to itself (empty), so the Loader passes it on.
+        self.assertIn('sourceComponent: ObjectDataSource {\n                    instance: panel.instance\n                    section: dataLoader.sectionData', panel)
         body = (ROOT / 'qml/components/ObjectDataSource.qml').read_text()
         for name in ['objectDataSource', 'objectDataReads', 'objectDataStatus', 'objectDataHint', 'objectDataNoInputs', 'objectDataHelper',
                      'objectDataLastRun', 'source-command', 'source-choose', 'source-args', 'source-interval', 'sourceRuns', 'source-test',

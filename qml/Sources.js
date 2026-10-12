@@ -134,9 +134,11 @@ function validateTest(result, machine) {
     var rows = inputs.map(function (input) {
         var has = Object.prototype.hasOwnProperty.call(values, input.key);
         if (!has) {
+            // Not sent: the gauge shows the input's default (an optional input, such as an
+            // average the script may send, is simply left out).
             missing.push(input.key);
-            return {key: input.key, label: input.label || input.key, value: '—', present: false, level: 'warning',
-                    problems: ['missing' + (input.default !== undefined ? ': shows ' + valueText(input.default) : '')]};
+            return {key: input.key, label: input.label || input.key, value: '—', present: false, level: 'muted',
+                    problems: ['not sent' + (input.default !== undefined ? ': shows ' + valueText(input.default) : '')]};
         }
         var problems = checkValue(input, values[input.key]);
         var cut = problems.length === 1 && / \(cut\)$/.test(problems[0]);
@@ -151,9 +153,9 @@ function validateTest(result, machine) {
     var parts = [];
     if (failed) parts.push(result.error || 'exit code ' + result.exitCode);
     if (machine) {
-        parts.push((rows.length - missing.length - errors) + ' of ' + rows.length + ' inputs fit');
+        parts.push((rows.length - missing.length - errors) + ' of ' + rows.length + ' inputs sent and fit');
         if (errors) parts.push(errors + (errors === 1 ? ' mismatch' : ' mismatches'));
-        if (missing.length) parts.push(missing.length + ' missing');
+        if (missing.length) parts.push(missing.length + ' not sent');
         if (unknown.length) parts.push(unknown.length + (unknown.length === 1 ? ' unknown key' : ' unknown keys'));
     } else parts.push(rows.length + (rows.length === 1 ? ' value' : ' values'));
     return {ok: !failed && !errors && !unknown.length, failed: failed, rows: rows, unknown: unknown, missing: missing,
@@ -207,7 +209,7 @@ function liveRows(machine, liveEntry, now) {
     return inputs.map(function (input) {
         var v = live[input.key] || null;
         var condition = v ? v.condition : liveEntry ? 'missing' : '';
-        var raw = v && v.raw !== undefined && JSON.stringify(v.raw) !== JSON.stringify(v.value) ? valueText(v.raw) : '';
+        var raw = v && v.raw !== undefined && v.raw !== null && JSON.stringify(v.raw) !== JSON.stringify(v.value) ? valueText(v.raw) : '';
         return {key: input.key, label: input.label || input.key, type: input.type || '', range: rangeText(input), explain: input.explain || '',
                 primary: !!input.primary, value: v ? valueText(v.value) : '—', raw: raw, condition: condition || '',
                 age: v ? ageText(v.publishedAt, now) : '', source: v ? v.source || '' : '', sourceKey: v ? v.key || '' : '',

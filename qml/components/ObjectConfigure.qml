@@ -220,12 +220,13 @@ ColumnLayout {
             // sources.json editor; other objects hide it. Loaded only for that section.
             Loader {
                 id: dataLoader
+                readonly property var sectionData: section.modelData
                 Layout.fillWidth: true
                 active: section.modelData.id === 'data' && section.modelData.visible
                 visible: active
                 sourceComponent: ObjectDataSource {
                     instance: panel.instance
-                    section: section.modelData
+                    section: dataLoader.sectionData
                 }
             }
         }

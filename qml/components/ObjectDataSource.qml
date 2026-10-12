@@ -1,4 +1,3 @@
-pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -349,7 +348,7 @@ ColumnLayout {
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
-            ActionButton { objectName: 'source-interval-down'; implicitWidth: 42; text: '−'; enabled: body.editable; Accessible.name: 'Shorter interval'; onClicked: body.stepInterval(-1) }
+            ActionButton { objectName: 'source-interval-down'; implicitWidth: 56; text: '−'; enabled: body.editable; Accessible.name: 'Shorter interval'; onClicked: body.stepInterval(-1) }
             Field {
                 id: intervalField
                 objectName: 'source-interval'
@@ -369,7 +368,7 @@ ColumnLayout {
                     else if (event.key === Qt.Key_PageDown) { body.stepInterval(-60); event.accepted = true; }
                 }
             }
-            ActionButton { objectName: 'source-interval-up'; implicitWidth: 42; text: '+'; enabled: body.editable; Accessible.name: 'Longer interval'; onClicked: body.stepInterval(1) }
+            ActionButton { objectName: 'source-interval-up'; implicitWidth: 56; text: '+'; enabled: body.editable; Accessible.name: 'Longer interval'; onClicked: body.stepInterval(1) }
             HudLabel {
                 Layout.fillWidth: true
                 text: 's  ·  ' + Sources.intervalText(Number(intervalField.text)) + '  ·  ' + body.bounds.min + '–' + body.bounds.max + ' s'
@@ -485,11 +484,12 @@ ColumnLayout {
                 objectName: 'sourceCheck:' + modelData.key
                 Layout.fillWidth: true
                 spacing: 10
-                HudLabel { text: check.modelData.level === 'ok' ? '✓' : check.modelData.level === 'warning' ? '!' : '✕'; Layout.preferredWidth: 14
-                           color: check.modelData.level === 'ok' ? Tokens.positive : Tokens.warning; font.pixelSize: 13 }
+                HudLabel { text: check.modelData.level === 'ok' ? '✓' : check.modelData.level === 'muted' ? '–' : check.modelData.level === 'warning' ? '!' : '✕'
+                           Layout.preferredWidth: 24
+                           color: check.modelData.level === 'ok' ? Tokens.positive : check.modelData.level === 'muted' ? Tokens.muted : Tokens.warning; font.pixelSize: 13 }
                 HudLabel { Layout.preferredWidth: 160; text: check.modelData.label; font.pixelSize: 13 }
                 HudLabel { Layout.preferredWidth: 160; text: check.modelData.value; font.family: Tokens.mono; font.pixelSize: 13 }
-                HudLabel { Layout.fillWidth: true; text: check.modelData.problems.join('; '); color: Tokens.warning; font.pixelSize: 12; wrapMode: Text.Wrap }
+                HudLabel { Layout.fillWidth: true; text: check.modelData.problems.join('; '); color: check.modelData.level === 'muted' ? Tokens.muted : Tokens.warning; font.pixelSize: 12; wrapMode: Text.Wrap }
             }
         }
         HudLabel {
