@@ -6,7 +6,7 @@ function binding(state, action, fallback) {
     return Array.isArray(value) ? (value.length ? value.join(' / ') : 'Unbound') : (fallback || '');
 }
 function empty() {
-    return {placement:{available:false,active:false,count:0,index:-1,app:null,size:null,ghost:false},
+    return {placement:{available:false,active:false,count:0,index:-1,app:null,size:null,ghost:false,objects:[],object:null},
             carry:{active:false,label:'',toggle:''},content:null,hints:{context:'',actions:[]}};
 }
 function presentation(state) {
@@ -19,10 +19,14 @@ function presentation(state) {
         var selected=index>=0 ? queue.windows[index] : null;
         var metadata=selected && (state.apps || []).find(a=>a.surfaceId===selected.surfaceId);
         var surface=selected && (state.surfaces || []).find(a=>a.id===selected.surfaceId);
-        result.placement={available:true,active:editor.tool===5,count:queue.count,index:index,
+        // IPC 0.22: object items (pocket-<n>) share the queue after the windows.
+        var objects=(Array.isArray(queue.objects) ? queue.objects : []).map(o=>({itemId:o.itemId,ref:o.ref,name:o.name,selected:o.itemId===queue.selectedId}));
+        var objectIndex=objects.findIndex(o=>o.selected);
+        result.placement={available:true,active:editor.tool===5,count:queue.count,
+            index:index>=0 ? index : objectIndex>=0 ? queue.windows.length+objectIndex : -1,
             app:selected ? Object.assign({},metadata || {},selected) : null,
             size:selected && selected.logicalSize ? selected.logicalSize : surface ? surface.logicalSize : null,
-            ghost:queue.preview===true};
+            ghost:queue.preview===true,objects:objects,object:objectIndex>=0 ? objects[objectIndex] : null};
     }
     if (typeof editor.carryFacing==='boolean') {
         result.carry={active:true,label:editor.carryFacing ? 'FACING YOU' : 'KEEP ANGLE',
