@@ -92,6 +92,39 @@ Esc ends it with `null`); `panel` opens the Director on that tab (`map`, `quests
 are toasts with core's words. `./dev/run npcs` captures all of it from the mock with dev
 preview data (stills go to `HYPRUNE_NPCS_SHOTS`, default under `/tmp`).
 
+The **Library** tab (RFC-0015 registry, phase 1) sits directly after Objects and works
+through the `hyprune` CLI, not core IPC: the command is `$HYPRUNE_CLI` (a command line split
+on spaces, for example `HYPRUNE_CLI="node /path/to/sdk/dist/src/cli.js"`), else `hyprune` on
+`PATH`. It reads `hyprune source list --json`, `hyprune browse --json` (the cached indexes,
+no network) and `hyprune content list --json` when the tab opens and after every job.
+**Browse** shows each entry as a card: the verified cached thumbnail the CLI returns (never
+a URL from an index) or a placeholder, name, creator, type, the source label as the CLI
+words it (`Official`, `Community registry`, `Custom: <label>`), the declared licence with
+its source-kind wording (reviewed by Hyprune; declared by the creator, not reviewed;
+declared by the package, not checked), the download size and badges for installed, update
+available and "needs a newer Hyprune"; filters by source and type and a search over names,
+summaries and tags. **Install** and **Update** first run the command with `--plan --json`
+and show the plan: name, id, tag and version, type, source label and URL, creator,
+repository and commit, licence wording, download and installed size, the shortened sha256,
+the libraries it pulls in and "Worlds and libraries contain no code. Installing doesn't run
+anything." Confirming runs it again with `--yes --json`; a plan with a source change needs a
+second, explicit confirmation before `--accept-source-change` is passed. The stages and
+download progress follow the JSON lines; errors show the CLI's message and rule. A finished
+library install refreshes the object catalog, and **Open in Objects** shows it there; a job
+that finishes while the Director is closed shows a toast. **Installed** lists every install
+with its current and previous tag, source (or `system`), pin and newer tag, with Update,
+"Roll back to <tag>", Pin / Unpin and Remove (a second press); system-managed installs are
+read only. **Sources** lists each source with its kind, location, entries, last refresh and
+error, with Refresh, Disable / Enable and Remove (custom sources, a second press), and an
+**Add source** form (an `https://` index or package URL, or `github:owner/repo[/name]`; a
+label of up to 48 characters; the sha256 for a direct `.tar.zst` URL) with the notice
+"Hyprune doesn't check custom sources. Packages from them are installed with the same safety
+checks, but nobody has reviewed them." All index text is plain text and no link is opened.
+Keys: V switches the view, / searches, Up / Down move, Enter installs or updates, U update
+and P pin (Installed), R refresh (Sources); in the plan Enter confirms and Esc goes back.
+`./dev/run library` captures all of it against `dev/fake-hyprune-cli.py` (stills go to
+`HYPRUNE_LIBRARY_SHOTS`, default under `/tmp`).
+
 IPC 0.19 adds Settings → Movement (field of view 30–120°, walk/run speed, view bob,
 grab/mount/placement reach) and Settings → Reticle (style, colour, size, thickness,
 gap, opacity, outline, dynamic, with a preview), backed by core's `player.get` /

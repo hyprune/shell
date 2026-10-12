@@ -8,6 +8,29 @@ only from 0.25), every companion request built by the shell and the results agai
 Companion wiring. `qmllint` on `CompanionSettings.qml`: style hints only. Not yet captured
 in a nested preview.
 
+---
+
+# RFC-0015 phase 1 Library tab — 2026-10-12
+
+`python3 -m unittest discover -s tests`: **297 pass**, including `tests/test_library.py`
+(20): the `qml/Library.js` helpers fed with the documents and JSON lines of the fake CLI
+(`dev/fake-hyprune-cli.py`): contract fields of the listing documents, source labels and
+licence wording, filters and search, card badges and actions, install rows and actions
+(system-managed read only, pinned updates held), the Add source form (`https://` or
+`github:`, label length, sha256 for a package URL), job arguments, plan provenance and
+requirements, a source change that stays a confirmation until `--accept-source-change`,
+errors with their rule, a CLI that can't start; plus source checks that the page uses plain
+text only, opens no links, loads thumbnails only from local paths and never runs `--yes`
+before the plan is confirmed. `./dev/run library` (nested, SDK mock and the fake CLI)
+captures Browse, Installed and Sources at 1920×1080, 1280×720, 2560×1440 at scale 2 and
+3840×2160, filters and search, the plan confirmation, the source change's second
+confirmation, download progress, a finished library install refreshing the object catalog
+and opening Objects, a hash mismatch with its rule, rollback / unpin / remove, adding and
+refusing sources, disable / enable, and the HUD toast of a job finished with the Director
+closed, with the layout audit clean and no QML runtime errors.
+
+---
+
 # IPC 0.23 characters, routes and interactions — 2026-10-12
 
 `python3 -m unittest discover -s tests`: **277 pass**, including `tests/test_ipc23.py`
