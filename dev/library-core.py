@@ -10,7 +10,7 @@ HYPRUNE_REGISTRY_COMMUNITY_URL with HYPRUNE_FETCH_ALLOW_LOOPBACK_HTTP=1, a test-
 one library entry for the archive, with a generated thumbnail. Core and the CLI share a
 private XDG_DATA_HOME; the CLI's state, config and cache homes are private too.
 
-Checks (each reported PASS/FAIL; the run fails if any fails): the shell negotiates IPC 0.23
+Checks (each reported PASS/FAIL; the run fails if any fails): the shell negotiates IPC 0.24
 with objects.control; Refresh sources lists the entry with its verified cached thumbnail;
 Install shows the plan; confirming installs it (stages to done); core's object catalog lists
 the library's objects (Objects > Catalog, Library filter); Installed lists it; Remove removes
@@ -116,10 +116,10 @@ def acceptance(client, children, args, shell_token, socketpath):
     r, w = os.pipe(); os.write(w, (shell_token + '\n').encode()); os.close(w)
     _, env = verified()
     env.update(cli_env)
-    env.update(HYPRUNE_TOKEN_FD=str(r), HYPRUNE_PROTOCOL='0.23', HYPRUNE_SOCKET=str(socketpath), HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',
+    env.update(HYPRUNE_TOKEN_FD=str(r), HYPRUNE_PROTOCOL='0.24', HYPRUNE_SOCKET=str(socketpath), HYPRUNE_OUTPUT_SCREEN='HEADLESS-1',
                HYPRUNE_DEV_AUTOMATION='1', HYPRUNE_SHELL_PREFERENCES=str(s.STATE / 'shell-preferences.json'))
     log = open(s.STATE / 'shell.log', 'w')
-    shell = subprocess.Popen(['python3', str(ROOT / 'bridge/launch.py'), '--protocol', '0.23'], env=env, pass_fds=(r,), stdout=log, stderr=subprocess.STDOUT)
+    shell = subprocess.Popen(['python3', str(ROOT / 'bridge/launch.py'), '--protocol', '0.24'], env=env, pass_fds=(r,), stdout=log, stderr=subprocess.STDOUT)
     os.close(r); children.append(shell)
 
     def child():
@@ -156,7 +156,7 @@ def acceptance(client, children, args, shell_token, socketpath):
 
     wait(lambda: status().get('lease'), 20)
     st = status()
-    check('hello negotiates IPC 0.23 with objects.control', st.get('protocol') == '0.23' and 'objects.control' in st.get('capabilities', []),
+    check('hello negotiates IPC 0.24 with objects.control', st.get('protocol') == '0.24' and 'objects.control' in st.get('capabilities', []),
           {'protocol': st.get('protocol'), 'capabilities': st.get('capabilities'), 'cli': (st.get('library') or {}).get('cli')})
     ref = f"official/{manifest['id']}"
 
