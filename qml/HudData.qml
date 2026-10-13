@@ -17,10 +17,14 @@ QtObject {
     readonly property string climbPrompt: Interaction.climbPrompt(ShellState.state)
     readonly property bool worldPrompts: !freeCursor
     readonly property var editor: ShellState.state ? ShellState.state.editor : null
-    readonly property int tool: manipulation.placement.active ? 5 : ShellState.hudTool ? ShellState.hudTool.slot : editor && editor.tool <= 5 ? editor.tool : 1
+    readonly property int tool: manipulation.placement.active ? 5 : ShellState.hudTool ? ShellState.hudTool.slot : editor && (editor.tool <= 5 || editor.tool === 9) ? editor.tool : 1
     readonly property string subtype: ShellState.hudTool ? ShellState.hudTool.subtype : editor && editor.submode !== 'reserved' ? editor.submode : 'normal'
     readonly property var subtypes: tool === 2 ? ['place','lock'] : tool === 3 ? ['open line','open curve','open arc','closed line','closed curve','closed arc'] : tool === 4 ? (editor && editor.gizmo ? ['universal','move','rotate','scale'] : ['move','rotate','scale']) : ['normal']
-    readonly property string toolName: ['Navigate','Window','Path','Position','Placement'][tool-1]
+    readonly property string toolName: tool === 9 ? 'Debug' : ['Navigate','Window','Path','Position','Placement'][tool-1] || 'Navigate'
+    // IPC 0.26 editor.debugTool (tool 9): the shown layer, its index of count, legend and card.
+    // Core draws the banner, legend and info card itself; the deck only names the layer.
+    readonly property var debugTool: tool === 9 && editor && editor.debugTool ? editor.debugTool : null
+    readonly property string debugLayerText: debugTool ? 'LAYER '+(debugTool.index+1)+'/'+debugTool.count : ''
     // IPC 0.22 gizmo settings (tool 4): {space: world|local, pivot: centre|base, snap}.
     readonly property var gizmo: editor && editor.gizmo ? editor.gizmo : null
     readonly property string gizmoText: gizmo ? [gizmo.space, gizmo.pivot].concat(gizmo.snap ? ['snap'] : []).join(' · ').toUpperCase() : ''

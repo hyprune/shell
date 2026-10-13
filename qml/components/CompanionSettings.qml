@@ -6,7 +6,8 @@ import "../theme"
 import "../Companion.js" as Companion
 
 // Settings > Companion (IPC 0.25 draft, RFC-0010 companions amendment): None or one of the
-// installed companion-capable characters (thumbnails from the catalog), and Follow / Stay.
+// installed companion-capable characters (thumbnails from the catalog), Follow / Stay and
+// (IPC 0.26) Walk / Run.
 // Putting it on a route is tool 3 (or carrying it to a path) in the world.
 ColumnLayout {
     id: root
@@ -34,6 +35,24 @@ ColumnLayout {
             Layout.fillWidth: true
             visible: !!root.companion && root.companion.mode === 'route'
             text: 'On a route: Follow brings it back.'
+            color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
+        }
+    }
+    RowLayout {
+        Layout.fillWidth: true
+        visible: !!root.chosen && ShellState.companionPaceSupported
+        HudLabel { text: 'Pace'; Layout.preferredWidth: 140 }
+        Segmented {
+            objectName: 'companionPace'
+            Layout.preferredWidth: 240
+            enabled: ShellState.objectsCan('companion.mode') && !!Companion.paceParams(root.companion, 'walk')
+            model: Companion.PACES
+            current: root.companion && root.companion.pace ? root.companion.pace : 'walk'
+            onPicked: (id) => ShellState.companionPace(id)
+        }
+        HudLabel {
+            Layout.fillWidth: true
+            text: 'How it keeps up while following.'
             color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
         }
     }

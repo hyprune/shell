@@ -2,6 +2,8 @@
 // companion's status line. Pure helpers: tested with node in tests/test_ipc25.py.
 
 var MODES = [{id: 'follow', label: 'Follow'}, {id: 'stay', label: 'Stay'}];
+// IPC 0.26: the pace it keeps while following (companionState.pace).
+var PACES = [{id: 'walk', label: 'Walk'}, {id: 'run', label: 'Run'}];
 var ACTIVITIES = {
     following: 'following you', walking: 'walking', running: 'catching up', idle: 'idle', talking: 'talking',
     sitting: 'sitting', waiting: 'waiting for a free spot', carried: 'carried'};
@@ -49,3 +51,11 @@ function modeIndex(companion) {
 
 // The request for a picker choice: {method, params} (None clears).
 function choose(ref) { return ref ? {method: 'companion.set', params: {ref: ref}} : {method: 'companion.clear', params: {}}; }
+
+// IPC 0.26: the companion.mode params that change only the pace (the mode stays as it is).
+// A route has no pace request: choosing Follow brings it back first. null when there is none.
+function paceParams(companion, pace) {
+    if (!companion || !companion.ref || (companion.mode !== 'follow' && companion.mode !== 'stay')) return null;
+    if (pace !== 'walk' && pace !== 'run') return null;
+    return {mode: companion.mode, pace: pace};
+}

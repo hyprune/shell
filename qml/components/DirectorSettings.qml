@@ -28,6 +28,12 @@ Item {
         next.modes[mode][action] = bindings.filter(v => v !== '');
         draft = next; pending = ''; preview();
     }
+    // tool1-tool5 and tool9 (IPC 0.26, the debug tool) carry the tool's name from core's definitions.
+    function actionLabel(action) {
+        var m = /^tool([0-9])$/.exec(action), editor = ShellState.state && ShellState.state.editor;
+        var tool = m && editor && editor.toolDefinitions ? editor.toolDefinitions.find(d => d.slot === Number(m[1])) : null;
+        return action.replace(/_/g, ' ') + (tool ? ' · ' + tool.name : '');
+    }
     function details(action) {
         var conflicts = (feedback.conflicts || []).filter(c => c.mode === mode && c.actions.indexOf(action) >= 0).map(c => 'Conflict: ' + c.binding + ' → ' + c.actions.join(' / '));
         var steals = (feedback.steals || []).filter(c => c.mode === mode && c.action === action).map(c => c.binding + ' — steals Hyprland: ' + c.description);
@@ -188,7 +194,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
                         Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
-                        HudLabel { text: modelData.replace(/_/g, ' '); color: Tokens.text; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        HudLabel { text: root.actionLabel(modelData); color: Tokens.text; Layout.fillWidth: true; wrapMode: Text.Wrap }
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 12

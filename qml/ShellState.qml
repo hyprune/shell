@@ -334,6 +334,12 @@ QtObject {
     // None clears; a ref sets (the catalog says which characters are capable).
     function chooseCompanion(ref) { var r = Companion.choose(ref); if (objectsCan(r.method)) objectAction(r.method, r.params); }
     function companionMode(mode) { if (objectsCan('companion.mode')) objectAction('companion.mode', {mode: mode}); }
+    // IPC 0.26: Walk / Run (companion.mode with pace; the mode is kept).
+    readonly property bool companionPaceSupported: supportsProtocol(26) && available('companion.mode')
+    function companionPace(pace) {
+        var params = Companion.paceParams(companionState, pace);
+        if (params && companionPaceSupported && objectsCan('companion.mode')) objectAction('companion.mode', params);
+    }
 
     // ---- RFC-0015 phase 1: Director > Library over the hyprune CLI (no core IPC) ----
     // The command is $HYPRUNE_CLI (a command line split on spaces), else hyprune on PATH.

@@ -47,7 +47,7 @@ RowLayout {
                 ['MOVEMENT','HJKL / WASD / arrows; Shift boosts, Space jumps/up, Ctrl crouches/down.'],
                 ['USE / FOCUS','E uses a window or workspace in place. F zooms to fullscreen. Super+Tab or Back returns.'],
                 ['MAP / SETTINGS','Hold Tab for the Director. Settings → Appearance selects Adventure, Instrument or Minimal.'],
-                ['TOOLS','1–5 select tools. Primary, Secondary, Alternate and Cycle use the actions published by core below. Hold Super or Super+Shift for global gestures.'],
+                ['TOOLS','1–5 select tools; 9 is the debug tool, one debug layer at a time (Cycle steps through them). Primary, Secondary, Alternate and Cycle use the actions published by core below. Hold Super or Super+Shift for global gestures.'],
                 ['CARRY ORIENTATION',HudData.placement.available ? Manipulation.binding(ShellState.state,'carry.facing','R')+' toggles Facing you / Keep angle while carrying.' : 'Carry orientation feedback requires the updated core.'],
                 ['ROTATE',Manipulation.binding(ShellState.state,'rotate','Super+Ctrl+Wheel')+' rotates a carried window.'],
                 ['CONTENT SCALE',HudData.placement.available ? Manipulation.binding(ShellState.state,'content.scale','Super+Shift+Wheel')+' adjusts client content scale. '+Manipulation.binding(ShellState.state,'window.reset','Super+Shift+MMB')+' resets it.' : 'Content scale and window reset require the updated core.'],
