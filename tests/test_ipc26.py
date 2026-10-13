@@ -159,6 +159,10 @@ class Pocket(unittest.TestCase):
         self.assertIn("Audit.find(view, 'directorSurfaces')", shell)
         self.assertIn("Audit.findAll(page, 'pocketBadge:')", shell)
         self.assertIn("objectName: 'directorSurfaces'", (ROOT / 'qml/components/DirectorSurfaces.qml').read_text())
+        deck = (ROOT / 'qml/components/ToolDeck.qml').read_text()
+        self.assertIn("objectName: 'hudToolHeader'", deck)
+        self.assertIn("objectName: 'hudToolSubtype'", deck)
+        self.assertIn("Audit.find(hud, 'hudToolHeader')", shell)
 
 
 if __name__ == '__main__':

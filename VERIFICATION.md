@@ -8,7 +8,8 @@ tool 9 in `hud.pose` and the `tool9` world action, the HUD and tool-deck wiring 
 layer name and `LAYER n/N`, a 40-window pocket listed whole by Director > Surfaces, and
 the dev status `surfaces` entry. `qmllint` on the changed QML: no errors. Nested with core
 0.26 (`dev/nested/run.sh --windows`, this shell at 0.26): 22 pocketed room windows, all 22
-listed in Director > Surfaces as "IN THE POCKET / 22".
+listed in Director > Surfaces as "IN THE POCKET / 22"; `--debug-tool` with this shell: tool 9's
+deck reads "DEBUG · LAYER 1/10" over "WINDOW BOXES & MOUNTS" (dev status `toolDeck`).
 
 ---
 

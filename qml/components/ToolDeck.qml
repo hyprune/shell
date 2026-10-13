@@ -88,12 +88,12 @@ Item {
         x: root.gridSize+18; width: parent.width-x; height: root.gridSize
         Rectangle { anchors.fill: parent; color: Qt.rgba(Tokens.hudScrim.r,Tokens.hudScrim.g,Tokens.hudScrim.b,.5); border.color: root.technical ? '#608dbfc8' : 'transparent' }
         Rectangle { width: 2; height: parent.height; color: Tokens.hudAccent }
-        HudText { x: 14; y: 5; width: parent.width-24; text: HudData.toolName.toUpperCase()+(HudData.tool === 4 && HudData.gizmoText ? '  ·  '+HudData.gizmoText : HudData.debugLayerText ? '  ·  '+HudData.debugLayerText : ''); font.pixelSize: 13; font.letterSpacing: 2; color: Tokens.hudMuted }
+        HudText { objectName: 'hudToolHeader'; x: 14; y: 5; width: parent.width-24; text: HudData.toolName.toUpperCase()+(HudData.tool === 4 && HudData.gizmoText ? '  ·  '+HudData.gizmoText : HudData.debugLayerText ? '  ·  '+HudData.debugLayerText : ''); font.pixelSize: 13; font.letterSpacing: 2; color: Tokens.hudMuted }
         Item {
             id: subtypeContent
             x: 14; y: 25; width: parent.width-24; height: parent.height-29
             ToolGlyph { allowOverride:false; width: root.minimal ? 33 : 46; height: width; anchors.verticalCenter: parent.verticalCenter; tool: HudData.tool; subtype: root.displayedSubtype; tint: Tokens.hudAccent }
-            HudText { smallText:false; x: root.minimal ? 46 : 60; width: parent.width-x; anchors.verticalCenter: parent.verticalCenter; text: root.displayedSubtype === 'normal' ? 'EXPLORE' : HudData.debugTool && HudData.debugTool.layer === root.displayedSubtype ? HudData.debugTool.label.toUpperCase() : root.displayedSubtype.toUpperCase(); font.pixelSize: root.minimal ? 24 : 32; font.letterSpacing: 1; maximumLineCount: 2; wrapMode: Text.Wrap }
+            HudText { objectName: 'hudToolSubtype'; smallText:false; x: root.minimal ? 46 : 60; width: parent.width-x; anchors.verticalCenter: parent.verticalCenter; text: root.displayedSubtype === 'normal' ? 'EXPLORE' : HudData.debugTool && HudData.debugTool.layer === root.displayedSubtype ? HudData.debugTool.label.toUpperCase() : root.displayedSubtype.toUpperCase(); font.pixelSize: root.minimal ? 24 : 32; font.letterSpacing: 1; maximumLineCount: 2; wrapMode: Text.Wrap }
         }
         ParallelAnimation {
             id: whoosh

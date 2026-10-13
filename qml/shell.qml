@@ -527,6 +527,12 @@ ShellRoot {
                             toast: text('hudToastLine'),
                             interactionKey: ShellState.npcInteractionKey};
                 })(),
+                // The tool deck's header and subtype lines (tool 9 names the debug layer, IPC 0.26).
+                toolDeck: (function() {
+                    var hud = root.hudViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var header = hud ? Audit.find(hud, 'hudToolHeader') : null, subtype = hud ? Audit.find(hud, 'hudToolSubtype') : null;
+                    return {tool: HudData.tool, header: header ? header.text : null, subtype: subtype ? subtype.text : null};
+                })(),
                 // Director > Surfaces: the pocket section label and the pocketed cards it draws.
                 surfaces: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
