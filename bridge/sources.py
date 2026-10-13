@@ -7,7 +7,8 @@ restart-all, reload). This module never runs a source command itself: Test goes 
 helper's `test` op, which runs it with the helper's rules and publishes nothing.
 
 sources.json is the helper's status.config, else $XDG_CONFIG_HOME/hyprune/sources.json. A save
-updates or appends the entry whose id is the instance id and keeps every other entry, key and
+updates or appends the entry whose id is the instance id (a seed, for a newly placed machine's
+demo source, only appends one that is missing) and keeps every other entry, key and
 their order; it is written as json.dumps(obj, indent=2) + newline to a temporary file in the
 same directory, fsynced and renamed over the file, then the helper is asked to reload.
 
@@ -35,7 +36,7 @@ BROWSE_LIMIT = 500
 # Seconds to wait for each helper op. test and restart run one command (timeoutS ≤ 60).
 TIMEOUTS = {'status': 2, 'reload': 3, 'test': 70, 'restart': 70, 'restart-all': 30}
 # QML request type -> op in the answering event.
-OPS = {'sources.status': 'status', 'sources.get': 'get', 'sources.save': 'save', 'sources.remove': 'remove',
+OPS = {'sources.status': 'status', 'sources.get': 'get', 'sources.save': 'save', 'sources.seed': 'seed', 'sources.remove': 'remove',
        'sources.test': 'test', 'sources.restart': 'restart', 'sources.restartAll': 'restartAll',
        'sources.browse': 'browse'}
 
@@ -233,6 +234,17 @@ def save_entry(path, source_id, argv, interval, limits=None):
     return entry
 
 
+def seed_entry(path, source_id, argv, interval, limits=None):
+    """Add a command entry with this id only when there is none (a newly placed machine's
+    demo source); an existing entry, whatever its kind, is never touched. Returns the added
+    entry, or None when one existed (the file is then untouched)."""
+    check_id(source_id)
+    check_argv(argv)
+    if find_entry(read_config(path), source_id) is not None:
+        return None
+    return save_entry(path, source_id, argv, interval, limits)
+
+
 def remove_entry(path, source_id):
     """Delete the entry with this id; False when there was none (the file is then untouched)."""
     check_id(source_id)
@@ -345,6 +357,12 @@ class Sources:
                 path = await self.config_path()
                 entry = await asyncio.to_thread(save_entry, path, cmd.get('id'), cmd.get('argv'), cmd.get('intervalS'), self.limits)
                 return {'path': path, 'entry': entry, 'reload': await self.reload()}
+        if kind == 'sources.seed':
+            async with self.lock:
+                path = await self.config_path()
+                entry = await asyncio.to_thread(seed_entry, path, cmd.get('id'), cmd.get('argv'), cmd.get('intervalS'), self.limits)
+                return {'path': path, 'entry': entry, 'seeded': entry is not None,
+                        'reload': await self.reload() if entry is not None else {'ok': True}}
         if kind == 'sources.remove':
             async with self.lock:
                 path = await self.config_path()

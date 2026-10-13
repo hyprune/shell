@@ -259,16 +259,58 @@ function lastRunText(source, now) {
     return {line: parts.join(' · '), values: valuesText(run.values), error: run.error || '', level: run.ok ? 'ok' : 'warning'};
 }
 
+// ---- Demo sources: what a newly placed machine starts with ----
+// core ships hyprune-demo-source (made-up, plausible values for the inputs it is given); the
+// shell adds an entry running it when a machine is placed and sources.json has none for it.
+var DEMO_COMMAND = 'hyprune-demo-source';
+var DEMO_INTERVAL = 5;
+var DEMO_HINT = 'Demo values: replace the command with your own, or Remove it.';
+
+// One input as the demo script's KEY=TYPE[:ARGS] (core's defaults where the declaration has none).
+function demoSpec(input) {
+    function n(v, fallback) { return typeof v === 'number' && isFinite(v) ? v : fallback; }
+    var t = input.type;
+    if (t === 'number') return input.key + '=number:' + n(input.min, 0) + ':' + n(input.max, 1);
+    if (t === 'int') return input.key + '=int:' + n(input.min, 0) + ':' + n(input.max, 100);
+    if (t === 'enum') return input.key + '=enum:' + (input.values || []).join('|');
+    if (t === 'text') return input.key + '=text:' + n(input.maxLength, 64);
+    return input.key + '=' + (t === 'bool' || t === 'event' ? t : 'number:0:1');
+}
+
+// The demo source's argv for a machine (catalog `machine`), or null when it declares no inputs.
+function demoArgv(machine) {
+    var inputs = expandInputs(machine);
+    return inputs.length ? [DEMO_COMMAND].concat(inputs.map(demoSpec)) : null;
+}
+
+function isDemo(entry) { return !!entry && Array.isArray(entry.argv) && entry.argv[0] === DEMO_COMMAND; }
+
+// User placements not in `known` (instance id -> true; it gains every user instance) whose
+// catalog entry declares machine inputs: the demo seeds to request, [{id, argv}]. An entry
+// the catalog doesn't list yet is left out of `known`, so it is tried again once it does.
+function demoSeeds(instances, catalog, known) {
+    var out = [];
+    (instances || []).forEach(function (i) {
+        if (i.source !== 'user' || i.character || known[i.id]) return;
+        var entry = (catalog || []).find(function (e) { return e.ref === i.ref; });
+        if (!entry) return;
+        known[i.id] = true;
+        var argv = entry.machine ? demoArgv(entry.machine) : null;
+        if (argv) out.push({id: i.id, argv: argv});
+    });
+    return out;
+}
+
 // The editor's starting values from a sources.json entry (null: a new command source).
-// {script, args, intervalS, kind, editable, note}
+// {script, args, intervalS, kind, editable, note, hint}
 function draftFrom(entry, bounds) {
-    if (!entry) return {script: '', args: '', intervalS: clampInterval(DEFAULT_INTERVAL, bounds), kind: 'command', editable: true, note: '', exists: false};
+    if (!entry) return {script: '', args: '', intervalS: clampInterval(DEFAULT_INTERVAL, bounds), kind: 'command', editable: true, note: '', hint: '', exists: false};
     var kind = entry.kind || 'command';
     if (kind !== 'command') return {script: '', args: '', intervalS: clampInterval(entry.intervalS, bounds), kind: kind, editable: false, exists: true,
                                     note: 'This is a ' + kind + ' source; edit it in sources.json.'};
     var argv = Array.isArray(entry.argv) ? entry.argv : [];
     return {script: argv.length ? String(argv[0]) : '', args: argsText(argv.slice(1)), intervalS: clampInterval(entry.intervalS, bounds),
-            kind: kind, editable: true, note: '', exists: true};
+            kind: kind, editable: true, note: '', hint: isDemo(entry) ? DEMO_HINT : '', exists: true};
 }
 
 // Why Save or Test can't go yet ('' when they can).
@@ -296,6 +338,7 @@ function resultText(reply) {
     var reloadNote = reply.reload && !reply.reload.ok ? ' The helper will read it when it runs.' : '';
     if (!reply.ok) return {level: 'warning', text: reply.error || 'The request failed.'};
     if (reply.op === 'save') return {level: 'info', text: 'Saved to ' + reply.path + '.' + reloadNote};
+    if (reply.op === 'seed') return null; // a new machine's demo source: no feedback line
     if (reply.op === 'remove') return {level: 'info', text: reply.removed ? 'Removed from ' + reply.path + '.' + reloadNote : 'sources.json has no entry for it.'};
     if (reply.op === 'restart') return {level: 'info', text: reply.resetAverage ? 'Restarted; the average starts again.' : 'Restarted.'};
     if (reply.op === 'restartAll') return {level: 'info', text: 'Source helper restarted every source.'};

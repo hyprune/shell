@@ -11,6 +11,7 @@ import "Objects.js" as Objects
 import "Npcs.js" as Npcs
 import "Companion.js" as Companion
 import "Library.js" as Library
+import "Sources.js" as Sources
 pragma Singleton
 
 QtObject {
@@ -252,7 +253,11 @@ QtObject {
     }
     function objectResult(method, params, result) {
         if (!method || !result) return;
-        if (method === 'objects.catalog') { objectCatalog = result.entries; objectCatalogRevision = result.revision; objectCatalogLoaded = true; return; }
+        if (method === 'objects.catalog') {
+            objectCatalog = result.entries; objectCatalogRevision = result.revision; objectCatalogLoaded = true;
+            if (placedPending) seedDemoSources();
+            return;
+        }
         if (method === 'libraries.list') { libraries = result.libraries; return; }
         if (!/^(objects|libraries)\./.test(method)) return;
         if (method === 'objects.pocket') {
@@ -296,6 +301,30 @@ QtObject {
         onTriggered: root.pollSources()
     }
     onSourcesWantedChanged: { if (!sourcesWanted) { sourcesStatusSeq = 0; } }
+    // A newly placed machine starts with a demo source (Sources.demoSeeds): the user placements
+    // that appear after a world's first state, when the catalog declares machine inputs (IPC
+    // 0.24). The bridge adds the entry only when sources.json has none for that id.
+    property var placedKnown: null           // instance id -> true; null until this world's first state
+    property string placedWorld: ''
+    property bool placedPending: false       // new user placements the catalog didn't list yet
+    function seedDemoSources() {
+        var instances = objectsState ? objectsState.instances || [] : [];
+        var wid = state && state.world ? state.world.id : '';
+        if (!placedKnown || wid !== placedWorld) {
+            var known = {};
+            instances.forEach(function (i) { known[i.id] = true; });
+            placedKnown = known, placedWorld = wid, placedPending = false;
+            return;
+        }
+        var fresh = instances.filter(function (i) { return i.source === 'user' && !i.character && !placedKnown[i.id]; });
+        if (!fresh.length) return;
+        Sources.demoSeeds(fresh, objectCatalog, placedKnown).forEach(function (seed) {
+            sourcesRequest('sources.seed', {id: seed.id, argv: seed.argv, intervalS: Sources.DEMO_INTERVAL});
+        });
+        // Not in the catalog yet (a library just installed, or never fetched): fetch it once.
+        placedPending = fresh.some(function (i) { return !placedKnown[i.id]; });
+        if (placedPending && objectsSupported && !catalogRefresh.running) catalogRefresh.restart();
+    }
 
     // ---- IPC 0.25 (RFC-0010 companions amendment, draft): the companion ----
     readonly property var companionState: state && state.companion ? state.companion : null
@@ -891,6 +920,7 @@ QtObject {
             if (state.keymap && state.keymap.capture && state.keymap.capture.status === 'captured') inputCapture(state.keymap.capture);
             if (questsVisible && JSON.stringify(previousQuests) !== JSON.stringify(state.quests || null)) questRefresh.restart();
             if (!guidanceRequested && available('guidance.get')) refreshGuidance();
+            if (objectsState && socket.connected) seedDemoSources();
             // objects.catalogRevision bumps when any catalog source changes.
             if (objectsVisible && objectsState && objectsState.catalogRevision !== objectCatalogFor && !catalogRefresh.running) catalogRefresh.restart();
             // IPC 0.23: act once on each new character interaction; refresh routes when paths change.

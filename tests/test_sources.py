@@ -317,7 +317,8 @@ class Argv(unittest.TestCase):
 
     def test_draft(self):
         b = {'min': 5, 'max': 86400}
-        self.assertEqual(call('draftFrom', None, b), {'script': '', 'args': '', 'intervalS': 60, 'kind': 'command', 'editable': True, 'note': '', 'exists': False})
+        self.assertEqual(call('draftFrom', None, b), {'script': '', 'args': '', 'intervalS': 60, 'kind': 'command', 'editable': True, 'note': '', 'hint': '',
+                                                      'exists': False})
         d = call('draftFrom', {'id': 'u-1', 'kind': 'command', 'argv': ['/bin/x', '-a', 'b c'], 'intervalS': 2}, b)
         self.assertEqual((d['script'], d['args'], d['intervalS'], d['editable']), ('/bin/x', '-a\nb c', 5, True))
         http = call('draftFrom', {'id': 'u-1', 'kind': 'http', 'url': 'https://example.invalid'}, b)
@@ -502,3 +503,81 @@ class Ipc24(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DemoSeed(unittest.TestCase):
+    """A newly placed machine starts with core's demo source (hyprune-demo-source): its argv per
+    input type, which placements get one, the bridge's add-only seed and the panel's hint."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / 'hyprune' / 'sources.json'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_argv_per_input_type(self):
+        self.assertEqual(call('demoArgv', GAUGE), ['hyprune-demo-source', 'value=number:0:100', 'display=text:12', 'label=text:16',
+                                                  'level=enum:ok|warn|fail', 'average=number:0:100'])
+        self.assertEqual(call('demoArgv', RACK), ['hyprune-demo-source', 'health.1=enum:ok|warn|fail|off', 'health.2=enum:ok|warn|fail|off',
+                                                 'health.3=enum:ok|warn|fail|off', 'name=text:24', 'units=int:0:42', 'on=bool', 'started=event'])
+        self.assertEqual(call('demoArgv', {'inputs': [{'id': 'x', 'type': 'number'}, {'id': 'n', 'type': 'int'}]}),
+                         ['hyprune-demo-source', 'x=number:0:1', 'n=int:0:100'])  # core's defaults
+        self.assertIsNone(call('demoArgv', {'inputs': []}))
+        self.assertIsNone(call('demoArgv', None))
+
+    def test_the_script_accepts_every_spec(self):
+        core = Path(os.environ.get('HYPRUNE_CORE_CHECKOUT', str(ROOT.parent / 'core')))
+        script = core / 'dev/machines/scripts/demo-source.py'
+        if not script.is_file():
+            self.skipTest('no core checkout with demo-source.py (HYPRUNE_CORE_CHECKOUT)')
+        for machine in (GAUGE, RACK):
+            argv = call('demoArgv', machine)
+            out = json.loads(subprocess.check_output([sys.executable, str(script), *argv[1:]], text=True))
+            self.assertNotIn('_error', out)
+            report = call('validateTest', {'values': out}, machine)
+            self.assertFalse([r for r in report['rows'] if r['level'] == 'error'], report)
+
+    def test_which_placements_get_one(self):
+        catalog = [{'ref': 'library/a@1/gauge', 'machine': GAUGE}, {'ref': 'package/crate'}, {'ref': 'library/a@1/rack', 'machine': RACK}]
+        instances = [{'id': 'u-1', 'source': 'user', 'ref': 'library/a@1/gauge', 'character': False},
+                     {'id': 'u-2', 'source': 'user', 'ref': 'package/crate', 'character': False},
+                     {'id': 'a-1', 'source': 'authored', 'ref': 'library/a@1/gauge', 'character': False},
+                     {'id': 'u-3', 'source': 'user', 'ref': 'library/a@1/rack', 'character': False},
+                     {'id': 'u-4', 'source': 'user', 'ref': 'library/b@1/new', 'character': False}]
+        out = js('(function () { var known = {"u-3": true}; var seeds = demoSeeds(%s, %s, known); return {seeds: seeds, known: known}; })()'
+                 % (json.dumps(instances), json.dumps(catalog)))
+        self.assertEqual([s['id'] for s in out['seeds']], ['u-1'])  # machines only, new ones only, user placements only
+        self.assertEqual(out['seeds'][0]['argv'][0], 'hyprune-demo-source')
+        self.assertEqual(sorted(out['known']), ['u-1', 'u-2', 'u-3'])  # u-4 is not in the catalog yet: tried again
+
+    def test_seed_adds_only_a_missing_entry(self):
+        added = sources.seed_entry(self.path, 'u-1', ['hyprune-demo-source', 'v=number:0:100'], 5)
+        self.assertEqual(added, {'id': 'u-1', 'kind': 'command', 'argv': ['hyprune-demo-source', 'v=number:0:100'], 'intervalS': 5})
+        sources.save_entry(self.path, 'u-1', ['/bin/mine'], 30)  # the user's own command
+        self.assertIsNone(sources.seed_entry(self.path, 'u-1', ['hyprune-demo-source', 'v=number:0:100'], 5))
+        config = json.loads(self.path.read_text())
+        self.assertEqual(config['sources'], [{'id': 'u-1', 'kind': 'command', 'argv': ['/bin/mine'], 'intervalS': 30}])
+
+    def test_panel_hint_for_a_demo_entry(self):
+        bounds = call('intervalBounds', None, False)
+        demo = call('draftFrom', {'id': 'u-1', 'kind': 'command', 'argv': ['hyprune-demo-source', 'v=bool'], 'intervalS': 5}, bounds)
+        self.assertEqual((demo['script'], demo['hint']), ('hyprune-demo-source', js('DEMO_HINT')))
+        self.assertEqual(call('draftFrom', {'id': 'u-1', 'kind': 'command', 'argv': ['/bin/x'], 'intervalS': 5}, bounds)['hint'], '')
+        self.assertIsNone(call('resultText', {'ok': True, 'op': 'seed', 'path': '/p'}))
+
+
+class DemoSeedBridge(unittest.IsolatedAsyncioTestCase):
+    async def test_seed_on_the_wire(self):
+        with tempfile.TemporaryDirectory() as d:
+            socket_path, config = str(Path(d) / 'sources.sock'), str(Path(d) / 'helper' / 'sources.json')
+            fake = await FakeHelper(config=config).start(socket_path)
+            try:
+                bridge = Sources(socket_path, str(Path(d) / 'default.json'), timeouts={'status': .5, 'reload': .5, 'test': .5, 'restart': .5, 'restart-all': .5})
+                first = await bridge.handle({'type': 'sources.seed', 'seq': 1, 'id': 'u-9', 'argv': ['hyprune-demo-source', 'on=bool'], 'intervalS': 5})
+                again = await bridge.handle({'type': 'sources.seed', 'seq': 2, 'id': 'u-9', 'argv': ['hyprune-demo-source', 'on=bool'], 'intervalS': 5})
+            finally:
+                await fake.stop()
+            self.assertEqual((first['op'], first['ok'], first['seeded'], first['reload']['ok']), ('seed', True, True, True))
+            self.assertEqual((again['ok'], again['seeded']), (True, False))
+            self.assertEqual(json.loads(Path(config).read_text())['sources'][0]['argv'], ['hyprune-demo-source', 'on=bool'])

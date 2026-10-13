@@ -280,7 +280,7 @@ ColumnLayout {
         HudLabel {
             Layout.fillWidth: true
             visible: text !== ''
-            text: body.draft.note || (body.loaded ? (body.loaded.entry ? '' : 'No entry yet: Save adds one to ') + (body.loaded.entry ? '' : body.loaded.path) : '')
+            text: body.draft.note || body.draft.hint || (body.loaded ? (body.loaded.entry ? '' : 'No entry yet: Save adds one to ') + (body.loaded.entry ? '' : body.loaded.path) : '')
             color: body.draft.note ? Tokens.warning : Tokens.muted; font.pixelSize: 12; wrapMode: Text.WrapAnywhere
         }
         Caption { text: 'Command (a script or program; it prints one JSON object)' }
