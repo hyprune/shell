@@ -1,3 +1,13 @@
+# IPC 0.25 companions (draft) — 2026-10-13
+
+`python3 -m unittest discover -s tests`: **322 pass**, including `tests/test_ipc25.py`
+(11): the vendored 0.25 pin, no new grant, the 0.25 allowlist (companion.set/clear/mode
+only from 0.25), every companion request built by the shell and the results against the
+0.25 pin (refused by 0.24), the companion state and catalog capability shapes, the
+`qml/Companion.js` helpers (choices, status line, Follow/Stay) and the Settings >
+Companion wiring. `qmllint` on `CompanionSettings.qml`: style hints only. Not yet captured
+in a nested preview.
+
 # IPC 0.23 characters, routes and interactions — 2026-10-12
 
 `python3 -m unittest discover -s tests`: **277 pass**, including `tests/test_ipc23.py`
