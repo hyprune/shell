@@ -287,7 +287,7 @@ for w, h, scale, suffix in sizes:
     wait(lambda: npcs()['promptNote'] == 'Reduced motion · Settings')
     shot('hud-aimed-reduced')
     preview({'aimed': AIMED})
-    wait(lambda: npcs()['promptNote'] == '')
+    wait(lambda: not npcs()['promptNote'])  # hidden: null
     preview({'interaction': SAY, 'aimed': AIMED})
     wait(lambda: npcs()['line'] == SAY['line'] and npcs()['prompt'] is None)
     shot('hud-say')
