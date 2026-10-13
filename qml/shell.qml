@@ -54,7 +54,7 @@ ShellRoot {
             // RFC-0012: the focus timer chip in use (E) mode, where the HUD itself is hidden.
             FocusChip {
                 property real uiScale: hudScene.uiScale
-                visible: ShellState.active && !ShellState.director && HudData.focusMode && !!ShellState.state.interaction && ShellState.state.interaction.mode === 'typing' &&
+                visible: ShellState.active && !ShellState.director && !ShellState.hudHidden && HudData.focusMode && !!ShellState.state.interaction && ShellState.state.interaction.mode === 'typing' &&
                          Quests.chipVisible(ShellState.focusState, true, null)
                 anchors { right: parent.right; top: parent.top; margins: 24 }
                 width: implicitWidth; height: implicitHeight
