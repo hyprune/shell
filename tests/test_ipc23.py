@@ -418,6 +418,10 @@ class Panel(unittest.TestCase):
         self.assertEqual(call('usageText', NPCS), '2 / 16 world  ·  1 / 8 mine')
         self.assertEqual(call('userFull', {**NPCS, 'usage': {'authored': 0, 'user': 8}}), True)
         self.assertEqual(sorted(js('Object.keys(MOTION_NOTES)')), ['always', 'auto', 'off', 'still'])
+        # auto no longer pauses for power or idle: the same as always (both kept on the wire).
+        self.assertIn('whenever the world is shown', js('MOTION_NOTES.auto'))
+        self.assertIn('same as Auto', js('MOTION_NOTES.always'))
+        self.assertNotIn('battery', js('MOTION_NOTES.auto'))
 
 
 class Prompts(unittest.TestCase):
@@ -431,6 +435,20 @@ class Prompts(unittest.TestCase):
         self.assertEqual((prompt['key'], prompt['text'], prompt['count']), ('E', 'Talk to Ada', 2))
         self.assertIsNone(call('aimedPrompt', {**AIMED, 'interactions': []}))
         self.assertIsNone(call('aimedPrompt', None))
+
+    def test_aimed_prompt_pause_note(self):
+        # Animating (auto or always): no note. Posed still or reduced motion: why, and where it is set.
+        animating = {**NPCS, 'state': 'animating', 'reason': None}
+        self.assertEqual(call('aimedPrompt', AIMED, animating)['note'], '')
+        self.assertEqual(call('aimedPrompt', AIMED, None)['note'], '')
+        self.assertEqual(call('aimedPrompt', AIMED, {**NPCS, 'motion': 'still', 'state': 'still', 'reason': None})['note'],
+                         'Posed still · Objects › Characters')
+        self.assertEqual(call('aimedPrompt', AIMED, {**NPCS, 'state': 'paused', 'reason': 'reduced motion'})['note'], 'Reduced motion · Settings')
+        self.assertEqual(call('pauseNote', {**NPCS, 'state': 'paused', 'reason': 'focus'}), 'Paused · a window has focus · Objects › Characters')
+        self.assertEqual(call('pauseNote', {**NPCS, 'state': 'off', 'reason': None}), '')
+        for note in [call('pauseNote', {**NPCS, 'state': st, 'reason': r}) for st, r in
+                     [('still', None), ('paused', 'reduced motion'), ('paused', 'focus'), ('paused', 'battery')]]:
+            self.assertLessEqual(len(note), 64, note)  # one short line under the prompt
 
     def test_caption(self):
         caption = call('caption', SAY, 'Ada')
@@ -480,6 +498,9 @@ class Feedback(unittest.TestCase):
         spawn = call('errorToast', 'npcs.spawn', {'code': -32007, 'message': 'no free spot in front of you', 'rule': 'reach'}, '')
         self.assertEqual((spawn['title'], spawn['detail']), ('Character', 'Rule: out of reach'))
         self.assertEqual(call('errorToast', 'interaction.choose', None, '-32004: unknown id')['line'], 'unknown id')
+        # The user's settings refuse a guide (-32005, core's reason) instead of accepting it.
+        guide = call('errorToast', 'interaction.choose', {'code': -32005, 'message': 'characters are paused (motion still)'}, '')
+        self.assertEqual((guide['title'], guide['line'], guide['tone']), ('Interaction', 'characters are paused (motion still)', 'warning'))
 
     def test_results_and_notices(self):
         self.assertEqual(call('resultText', 'npcs.spawn', {'ref': GUIDE, 'path': 'package/plaza-loop'}, {}), 'Spawned on plaza-loop.')
@@ -490,6 +511,9 @@ class Feedback(unittest.TestCase):
         toast = call('noticeToast', {'code': 'path.unwalkable', 'message': 'route path-3: no floor under (1, 0, 2)'})
         self.assertEqual((toast['title'], toast['tone'], toast['line']), ('Route', 'warning', 'route path-3: no floor under (1, 0, 2)'))
         self.assertIsNone(call('noticeToast', {'code': 'runtime.ready', 'message': 'x'}))
+        # E on a resident refused by the motion setting: a short toast, not only the notice list.
+        refused = call('noticeToast', {'code': 'interaction.refused', 'level': 'info', 'message': 'characters are paused (motion off)'})
+        self.assertEqual((refused['title'], refused['tone'], refused['line']), ('Interaction', 'warning', 'characters are paused (motion off)'))
 
 
 class Presentation(unittest.TestCase):

@@ -5,12 +5,13 @@
 
 var MOTIONS = [{id: 'auto', label: 'Auto'}, {id: 'always', label: 'Always'}, {id: 'still', label: 'Still'}, {id: 'off', label: 'Off'}];
 var MOTION_NOTES = {
-    auto: 'Animates on mains power; battery, USB-C and unknown supplies pause.',
-    always: 'Animates whenever the world is shown.',
+    auto: 'Animates whenever the world is shown. Pick Still or Off to pause them.',
+    always: 'The same as Auto: animates whenever the world is shown.',
     still: 'Characters hold a standing pose.',
     off: 'Characters are not drawn.'};
 var STATES = {none: 'No characters', animating: 'Animating', paused: 'Paused', still: 'Still', off: 'Off'};
-// npcs.reason (core's words) as a short phrase.
+// npcs.reason (core's words) as a short phrase. Core 0.7.2+ sends only inactive, focus and
+// reduced motion; the rest are kept for older cores.
 var REASONS = {
     inactive: 'the world is not shown', typing: 'you are typing in a window', focus: 'a window has focus',
     'free cursor': 'the cursor is free', idle: 'you are idle', battery: 'on battery', 'usb-c power': 'on USB-C power',
@@ -305,11 +306,23 @@ function drawingHint(drawing, name) {
 // ---- Interaction prompts ----
 
 // The HUD prompt for the aimed character: one interaction shows its prompt (core's prompt,
-// else its label); several show "Talk to <name>". Nothing when it has none.
-function aimedPrompt(aimed) {
+// else its label); several show "Talk to <name>". Nothing when it has none. `note`: why it
+// stands still and where that is set (pauseNote), '' while characters animate.
+function aimedPrompt(aimed, npcs) {
     if (!aimed || !aimed.interactions || !aimed.interactions.length) return null;
     var text = aimed.interactions.length === 1 ? (aimed.prompt || aimed.interactions[0].label) : 'Talk to ' + aimed.name;
-    return {key: INTERACT_KEY, text: text, name: aimed.name, objectId: aimed.objectId, count: aimed.interactions.length};
+    return {key: INTERACT_KEY, text: text, name: aimed.name, objectId: aimed.objectId, count: aimed.interactions.length,
+            note: pauseNote(npcs)};
+}
+
+// Why characters don't move, short, with the setting's place: "Posed still · Objects › Characters".
+// Only the user's settings stop them while the world is shown (core 0.7.2+).
+function pauseNote(npcs) {
+    if (!npcs) return '';
+    if (npcs.state === 'still') return 'Posed still · Objects › Characters';
+    if (npcs.state !== 'paused' || !npcs.reason) return '';
+    if (npcs.reason === 'reduced motion') return 'Reduced motion · Settings';
+    return 'Paused · ' + (REASONS[npcs.reason] || npcs.reason) + ' · Objects › Characters';
 }
 
 function interactionKey(interaction) {
@@ -408,6 +421,7 @@ var NOTICES = {
     'npc.spawned': ['Character', 'info'], 'npc.removed': ['Character', 'info'], 'npc.disabled': ['Character', 'info'],
     'npc.enabled': ['Character', 'info'], 'npc.suspended': ['Character', 'warning'], 'npc.budget': ['Character', 'warning'],
     'path.unwalkable': ['Route', 'warning'], 'path.saved': ['Route', 'info'], 'path.removed': ['Route', 'info'],
+    'interaction.refused': ['Interaction', 'warning'],
     'world.library.missing': ['Library', 'warning']};
 
 function noticeToast(notice) {

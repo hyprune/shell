@@ -4,7 +4,8 @@ import "../theme"
 import "../Npcs.js" as Npcs
 
 // IPC 0.23 character prompts on the HUD (passive: no input region). Under the reticle: the
-// aimed character's prompt ("E  Talk", or "E  Talk to <name>" with several interactions).
+// aimed character's prompt ("E  Talk", or "E  Talk to <name>" with several interactions), with
+// a short note when characters stand still under the user's settings (Npcs.pauseNote).
 // Bottom centre: the caption of a running say interaction (core also draws a world-locked
 // caption; this one stays compact, subtitle style) and, while a route is being drawn
 // (npcs.drawing), the drawing hint. Follows the HUD concept and world style; reduced motion
@@ -18,7 +19,7 @@ Item {
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
     readonly property var npcs: ShellState.npcsState
     readonly property var interaction: npcs ? npcs.interaction : null
-    readonly property var prompt: !interaction && !ShellState.npcChoice ? Npcs.aimedPrompt(npcs ? npcs.aimed : null) : null
+    readonly property var prompt: !interaction && !ShellState.npcChoice ? Npcs.aimedPrompt(npcs ? npcs.aimed : null, npcs) : null
     readonly property var caption: Npcs.caption(interaction, interaction ? ShellState.characterName(interaction.objectId) : '')
     readonly property var drawing: ShellState.drawingHint
     readonly property color tileColor: minimal ? '#c013242d' : Qt.rgba(Tokens.hudScrim.r, Tokens.hudScrim.g, Tokens.hudScrim.b, .86)
@@ -31,8 +32,8 @@ Item {
         readonly property var shown: root.prompt
         anchors.horizontalCenter: parent.horizontalCenter
         y: Math.round(root.height / 2 + 44)
-        width: Math.min(root.width - 40, keyCap.width + promptText.implicitWidth + 40)
-        height: 40
+        width: Math.min(root.width - 40, keyCap.width + Math.max(promptText.implicitWidth, promptNote.implicitWidth) + 40)
+        height: promptNote.text ? 56 : 40
         opacity: shown ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Tokens.reducedMotion ? 0 : 140 } }
@@ -52,9 +53,22 @@ Item {
             objectName: 'hudNpcPromptText'
             x: keyCap.x + keyCap.width + 12
             width: parent.width - x - 14
-            anchors.verticalCenter: parent.verticalCenter
+            y: promptNote.text ? 6 : Math.round((parent.height - height) / 2)
             text: promptBox.last ? promptBox.last.text : ''
             font.pixelSize: 15; font.family: root.font
+            elide: Text.ElideRight
+        }
+        // Why it stands still (posed still, reduced motion) and where that is set.
+        HudText {
+            id: promptNote
+            objectName: 'hudNpcPromptNote'
+            x: promptText.x
+            width: promptText.width
+            y: parent.height - height - 7
+            visible: text !== ''
+            text: promptBox.last && promptBox.last.note ? promptBox.last.note : ''
+            font.pixelSize: 12; font.family: root.font
+            color: Tokens.gold
             elide: Text.ElideRight
         }
     }
