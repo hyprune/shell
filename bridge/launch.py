@@ -64,7 +64,8 @@ def shell_actions(protocol):
             (['surface.pocket', 'surface.unpocket'] if at_least(protocol, 20) else []) +
             (QUEST_ACTIONS if at_least(protocol, 21) else []) +
             (OBJECT_ACTIONS if at_least(protocol, 22) else []) +
-            (NPC_ACTIONS if at_least(protocol, 23) else []))
+            (NPC_ACTIONS if at_least(protocol, 23) else []) +
+            (COMPANION_ACTIONS if at_least(protocol, 25) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
@@ -83,8 +84,10 @@ OBJECT_ACTIONS = ['objects.catalog', 'objects.pocket', 'objects.place', 'objects
 # interaction.choose world.control.
 NPC_ACTIONS = ['npcs.spawn', 'npcs.bind', 'npcs.disable', 'npcs.remove',
                'paths.list', 'paths.set', 'paths.remove', 'paths.draw', 'paths.finish', 'interaction.choose']
+# RFC-0010 companions amendment (IPC 0.25, draft): the companion. No new grant (objects.control).
+COMPANION_ACTIONS = ['companion.set', 'companion.clear', 'companion.mode']
 # Results and refusals that echo their params (a reply is matched to its quest, object or character).
-ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS
+ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS + COMPANION_ACTIONS
 
 
 def action_event(method, params, result):
@@ -122,7 +125,7 @@ def action_notice(cmd, error):
     notice = {'type': 'notice', 'level': 'warning', 'code': 'shell.action', 'message': message,
               **({'method': method} if isinstance(method, str) else {}),
               **({'params': cmd.get('params')} if method in ECHO_ACTIONS else {})}
-    if (method in OBJECT_ACTIONS or method in NPC_ACTIONS) and isinstance(error, CoreError):
+    if (method in OBJECT_ACTIONS or method in NPC_ACTIONS or method in COMPANION_ACTIONS) and isinstance(error, CoreError):
         # Object and character refusals become short toasts: core's own words and the
         # placement or walkability rule.
         notice['error'] = {'code': error.code, 'message': error.message[:512],
