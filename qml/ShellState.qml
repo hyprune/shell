@@ -613,6 +613,9 @@ QtObject {
     readonly property bool live: status === 'live' && state !== null
     readonly property bool active: live && state.runtime.active && lease !== ''
     readonly property bool dev: presentation.dev === true || Quickshell.env('HYPRUNE_DEV_AUTOMATION') === '1'
+    // Dev automation: hide the world HUD (tool deck, hints, toasts, notices) for clean demo
+    // recordings; the Director still opens. Set only through the preview IPC (dev builds).
+    property bool hudHidden: false
     readonly property var waypointState: state && state.location ? state.location.waypoint : null
     readonly property var world: state && state.world ? worlds.find((w) => {
         return w.id === state.world.id;

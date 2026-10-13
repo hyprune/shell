@@ -48,7 +48,7 @@ ShellRoot {
                 height: parent.height / uiScale
                 scale: uiScale
                 transformOrigin: Item.TopLeft
-                visible: ShellState.active && !ShellState.authoredCamera && !HudData.focusMode
+                visible: ShellState.active && !ShellState.authoredCamera && !HudData.focusMode && !ShellState.hudHidden
             }
 
             // RFC-0012: the focus timer chip in use (E) mode, where the HUD itself is hidden.
@@ -391,6 +391,7 @@ ShellRoot {
             }
         }
         function concept(name: string): void { if (ShellState.dev) ShellState.setConcept(name); }
+        function hud(visible: bool): void { if (ShellState.dev) ShellState.hudHidden = !visible; } // demo recordings
         function resource(name: string): void { if (ShellState.dev) ShellState.preference({resource:name}); }
         function curvature(amount: real): void {
             if (ShellState.dev) { ShellState.preference({curved:amount > 0,curvature:amount}); }
