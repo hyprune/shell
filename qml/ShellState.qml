@@ -9,6 +9,7 @@ import "DirectorModel.js" as DirectorModel
 import "Quests.js" as Quests
 import "Objects.js" as Objects
 import "Npcs.js" as Npcs
+import "Companion.js" as Companion
 pragma Singleton
 
 QtObject {
@@ -294,6 +295,15 @@ QtObject {
         onTriggered: root.pollSources()
     }
     onSourcesWantedChanged: { if (!sourcesWanted) { sourcesStatusSeq = 0; } }
+
+    // ---- IPC 0.25 (RFC-0010 companions amendment, draft): the companion ----
+    readonly property var companionState: state && state.companion ? state.companion : null
+    readonly property bool companionSupported: (supportsProtocol(25) || dev) && available('companion.set')
+    readonly property var companionChoices: Companion.choices(objectCatalog)
+    readonly property string companionStatus: Companion.status(companionState, pathList)
+    // None clears; a ref sets (the catalog says which characters are capable).
+    function chooseCompanion(ref) { var r = Companion.choose(ref); if (objectsCan(r.method)) objectAction(r.method, r.params); }
+    function companionMode(mode) { if (objectsCan('companion.mode')) objectAction('companion.mode', {mode: mode}); }
 
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null

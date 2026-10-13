@@ -90,6 +90,7 @@ Item {
                 model: [{name:'Appearance',section:0},{name:'Performance',section:1},{name:'Input bindings',section:2}]
                        .concat(ShellState.playerSupported ? [{name:'Movement',section:3},{name:'Reticle',section:4}] : [])
                        .concat(ShellState.available('guidance.get') ? [{name:'Guidance',section:5}] : [])
+                       .concat(ShellState.companionSupported ? [{name:'Companion',section:6}] : [])
                 ActionButton {
                     required property var modelData
                     objectName: 'settings-section-' + modelData.section
@@ -155,6 +156,7 @@ Item {
                 ReticleSettings { Layout.fillWidth: true; visible: root.section === 4 && ShellState.playerSupported }
                 HudLabel { Layout.fillWidth: true; visible: root.section === 5 && !ShellState.available('guidance.get'); text: 'Guidance settings require core IPC 0.21.'; wrapMode: Text.Wrap; color: Tokens.muted }
                 GuidanceSettings { Layout.fillWidth: true; visible: root.section === 5 && ShellState.available('guidance.get') }
+                CompanionSettings { Layout.fillWidth: true; visible: root.section === 6 && ShellState.companionSupported }
                 ColumnLayout {
                 Layout.fillWidth: true; spacing: 16; visible: root.section === 2
                 HudLabel { text: 'INPUT'; color: Tokens.gold; font.pixelSize: Tokens.caption; Layout.fillWidth: true }
