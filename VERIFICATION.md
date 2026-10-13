@@ -1,13 +1,14 @@
 # IPC 0.26 debug tool, companion pace, whole pocket list — 2026-10-13
 
-`python3 -m unittest discover -s tests`: **362 pass**, including `tests/test_ipc26.py`
-(10): the vendored 0.26 pin, no new grant or method, the Walk / Run requests built by
+`python3 -m unittest discover -s tests`: **363 pass**, including `tests/test_ipc26.py`
+(11): the vendored 0.26 pin, no new grant or method, the Walk / Run requests built by
 `qml/Companion.js` `paceParams` (kept mode; none on a route or without a companion)
 against the 0.26 pin (refused by 0.25), `companionState.pace`, the `debugTool` shape,
 tool 9 in `hud.pose` and the `tool9` world action, the HUD and tool-deck wiring for the
-layer name and `LAYER n/N`, and a 40-window pocket listed whole by Director > Surfaces.
-`qmllint` on the changed QML: no errors. Nested evidence with core 0.26 is in core's
-`dev/nested` runs (`--windows` with the real shell).
+layer name and `LAYER n/N`, a 40-window pocket listed whole by Director > Surfaces, and
+the dev status `surfaces` entry. `qmllint` on the changed QML: no errors. Nested with core
+0.26 (`dev/nested/run.sh --windows`, this shell at 0.26): 22 pocketed room windows, all 22
+listed in Director > Surfaces as "IN THE POCKET / 22".
 
 ---
 

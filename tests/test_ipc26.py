@@ -154,6 +154,12 @@ class Pocket(unittest.TestCase):
         self.assertEqual(len(cards['pocketed']), 40)
         self.assertEqual(cards['pocketed'][39]['id'], 'surface-39')
 
+    def test_dev_status_reports_the_director_pocket(self):
+        shell = (ROOT / 'qml/shell.qml').read_text()
+        self.assertIn("Audit.find(view, 'directorSurfaces')", shell)
+        self.assertIn("Audit.findAll(page, 'pocketBadge:')", shell)
+        self.assertIn("objectName: 'directorSurfaces'", (ROOT / 'qml/components/DirectorSurfaces.qml').read_text())
+
 
 if __name__ == '__main__':
     unittest.main()

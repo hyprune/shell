@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 Flickable {
     id: page
+    objectName: 'directorSurfaces'
     clip: true
     ScrollBar.vertical: ScrollBar {}
     boundsBehavior: Flickable.StopAtBounds

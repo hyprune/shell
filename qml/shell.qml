@@ -527,6 +527,14 @@ ShellRoot {
                             toast: text('hudToastLine'),
                             interactionKey: ShellState.npcInteractionKey};
                 })(),
+                // Director > Surfaces: the pocket section label and the pocketed cards it draws.
+                surfaces: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var page = ShellState.director ? Audit.find(view, 'directorSurfaces') : null;
+                    var label = page ? Audit.find(page, 'pocketSection') : null;
+                    return {pocketed: page ? page.cards.pocketed.length : null, placed: page ? page.cards.placed.length : null,
+                            pocketLabel: label ? label.text : null, pocketBadges: page ? Audit.findAll(page, 'pocketBadge:') : []};
+                })(),
                 library: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
                     var page = ShellState.director ? Audit.find(view, 'directorLibrary') : null;
