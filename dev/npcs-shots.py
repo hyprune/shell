@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """IPC 0.23 (RFC-0011 P2) captures: spawning a character from Director > Objects (route step,
 settings, stops on a user route), the Characters view (motion, disable, rebind, remove), the
-drawing bar and HUD hint, the aimed prompt, the say caption, the choice list, panel /
+drawing bar and HUD hint, the aimed prompt (and its note when posed still), the say caption, the choice list, panel /
 waypoint / guide interactions and character refusals.
 
 Launched only by dev/run's validated nested lifetime: dev/run npcs
@@ -279,6 +279,15 @@ for w, h, scale, suffix in sizes:
     preview({'aimed': SEVERAL})
     wait(lambda: npcs()['prompt'] == 'Talk to Ada')
     shot('hud-aimed-several')
+    # Posed still / reduced motion: the prompt says why and where it is set.
+    preview({'aimed': AIMED, 'motion': 'still', 'state': 'still'})
+    wait(lambda: npcs()['prompt'] == 'Talk' and npcs()['promptNote'] == 'Posed still · Objects › Characters')
+    shot('hud-aimed-still')
+    preview({'aimed': SEVERAL, 'state': 'paused', 'reason': 'reduced motion'})
+    wait(lambda: npcs()['promptNote'] == 'Reduced motion · Settings')
+    shot('hud-aimed-reduced')
+    preview({'aimed': AIMED})
+    wait(lambda: npcs()['promptNote'] == '')
     preview({'interaction': SAY, 'aimed': AIMED})
     wait(lambda: npcs()['line'] == SAY['line'] and npcs()['prompt'] is None)
     shot('hud-say')

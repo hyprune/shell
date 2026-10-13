@@ -523,7 +523,7 @@ ShellRoot {
                             rows: spawn ? spawn.rows.map(r => r.kind === 'route' ? r.ref : r.kind) : [], cursor: spawn ? spawn.cursor : null,
                             request: spawn ? spawn.request : null, ready: spawn ? spawn.ready : null, stops: spawn ? spawn.stops : [],
                             selected: ShellState.selectedCharacter, characters: ShellState.characterInstances.length, choice: ShellState.npcChoice,
-                            drawing: ShellState.npcDrawing, prompt: text('hudNpcPromptText'), line: text('hudNpcLine'), drawingText: text('hudNpcDrawingText'),
+                            drawing: ShellState.npcDrawing, prompt: text('hudNpcPromptText'), promptNote: text('hudNpcPromptNote'), line: text('hudNpcLine'), drawingText: text('hudNpcDrawingText'),
                             toast: text('hudToastLine'),
                             interactionKey: ShellState.npcInteractionKey};
                 })(),
