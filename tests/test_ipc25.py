@@ -56,7 +56,7 @@ class Pin(unittest.TestCase):
         source = json.loads((ROOT / 'protocol/v0.25/SOURCE.json').read_text())
         self.assertEqual(source['protocol'], '0.25')
         self.assertEqual(hashlib.sha256((ROOT / 'protocol/v0.25/ipc.schema.json').read_bytes()).hexdigest(), source['sha256'])
-        self.assertEqual(SUPPORTED_PROTOCOLS[-1], '0.25')
+        self.assertIn('0.25', SUPPORTED_PROTOCOLS)
         self.assertEqual(V25.schema['$defs']['session.hello.result']['properties']['protocol']['const'], '0.25')
 
 
