@@ -31,6 +31,13 @@ function surfaceCards(state) {
     return {pocketed: pocketed, placed: placed};
 }
 
+// A window core keeps a record of (room or home workspace): it can be pocketed, pulled,
+// placed or returned. Windows on other workspaces are listed as desktop-window-* for
+// keyboard focus only; core refuses world actions on them.
+function worldWindow(card) {
+    return !!card && card.kind === 'window' && String(card.id).indexOf('desktop-window-') !== 0;
+}
+
 // Feedback for a pocket action result (or null when it needs none).
 function pocketResult(method, result) {
     if (method === 'surface.unpocket' && result && result.placed === false)

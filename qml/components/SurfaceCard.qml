@@ -1,5 +1,6 @@
 import ".."
 import "../theme"
+import "../DirectorModel.js" as Model
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -12,7 +13,7 @@ Rectangle {
     property var surface
     // IPC 0.20: in the pocket (editor.unplaced) = not drawn in the world.
     readonly property bool pocketed: surface.pocketed === true
-    readonly property bool canPocket: surface.kind === 'window' && ShellState.available(pocketed ? 'surface.unpocket' : 'surface.pocket')
+    readonly property bool canPocket: Model.worldWindow(surface) && ShellState.available(pocketed ? 'surface.unpocket' : 'surface.pocket')
     readonly property var feedback: ShellState.surfaceFeedback && ShellState.surfaceFeedback.surfaceId === surface.id ? ShellState.surfaceFeedback : null
 
     implicitHeight: cardColumn.implicitHeight + 40
@@ -147,7 +148,7 @@ Rectangle {
         }
 
         RowLayout {
-            visible: root.surface.kind === 'window' && !root.pocketed && ShellState.available('surface.pull')
+            visible: Model.worldWindow(root.surface) && !root.pocketed && ShellState.available('surface.pull')
             Layout.fillWidth: true
             ActionButton {
                 Layout.fillWidth: true; Layout.minimumWidth: 0; Layout.preferredWidth: 1

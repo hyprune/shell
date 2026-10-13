@@ -206,6 +206,12 @@ class Pocket(unittest.TestCase):
                                                 'focused': False, 'pocketed': True, 'appClass': 'mpv'})
         self.assertEqual(model('surfaceCards(null)'), {'pocketed': [], 'placed': []})
 
+    def test_world_actions_only_for_recorded_windows(self):
+        self.assertTrue(model('worldWindow({id:"surface-3",kind:"window"})'))
+        self.assertFalse(model('worldWindow({id:"desktop-window-94014770855328",kind:"window"})'))
+        self.assertFalse(model('worldWindow({id:"workspace-21",kind:"workspace"})'))
+        self.assertFalse(model('worldWindow(null)'))
+
     def test_results_and_errors(self):
         self.assertEqual(model('pocketResult("surface.unpocket",{revision:3,placed:false})')['text'],
                          'No free spot here — aim and click to place it (Placement tool selected)')
