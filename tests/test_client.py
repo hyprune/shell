@@ -23,7 +23,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.validator = V2_VALIDATOR if self.protocol == '0.2' else VALIDATOR
         if self.protocol == '0.2':
             self.state.update(location={'zones':[], 'waypoint':None, 'route':[], 'autodrive':False, 'transition':None}, integrations={'sources':[]})
-        self.connections=0;self.tokens=0;self.revoked=False;self.hold_overlay_delta=False;self.snapshot_requests=0;self.reverse_responses=False;self.held=None;self.claim_conflict=False
+        self.connections=0;self.tokens=0;self.revoked=False;self.hold_overlay_delta=False;self.snapshot_requests=0;self.reverse_responses=False;self.held=None;self.claim_conflict=False;self.locked=False
         async def token():self.tokens+=1;return format(self.tokens,'064x')
         self.client=Client(self.path,self.events.append,token,{'world':'TEST'},protocol=self.protocol)
         self.client.screens=['TEST']
@@ -68,6 +68,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                     self.state['shell']['leases'][0]['overlays']=[{'outputId':'world','visible':p.get('visible',False),'exclusiveInput':p.get('exclusiveInput',False)}]
                     result={'revision':revision+1};self.revision+=1
                 elif method=='shell.release':
+                    if self.locked:  # core 0.8.2 refused every method while the session was locked
+                        writer.write(frame({'jsonrpc':'2.0','id':msg['id'],'error':{'code':-32005,'message':'session locked'}},self.validator));await writer.drain();continue
                     self.state['shell']={'leases':[]};result={'revision':revision+1};self.revision+=1
                 elif method=='state.unsubscribe':result={'ok':True}
                 else:result={'revision':revision}
@@ -155,6 +157,34 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(sum(m=='shell.claim' for m,p in self.calls),count)
             self.assertIsNone(second.lease)
             self.assertEqual(self.client.lease,owner)
+        finally:
+            task.cancel();await asyncio.gather(task,return_exceptions=True)
+    def runtime(self,active,writer=None):
+        self.state['runtime']['active']=active;self.revision+=1
+        (writer or self.peers[-1]).write(frame(self.delta(self.revision-1,self.revision,{'runtime':self.state['runtime']})))
+    async def test_lease_refused_back_while_locked_is_released_before_the_next_claim(self):
+        old=self.client.lease
+        self.locked=True;self.runtime(False)
+        await self.until(lambda:self.client.lease is None and self.client.stale_lease==old)
+        self.locked=False;self.runtime(True)
+        await self.until(lambda:self.client.lease is not None)
+        claims=[i for i,(m,p) in enumerate(self.calls) if m=='shell.claim']
+        releases=[i for i,(m,p) in enumerate(self.calls) if m=='shell.release' and p=={'leaseId':old}]
+        self.assertEqual(len(releases),2)  # refused while locked, then given back first
+        self.assertLess(releases[-1],claims[-1])
+        self.assertIsNone(self.client.stale_lease)
+    async def test_blocked_claim_is_tried_again_on_the_next_entry(self):
+        self.claim_conflict=True
+        second=Client(self.path,self.events.append,bindings={'world':'TEST'},protocol=self.protocol)
+        second.screens=['TEST']
+        task=asyncio.create_task(second.run())
+        try:
+            await self.until(lambda:second.claim_blocked)
+            writer=self.peers[-1]
+            self.runtime(False,writer)
+            await self.until(lambda:not second.claim_blocked)
+            self.claim_conflict=False;self.runtime(True,writer)
+            await self.until(lambda:second.lease is not None)
         finally:
             task.cancel();await asyncio.gather(task,return_exceptions=True)
     async def test_gap_resync_drops_stale_delta(self):

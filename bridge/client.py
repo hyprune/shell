@@ -92,6 +92,7 @@ class Client:
         self.ui_lock = asyncio.Lock()
         self.lease_seen = False
         self.claim_blocked = False
+        self.stale_lease = None  # a release core refused while the session was locked
         self.tasks = set()
         self.invalid_frames = 0
         self.last_invalid_log = float('-inf')
@@ -412,10 +413,17 @@ class Client:
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
                 if self.lease and 'shell.release' in self.hello['methods']:
-                    with contextlib.suppress(RuntimeError):
+                    try:
                         await self.call('shell.release', {'leaseId': self.lease})
+                    except CoreError as error:
+                        if error.code == -32005:
+                            self.stale_lease = self.lease  # locked (core 0.8.2): give it back after the unlock
+                    except RuntimeError:
+                        pass
                 self.lease = self.output = None
                 self.lease_seen = False
+                # Left world mode (a lock, display off, exit): the next entry may claim again.
+                self.claim_blocked = False
                 self.publish()
                 return
             # A cleared exclusive flag means lock/exit/lease loss: unmap immediately.
@@ -428,6 +436,11 @@ class Client:
                 self.emit({'type': 'director', 'open': False})
             target = next((v for v in runtime['outputs'] if self.bindings.get(v) in self.screens), None)
             if not self.lease and target and not self.claim_blocked and 'shell.claim' in self.hello.get('methods', []):
+                if self.stale_lease:
+                    stale, self.stale_lease = self.stale_lease, None
+                    if any(v['id'] == stale for v in leases):
+                        with contextlib.suppress(RuntimeError):
+                            await self.call('shell.release', {'leaseId': stale})
                 try:
                     result = await self.call('shell.claim', {'outputs': [target]})
                 except RuntimeError:
@@ -666,6 +679,7 @@ class Client:
                 self.state = None
                 self.lease = self.output = self.subscription = self.session = None
                 self.lease_seen = self.claim_blocked = False
+                self.stale_lease = None
                 self.hello = {}
                 self.emit({'type': 'director', 'open': False})
                 self.publish()
