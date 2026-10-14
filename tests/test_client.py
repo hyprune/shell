@@ -64,6 +64,8 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(p['outputs'],['world'])
                     self.state['shell']={'leases':[{'id':'lease-'+str(self.connections),'outputs':['world'],'overlays':[]}]}
                     result={'leaseId':'lease-'+str(self.connections),'revision':revision+1};self.revision+=1
+                elif method=='shell.overlay' and getattr(self,'fail_overlay',False):
+                    writer.write(frame({'jsonrpc':'2.0','id':msg['id'],'error':{'code':-32002,'message':'no credential-matched HUD on leased output'}},self.validator));await writer.drain();continue
                 elif method in ['shell.overlay','ui.close']:
                     self.state['shell']['leases'][0]['overlays']=[{'outputId':'world','visible':p.get('visible',False),'exclusiveInput':p.get('exclusiveInput',False)}]
                     result={'revision':revision+1};self.revision+=1
@@ -304,6 +306,17 @@ class ClientV2Tests(ClientTests):
         self.notify('ui.closed',{'leaseId':self.client.lease,'outputId':'world'})
         await self.until(lambda:not self.client.director)
         self.assertFalse(any(m=='ui.close' for m,p in self.calls), 'A core close hint must not cause a dismissal feedback loop')
+
+    async def test_director_core_opened_but_shell_cannot_show_is_closed_in_core(self):
+        # Just after a warp the HUD layer may not be mapped: core's ui.opened can't be shown.
+        # The shell closes it in core, or core keeps the menu open and ignores every later hold.
+        self.fail_overlay=True
+        self.notify('ui.opened',{'leaseId':self.client.lease,'outputId':'world','panel':'overview'})
+        await self.until(lambda:any(m=='ui.close' for m,p in self.calls))
+        self.assertFalse(self.client.director)
+        self.fail_overlay=False
+        self.notify('ui.opened',{'leaseId':self.client.lease,'outputId':'world','panel':'overview'})
+        await self.until(lambda:self.client.director)
 
     async def test_world_loading_is_indeterminate_and_output_scoped(self):
         self.client.worlds=[{'id':'com.hyprune.garden','name':'Quiet garden','spawns':[]}]

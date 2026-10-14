@@ -342,7 +342,7 @@ class Client:
                 if p['leaseId'] == self.lease and p['outputId'] == self.output and p['panel'] in ['director', 'overview', 'map'] and (not at_least(self.protocol, 2) or p['revision'] >= self.overlay_revision):
                     self.emit({'type':'menu.panel','panel':p['panel']})
                     self.ui_epoch += 1
-                    self.spawn(self.overlay(True, self.ui_epoch))
+                    self.spawn(self.open_overlay(self.ui_epoch))
             elif msg['method'] == 'ui.closed':
                 if p['leaseId'] == self.lease and p['outputId'] == self.output and p['revision'] >= self.overlay_revision:
                     self.end_note('dismissed')  # core's Escape (menu exit): no note
@@ -532,6 +532,18 @@ class Client:
         self.hud_times[method] = params['monotonicMs']
         self.emit({'type':method,'value':params})
         return True
+
+    async def open_overlay(self, epoch):
+        """Show the Director core opened (ui.opened). If the shell can't (its HUD layer is not
+        mapped yet, as just after a warp), close it in core too: core would otherwise keep the
+        menu open and ignore every later hold."""
+        try:
+            await self.overlay(True, epoch)
+        except Exception:
+            if self.lease and at_least(self.protocol, 2) and 'ui.close' in self.hello.get('methods', []):
+                with contextlib.suppress(Exception):
+                    await self.call('ui.close', {'leaseId': self.lease, 'outputId': self.output})
+            raise
 
     async def overlay(self, visible, expected_epoch=None):
         async with self.ui_lock:
