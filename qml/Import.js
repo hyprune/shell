@@ -44,7 +44,8 @@ function defaultForm(inspection) {
     var i = inspection || {};
     return {name: (i.name || 'Imported object').slice(0, NAME_MAX), category: 'other', surface: 'floor', units: 'auto', up: i.up || 'y', yaw: '0',
             maxTriangles: String(TRIANGLES_DEFAULT), maxTexture: '2048', collision: 'convex', lighting: 'lit',
-            licence: 'unknown', licenceOther: '', author: '', source: ''};
+            // The author is the user's own name (the CLI suggests git's user.name), else empty: never the project's.
+            licence: 'unknown', licenceOther: '', author: String(i.author || '').slice(0, 256), source: ''};
 }
 
 function unitsOf(inspection, form) { return form && form.units && form.units !== 'auto' ? form.units : inspection && inspection.unitsGuess || 'm'; }
@@ -148,9 +149,9 @@ function stageRows(job) {
 }
 
 function mib(bytes) { var v = (bytes || 0) / 1048576; return (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + ' MiB'; }
-// A file size: bytes, KiB, MiB or GiB.
+// A size: bytes below 1 KB, KB below 1 MB, then MB and GB (1024-based, written as the Library tab does).
 function fileSize(bytes) {
-    var units = ['bytes', 'KiB', 'MiB', 'GiB'], v = Number(bytes) || 0, i = 0;
+    var units = ['bytes', 'KB', 'MB', 'GB'], v = Number(bytes) || 0, i = 0;
     while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
     return (i ? (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) : v) + ' ' + units[i];
 }
@@ -161,7 +162,8 @@ function resultLines(result) {
     var b = result.before || {}, a = result.after || {};
     var lines = ['Added to My objects as ' + result.ref];
     lines.push(count(a.triangles) + ' triangles' + (b.triangles !== a.triangles ? ' (from ' + count(b.triangles) + ')' : ''));
-    if (a.maxTexture) lines.push('Largest texture ' + a.maxTexture + ' px' + (b.maxTexture !== a.maxTexture ? ' (from ' + b.maxTexture + ' px)' : '') + '  ·  about ' + mib(a.gpuBytes) + ' on the GPU');
+    lines.push((a.maxTexture ? 'Largest texture ' + a.maxTexture + ' px' + (b.maxTexture !== a.maxTexture ? ' (from ' + b.maxTexture + ' px)' : '') + '  ·  ' : 'No textures  ·  ')
+               + 'about ' + fileSize(a.gpuBytes) + ' on the GPU');
     if (a.extent) lines.push('Size ' + a.extent.map(metres).join(' × ') + ' m');
     lines.push(a.collisionTriangles ? 'Collision proxy: ' + count(a.collisionTriangles) + ' triangles' : 'No collision');
     return lines;

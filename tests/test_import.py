@@ -25,8 +25,9 @@ class Form(unittest.TestCase):
         self.assertTrue(call('importable', '/x/crate.obj'))
         self.assertFalse(call('importable', '/x/scene.blend'))
         form = call('defaultForm', INSPECTION)
-        self.assertEqual((form['name'], form['units'], form['up'], form['maxTriangles'], form['licence'], form['collision']),
-                         ('Barrel', 'auto', 'y', '50000', 'unknown', 'convex'))
+        self.assertEqual((form['name'], form['units'], form['up'], form['maxTriangles'], form['licence'], form['collision'], form['author']),
+                         ('Barrel', 'auto', 'y', '50000', 'unknown', 'convex', ''))
+        self.assertEqual(call('defaultForm', dict(INSPECTION, author='Ada Lovelace'))['author'], 'Ada Lovelace')  # git user.name
 
     def test_size_preview_follows_units_up_and_turn(self):
         form = call('defaultForm', INSPECTION)
@@ -49,7 +50,7 @@ class Form(unittest.TestCase):
         self.assertEqual(len(call('formErrors', dict(form, licence='other', licenceOther=''))), 1)
 
     def test_file_size(self):
-        self.assertEqual([call('fileSize', b) for b in [500, 2046, 5 * 1048576, 3 * 1073741824]], ['500 bytes', '2 KiB', '5 MiB', '3 GiB'])
+        self.assertEqual([call('fileSize', b) for b in [500, 2046, 5 * 1048576, 3 * 1073741824]], ['500 bytes', '2 KB', '5 MB', '3 GB'])
 
     def test_arguments(self):
         form = dict(call('defaultForm', INSPECTION), up='z', maxTriangles='5000', licence='CC0-1.0', author=' A. Modeller ', source='')
@@ -85,6 +86,9 @@ class Job(unittest.TestCase):
         self.assertEqual(lines[0], 'Added to My objects as user/barrel')
         self.assertEqual(lines[1], '4,999 triangles (from 12,544)')
         self.assertIn('Collision proxy: 444 triangles', lines)
+        self.assertIn('about 854 KB on the GPU', lines[2])
+        small = call('resultLines', dict(result, after=dict(result['after'], maxTexture=0, gpuBytes=888)))
+        self.assertIn('No textures  ·  about 888 bytes on the GPU', small)
         self.assertIn('appears in the catalog', call('resultText', result))
 
     def test_failures(self):
