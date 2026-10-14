@@ -31,6 +31,8 @@ FocusScope {
     // Characters have their own view (IPC 0.23); Placed lists the other objects.
     readonly property var instances: objectsState ? objectsState.instances.filter(i => i.character !== true) : []
     readonly property bool spawning: ShellState.spawnRef !== '' || ShellState.rebindId !== ''
+    // Import… (RFC-0014): its panel replaces the views while it is open.
+    readonly property bool importing: ShellState.importing
     readonly property var views: ['catalog', 'placed'].concat(ShellState.npcsSupported ? ['characters'] : [])
     readonly property var selected: Objects.selectedInstance(instances, ShellState.selectedObject)
     readonly property bool hasUser: instances.some(i => i.source === 'user')
@@ -43,12 +45,14 @@ FocusScope {
         Qt.callLater(focusView);
     }
     function focusView() {
-        if (spawning) spawnPanel.forceActiveFocus();
+        if (importing) importPanel.focusFirst();
+        else if (spawning) spawnPanel.forceActiveFocus();
         else if (view === 'placed') placedList.forceActiveFocus();
         else if (view === 'characters') npcPanel.focusList();
         else grid.forceActiveFocus();
     }
     onSpawningChanged: Qt.callLater(focusView)
+    onImportingChanged: Qt.callLater(focusView)
     onVisibleChanged: { if (visible && ShellState.director) Qt.callLater(focusView); }
     onShownChanged: cursor = Math.max(0, Math.min(cursor, shown.length - 1))
     onInstancesChanged: syncSelection()
@@ -91,8 +95,9 @@ FocusScope {
     Timer { id: confirmTimer; interval: 6000; onTriggered: root.confirm = '' }
 
     Keys.onPressed: (event) => {
-        if (!ShellState.objectsSupported || root.spawning) return;
+        if (!ShellState.objectsSupported || root.spawning || root.importing) return;
         if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return;
+        if (root.view === 'catalog' && event.key === Qt.Key_I) { ShellState.importOpen(); event.accepted = true; return; }
         if (event.key === Qt.Key_V) { root.setView(root.views[(root.views.indexOf(root.view) + 1) % root.views.length]); event.accepted = true; }
         else if (root.view === 'catalog' && event.key === Qt.Key_Slash) { search.forceActiveFocus(); event.accepted = true; }
         else if (root.view === 'placed' && root.selected) {
@@ -188,7 +193,15 @@ FocusScope {
             id: spawnPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.spawning
+            visible: root.spawning && !root.importing
+        }
+
+        // ---- Import… (RFC-0014 as amended) ----
+        ObjectImport {
+            id: importPanel
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.importing
         }
 
         // ---- Characters (IPC 0.23) ----
@@ -196,14 +209,14 @@ FocusScope {
             id: npcPanel
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.view === 'characters' && !root.spawning
+            visible: root.view === 'characters' && !root.spawning && !root.importing
         }
 
         // ---- Catalog ----
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.view === 'catalog' && !root.spawning
+            visible: root.view === 'catalog' && !root.spawning && !root.importing
             spacing: root.compact ? 8 : 12
 
             RowLayout {
@@ -241,6 +254,11 @@ FocusScope {
                     Keys.onReturnPressed: grid.forceActiveFocus()
                     Keys.onEnterPressed: grid.forceActiveFocus()
                     background: Rectangle { radius: Tokens.radius; color: Tokens.panel; border.width: parent.activeFocus ? 2 : 1; border.color: parent.activeFocus ? Tokens.gold : Tokens.line }
+                }
+                ActionButton {
+                    objectName: 'object-import'
+                    text: 'Import…  ·  I'
+                    onClicked: ShellState.importOpen()
                 }
                 HudLabel {
                     objectName: 'objectsCount'
@@ -309,7 +327,7 @@ FocusScope {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.view === 'placed' && !root.spawning
+            visible: root.view === 'placed' && !root.spawning && !root.importing
             spacing: 20
 
             Rectangle {

@@ -5,8 +5,9 @@ import ".."
 import "../theme"
 import "../Sources.js" as Sources
 
-// The Data source editor's command chooser: a folder listing inside the Director (the
-// Director holds exclusive input, so a separate dialog window would never get the keyboard).
+// A folder listing inside the Director (the Director holds exclusive input, so a separate
+// dialog window would never get the keyboard): the Data source editor's command chooser and
+// Objects > Import…'s model chooser (`extensions`: only those files can be picked).
 // The bridge lists folders (sources.browse); executables are marked. Keys: Up / Down move,
 // Enter opens a folder or picks a file, Backspace goes up, a letter jumps to the next name
 // with it, Esc closes.
@@ -17,6 +18,11 @@ Rectangle {
     property int seq: 0
     property bool hidden: false
     property string error: ''
+    // Lower-case extensions without the dot; empty: any file can be picked.
+    property var extensions: []
+    property string purpose: 'Choose a command'
+    property string hint: 'Enter opens a folder or picks a file · Backspace goes up · Esc closes · ⚙ executable'
+    function pickable(row) { return row.dir || !extensions.length || extensions.indexOf((/\.([a-z0-9]+)$/i.exec(row.name) || ['', ''])[1].toLowerCase()) >= 0; }
     readonly property var rows: Sources.browseRows(listing)
     signal picked(string path)
     signal closed()
@@ -39,7 +45,8 @@ Rectangle {
         var row = rows[index];
         if (!row) return;
         if (row.dir) load(row.path);
-        else picked(row.path);
+        else if (pickable(row)) picked(row.path);
+        else error = row.name + ' is not one of: ' + extensions.join(', ');
     }
     function jump(letter) {
         var n = rows.length;
@@ -104,7 +111,7 @@ Rectangle {
             highlightMoveDuration: 0
             ScrollBar.vertical: ScrollBar {}
             Accessible.role: Accessible.List
-            Accessible.name: 'Choose a command in ' + (browser.listing ? browser.listing.path : '')
+            Accessible.name: browser.purpose + ' in ' + (browser.listing ? browser.listing.path : '')
             Keys.onReturnPressed: browser.activate(currentIndex)
             Keys.onEnterPressed: browser.activate(currentIndex)
             Keys.onEscapePressed: browser.closed()
@@ -149,7 +156,8 @@ Rectangle {
                         Layout.fillWidth: true
                         text: row.modelData.name + (row.modelData.dir && !row.modelData.parent ? '/' : '')
                         font.family: Tokens.mono; font.pixelSize: 13
-                        color: row.modelData.dir || row.modelData.executable ? Tokens.text : Tokens.muted
+                        color: row.modelData.dir || row.modelData.executable || (browser.extensions.length && browser.pickable(row.modelData)) ? Tokens.text : Tokens.muted
+                        opacity: browser.pickable(row.modelData) ? 1 : .55
                     }
                 }
                 MouseArea {
@@ -164,7 +172,7 @@ Rectangle {
             Layout.fillWidth: true
             text: browser.error ? browser.error
                 : (browser.listing && browser.listing.truncated ? 'Showing the first ' + browser.listing.entries.length + ' names.  ' : '')
-                  + 'Enter opens a folder or picks a file · Backspace goes up · Esc closes · ⚙ executable'
+                  + browser.hint
             color: browser.error ? Tokens.warning : Tokens.muted
             font.pixelSize: 12; wrapMode: Text.Wrap
         }

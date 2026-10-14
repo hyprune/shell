@@ -12,6 +12,7 @@ import "Npcs.js" as Npcs
 import "Companion.js" as Companion
 import "Library.js" as Library
 import "Sources.js" as Sources
+import "Import.js" as Import
 pragma Singleton
 
 QtObject {
@@ -458,6 +459,63 @@ QtObject {
         var type = job.result && job.result.type ? job.result.type : job.target.type;
         if (job.phase === 'done' && type === 'library') { catalogRefresh.restart(); refreshLibraries(); }
         refreshLibrary();
+    }
+    // ---- Imports (RFC-0014 as amended): Director > Objects > Import… over the hyprune CLI ----
+    // `object import FILE --inspect --json` measures the file; the review form follows; the
+    // import itself prints JSON lines (stage, done, error). It writes the user object folder,
+    // which core watches: the object joins the catalog without a reload. No core IPC.
+    property var importJob: null              // Import.newJob(): browse, inspecting, review, running, done, failed
+    readonly property bool importing: importJob !== null
+    readonly property bool importBusy: !!importJob && (importJob.phase === 'inspecting' || importJob.phase === 'running')
+    function importOpen() { if (!importBusy) importJob = Import.newJob('browse', ''); }
+    function importPick(path) {
+        if (importBusy || !Import.importable(path)) return false;
+        importStart(Import.newJob('inspecting', path), Import.inspectArgs(path));
+        return true;
+    }
+    function importForm(patch) { if (importJob && importJob.phase === 'review') importJob = Object.assign({}, importJob, {form: Object.assign({}, importJob.form, patch)}); }
+    function importRun() {
+        var job = importJob;
+        if (!job || job.phase !== 'review' || Import.formErrors(job.form).length) return false;
+        importStart(Object.assign({}, job, {phase: 'running', stage: '', stages: [], error: null}), Import.jobArgs(job.path, job.form));
+        return true;
+    }
+    function importStart(job, args) {
+        importJob = job;
+        importProcess.command = libraryCli.concat(args);
+        importProcess.started = false;
+        importProcess.running = true;
+    }
+    function importBack() { if (importJob && !importBusy) importJob = importJob.inspection ? Object.assign({}, importJob, {phase: 'review', error: null}) : Import.newJob('browse', ''); }
+    function importClose() {
+        if (importBusy) { importJob = Object.assign({}, importJob, {cancelled: true}); importProcess.signal(15); return; }
+        importJob = null;
+    }
+    function importEnded(code, errors) {
+        var job = Import.jobFinished(importJob, code, errors);
+        importJob = job;
+        if (!job) return;
+        if (job.phase === 'done') {
+            sayObjects(Import.resultText(job.result), 'info');
+            importCatalogPoll.tries = 0;
+            importCatalogPoll.restart();
+        }
+    }
+    // The new object is listed once core's folder watch has scanned it (a second or two).
+    readonly property bool importListed: !!importJob && importJob.phase === 'done' && !!Objects.entryFor(objectCatalog, importJob.result ? importJob.result.ref : '')
+    property Timer importCatalogPoll: Timer {
+        property int tries: 0
+        interval: 700; repeat: true
+        onTriggered: { if (root.importListed || ++tries > 30) stop(); else root.refreshCatalog(); }
+    }
+    function importPocket() { if (importListed && objectsCan('objects.pocket')) { objectAction('objects.pocket', {ref: importJob.result.ref}); importJob = null; } }
+    property Process importProcess: Process {
+        property bool started: false
+        stdout: SplitParser { onRead: (line) => root.importJob = Import.jobEvent(root.importJob, line) }
+        stderr: StdioCollector { id: importErr }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.importEnded(code, importErr.text))
+        onRunningChanged: { if (!running && !started) root.importEnded(-1, ''); }
     }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null

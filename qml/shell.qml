@@ -320,6 +320,16 @@ ShellRoot {
         function npcChoice(json: string): void { if (ShellState.dev) ShellState.receive({type: 'interaction.prompt', value: json ? JSON.parse(json) : null}); }
         function npcNotice(code: string, message: string): void { if (ShellState.dev) ShellState.receive({type: 'notice', level: 'info', code: code, message: message}); }
         function objectSelect(id: string): void { if (ShellState.dev) ShellState.selectedObject = id; }
+        function importPatch(json: string): void { if (ShellState.dev) ShellState.importForm(JSON.parse(json)); }
+        // Import… (RFC-0014): open the panel's file browser at a folder (nested checks drive it by keyboard from there).
+        function importBrowse(path: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            ShellState.importOpen();
+            var browser = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'importBrowser');
+            if (!browser) return false;
+            browser.open(path);
+            return true;
+        }
         function objectFilter(source: string, category: string, query: string): bool {
             if (!ShellState.dev || !ShellState.director) return false;
             var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorObjects');
@@ -513,7 +523,12 @@ ShellRoot {
                             shown: page ? page.shown.length : null, cursor: page ? page.cursor : null, confirm: page ? page.confirm : null,
                             selected: ShellState.selectedObject, sections: panel ? panel.sectionIds : [], feedback: ShellState.objectFeedback,
                             pocket: ShellState.unplacedObjects, selectedKind: ShellState.selectedKind, gizmo: ShellState.editorGizmo,
-                            instances: ShellState.objectsState ? ShellState.objectsState.instances.length : 0};
+                            instances: ShellState.objectsState ? ShellState.objectsState.instances.length : 0,
+                            importJob: ShellState.importJob ? {phase: ShellState.importJob.phase, path: ShellState.importJob.path, stage: ShellState.importJob.stage,
+                                                              stages: ShellState.importJob.stages, form: ShellState.importJob.form,
+                                                              inspection: ShellState.importJob.inspection ? {triangles: ShellState.importJob.inspection.triangles, unitsGuess: ShellState.importJob.inspection.unitsGuess} : null,
+                                                              ref: ShellState.importJob.result ? ShellState.importJob.result.ref : null,
+                                                              error: ShellState.importJob.error, listed: ShellState.importListed} : null};
                 })(),
                 npcs: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
