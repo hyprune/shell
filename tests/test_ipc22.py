@@ -322,11 +322,12 @@ class Placed(unittest.TestCase):
     """The Placed list and the configure panel: section order, actions and transform params."""
 
     def test_section_order_includes_the_reserved_data_slot(self):
-        self.assertEqual(js('SECTIONS'), ['transform', 'lock', 'remove', 'data'])
+        self.assertEqual(js('SECTIONS'), ['transform', 'screen', 'lock', 'remove', 'data'])  # screen: IPC 0.27
         for subject in [instance(), ARMILLARY, instance(locked=True, movable=False), instance(source='authored', id='statue', movable=False)]:
             sections = js('panelSections(%s)' % json.dumps(subject))
-            self.assertEqual([s['id'] for s in sections], ['transform', 'lock', 'remove', 'data'])
-            data = sections[3]
+            self.assertEqual([s['id'] for s in sections], ['transform', 'screen', 'lock', 'remove', 'data'])
+            self.assertFalse(sections[1]['visible'])  # the workspace of a screen only (IPC 0.27)
+            data = sections[4]
             self.assertEqual((data['title'], data['visible']), ('Data', False))  # listed; shown only for machines (with their catalog entry)
         self.assertEqual(js('panelSections(null)'), [])
 
@@ -342,10 +343,10 @@ class Placed(unittest.TestCase):
         odd = js('dataSource(%s, %s)' % (json.dumps(instance(id='Court.Rack_1', source='authored')), json.dumps(entry())))
         self.assertEqual((odd['publishable'], odd['line'], odd['hint']),
                          (False, 'Data source id: Court.Rack_1', 'Bind it to a source in machines.json.'))
-        data = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(entry())))[3]
+        data = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(entry())))[4]
         # A 0.22 / 0.23 catalog entry declares no inputs: the section shows the source and the editor.
         self.assertEqual((data['id'], data['title'], data['visible'], data['source'], data['declared']), ('data', 'Data source', True, rack, False))
-        other = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(LANTERN)))[3]
+        other = js('panelSections(%s, %s)' % (json.dumps(instance()), json.dumps(LANTERN)))[4]
         self.assertEqual((other['visible'], 'source' in other), (False, False))
 
     def test_sections_follow_source_lock_and_movable(self):

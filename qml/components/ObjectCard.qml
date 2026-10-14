@@ -92,7 +92,7 @@ Rectangle {
 
         HudLabel {
             Layout.fillWidth: true
-            text: card.entry ? [Objects.categoryLabel(card.entry.category), Objects.sizeText(card.entry.bounds)].filter(v => v).join('  ·  ') : ''
+            text: card.entry ? [Objects.categoryLabel(card.entry.category), Objects.screenChip(card.entry), Objects.sizeText(card.entry.bounds)].filter(v => v).join('  ·  ') : ''
             font.pixelSize: 12
             color: Tokens.muted
             opacity: card.dim

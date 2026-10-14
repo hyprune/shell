@@ -445,15 +445,15 @@ class Panel(unittest.TestCase):
 
     def test_data_section(self):
         entry = {'ref': 'library/com.hyprune.starter@0.2.0/gauge-tube', 'traits': ['movable', 'machine'], 'machine': GAUGE}
-        data = call('panelSections', self.instance(), entry, script=OBJECTS)[3]
+        data = call('panelSections', self.instance(), entry, script=OBJECTS)[4]
         self.assertEqual((data['id'], data['title'], data['visible'], data['editable'], data['declared'], data['machine']),
                          ('data', 'Data source', True, True, True, GAUGE))
-        older = call('panelSections', self.instance(), {k: v for k, v in entry.items() if k != 'machine'}, script=OBJECTS)[3]  # IPC 0.23
+        older = call('panelSections', self.instance(), {k: v for k, v in entry.items() if k != 'machine'}, script=OBJECTS)[4]  # IPC 0.23
         self.assertEqual((older['visible'], older['declared'], older['machine'], older['source']['sourceId']),
                          (True, False, None, 'com.hyprune.sources.u-3f9a1c'))
-        authored = call('panelSections', self.instance(id='Court.Rack_1', source='authored'), entry, script=OBJECTS)[3]
+        authored = call('panelSections', self.instance(id='Court.Rack_1', source='authored'), entry, script=OBJECTS)[4]
         self.assertEqual((authored['visible'], authored['editable']), (True, False))  # not a sources.json id
-        plain = call('panelSections', self.instance(), {'traits': ['movable'], 'machine': None}, script=OBJECTS)[3]
+        plain = call('panelSections', self.instance(), {'traits': ['movable'], 'machine': None}, script=OBJECTS)[4]
         self.assertEqual((plain['visible'], plain['title']), (False, 'Data'))
 
     def test_qml_wiring(self):

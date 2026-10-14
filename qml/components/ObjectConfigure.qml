@@ -155,6 +155,7 @@ ColumnLayout {
             required property var modelData
             function focusFirst() {
                 if (modelData.id === 'transform' && transformBody.focusFirst()) return true;
+                if (modelData.id === 'screen' && workspaceField.visible && !workspaceField.readOnly) { workspaceField.forceActiveFocus(); return true; }
                 if (modelData.id === 'lock' && lockButton.enabled) { lockButton.forceActiveFocus(); return true; }
                 if (modelData.id === 'data' && dataLoader.item) return (dataLoader.item as ObjectDataSource).focusFirst();
                 return false;
@@ -168,6 +169,64 @@ ColumnLayout {
             HudLabel { Layout.fillWidth: true; text: section.modelData.title.toUpperCase(); color: Tokens.gold; font.pixelSize: Tokens.caption; font.letterSpacing: 1.5 }
 
             TransformBody { id: transformBody; visible: section.modelData.id === 'transform'; Layout.fillWidth: true; section: section.modelData }
+            // Workspace (IPC 0.27): the workspace a placed screen shows like a home wall. A
+            // number (Enter or Show), the next free workspace, or none.
+            ColumnLayout {
+                id: screenBody
+                visible: section.modelData.id === 'screen'
+                Layout.fillWidth: true
+                spacing: 8
+                function send(value) {
+                    var made = Objects.workspaceRequest(panel.instance, value);
+                    if (made.error) { ShellState.sayObjects(made.error, 'warning'); return; }
+                    if (panel.can(made.method)) ShellState.objectAction(made.method, made.params);
+                }
+                HudLabel {
+                    objectName: 'object-screen-line'
+                    Layout.fillWidth: true
+                    text: section.modelData.line + (section.modelData.aspect ? '  ·  ' + section.modelData.aspect + ' screen' : '')
+                    wrapMode: Text.Wrap; font.pixelSize: 13
+                    color: section.modelData.workspace && !section.modelData.home ? Tokens.warning : Tokens.text
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Field {
+                        id: workspaceField
+                        objectName: 'object-workspace'
+                        Accessible.name: 'Workspace number'
+                        Layout.preferredWidth: 90; Layout.fillWidth: false
+                        placeholderText: section.modelData.workspace ? String(section.modelData.workspace) : '23'
+                        readOnly: !section.modelData.editable
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        onAccepted: { screenBody.send(text); text = ''; }
+                    }
+                    ActionButton {
+                        objectName: 'object-workspace-show'
+                        text: 'Show'
+                        enabled: section.modelData.editable && workspaceField.text !== '' && panel.can('objects.configure')
+                        onClicked: { screenBody.send(workspaceField.text); workspaceField.text = ''; }
+                    }
+                    ActionButton {
+                        objectName: 'object-workspace-next'
+                        text: 'Next free'
+                        enabled: section.modelData.editable && panel.can('objects.configure')
+                        onClicked: screenBody.send('next-free')
+                    }
+                    ActionButton {
+                        objectName: 'object-workspace-none'
+                        text: 'None'
+                        enabled: section.modelData.editable && section.modelData.workspace !== null && panel.can('objects.configure')
+                        onClicked: screenBody.send(null)
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                HudLabel {
+                    Layout.fillWidth: true
+                    text: section.modelData.note || 'Its windows stay tiled on that workspace; F flies in, and switching to the workspace walks you to the screen.'
+                    color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
+                }
+            }
             // Lock: a locked object ignores tools and edits until unlocked.
             RowLayout {
                 visible: section.modelData.id === 'lock'

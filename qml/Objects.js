@@ -17,10 +17,13 @@ var RULES = {
     playable: 'outside the playable area', walls: 'inside a wall', support: 'nothing to rest on',
     window: 'covers a window', approach: 'blocks the space in front of a screen', zone: 'outside the placement zones',
     'keep-clear': 'blocks a spawn or a climb', player: 'overlaps you', reach: 'out of reach',
-    budget: 'over the object budget', 'library.conflict': 'another copy of that library is installed'};
-// The configure panel's sections, in this order. 'data' is RFC-0013's Data source: it is always
-// listed and shows only for machines (their inputs, live values and the sources.json editor).
-var SECTIONS = ['transform', 'lock', 'remove', 'data'];
+    budget: 'over the object budget', 'library.conflict': 'another copy of that library is installed',
+    'workspace.taken': 'another home already shows that workspace', 'workspace.reserved': 'that is the room workspace or a location'};
+// The configure panel's sections, in this order. 'screen' (IPC 0.27) is the workspace a
+// workspace screen shows; 'data' is RFC-0013's Data source. Both are always listed and show
+// only for their objects.
+var SECTIONS = ['transform', 'screen', 'lock', 'remove', 'data'];
+var WORKSPACE_MAX = 9999;
 // RFC-0013 draft (machines): every placed machine reads source com.hyprune.sources.<instance
 // id> by default; the source helper publishes a sources.json entry with that id there.
 var SOURCES_CLIENT = 'com.hyprune.sources';
@@ -236,6 +239,14 @@ function panelSections(instance, entry) {
         if (id === 'transform') return {id: id, title: 'Transform', visible: true, editable: !!instance.movable && !locked,
                                         note: locked ? 'Locked: unlock it to move it.' : !instance.movable ? (user ? 'It can\'t be moved right now.' : 'Part of the world: it stays where the world put it.') : ''};
         if (id === 'lock') return {id: id, title: 'Lock', visible: user || !!instance.movable || locked, editable: true, locked: locked};
+        if (id === 'screen') {
+            // IPC 0.27: a placed workspace screen shows a workspace like a home wall.
+            var screen = instance.screen || null;
+            return {id: id, title: 'Workspace', visible: !!screen, editable: !!screen && user && !locked,
+                    workspace: screen ? screen.workspace : null, home: screen ? screen.home : null,
+                    aspect: screen ? screen.aspect : '', line: screenLine(screen),
+                    note: locked ? 'Locked: unlock it to change its workspace.' : ''};
+        }
         if (id === 'remove') return {id: id, title: user ? 'Remove / Reset' : 'Hide / Reset', visible: true, editable: true,
                                      actions: user ? [{id: 'remove', label: 'Remove', enabled: !locked}, {id: 'reset', label: 'Reset', enabled: !locked}]
                                                    : (hideable ? [{id: 'hide', label: hidden ? 'Show' : 'Hide', hidden: !hidden, enabled: !locked}] : [])
@@ -248,6 +259,36 @@ function panelSections(instance, entry) {
         return {id: id, title: 'Data source', visible: true, editable: source.publishable, source: source,
                 declared: declared, machine: declared ? entry.machine : null};
     });
+}
+
+// What a screen shows, in a line for the Workspace section and the Placed list.
+function screenLine(screen) {
+    if (!screen) return '';
+    if (screen.workspace === null || screen.workspace === undefined) return 'Shows no workspace';
+    return 'Shows workspace ' + screen.workspace + (screen.home ? '' : ' (another home has it: the screen stays empty)');
+}
+
+// The short tag on a Placed row: "WS 25" for a bound screen, "SCREEN" for an empty one.
+function screenTag(instance) {
+    var s = instance && instance.screen;
+    if (!s) return '';
+    return s.workspace ? 'WS ' + s.workspace : 'SCREEN';
+}
+
+// The catalog card's screen chip: "Screen 16:9" ('' for other objects).
+function screenChip(entry) { return entry && entry.screen ? 'Screen ' + entry.screen.aspect : ''; }
+
+// objects.configure for a screen's workspace. value: a number or numeric text (1-9999),
+// 'next-free' or null. Returns {method, params} or {error}.
+function workspaceRequest(instance, value) {
+    if (!instance || !instance.screen) return {error: 'Not a workspace screen.'};
+    var workspace = value;
+    if (value !== null && value !== 'next-free') {
+        var n = parseNumber(value);
+        if (!isFinite(n) || n !== Math.floor(n) || n < 1 || n > WORKSPACE_MAX) return {error: 'Enter a workspace number from 1 to ' + WORKSPACE_MAX + '.'};
+        workspace = n;
+    }
+    return {method: 'objects.configure', params: {id: instance.id, patch: {workspace: workspace}}};
 }
 
 // The request a configure-panel action sends.
@@ -297,6 +338,10 @@ function resultText(method, params) {
     if (method === 'objects.remove') return all ? 'Your objects in this world are removed.' : 'Removed.';
     if (method === 'objects.reset') return all ? 'Authored objects are shown and reset.' : 'Reset.';
     if (method === 'objects.hide') return params && params.hidden ? 'Hidden.' : 'Shown again.';
+    if (method === 'objects.configure' && params && params.patch && 'workspace' in params.patch) {
+        var w = params.patch.workspace;
+        return w === null ? 'The screen shows no workspace.' : w === 'next-free' ? 'The screen shows the next free workspace.' : 'The screen shows workspace ' + w + '.';
+    }
     if (method === 'objects.configure') return params && params.patch && params.patch.locked ? 'Locked.' : 'Unlocked.';
     if (method === 'objects.transform') return 'Moved.';
     if (method === 'objects.place') return 'Placed.';

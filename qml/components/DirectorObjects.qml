@@ -374,6 +374,17 @@ FocusScope {
                                     width: parent.width
                                     spacing: 8
                                     HudLabel { Layout.fillWidth: true; text: row.modelData.name; font.pixelSize: 15 }
+                                    // A workspace screen (IPC 0.27): the workspace it shows.
+                                    Rectangle {
+                                        objectName: 'placedScreen'
+                                        visible: screenText.text !== ''
+                                        Layout.preferredWidth: screenText.implicitWidth
+                                        Layout.preferredHeight: 18
+                                        radius: 2
+                                        color: 'transparent'
+                                        border.color: Tokens.accent
+                                        HudLabel { id: screenText; anchors.centerIn: parent; leftPadding: 6; rightPadding: 6; text: Objects.screenTag(row.modelData); font.pixelSize: 9; font.letterSpacing: 1.2; color: Tokens.accent }
+                                    }
                                     Rectangle {
                                         objectName: 'placedLocked'
                                         visible: row.modelData.locked
