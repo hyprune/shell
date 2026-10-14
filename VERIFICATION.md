@@ -1,3 +1,15 @@
+# HUD after a session lock — 2026-10-14
+
+`python3 -m unittest discover -s tests`: **367 pass**, including four new client tests (at
+0.1 and 0.2): a `shell.release` refused with -32005 while locked is remembered and sent before
+the next claim; a claim refused by another shell's lease is tried again once world mode has
+been left and entered again (still no retry loop while the world stays shown). Nested with core
+0.8.3 (`dev/nested/run.sh --lock`, this shell at 0.26, Lumen Reach): a real ext-session-lock
+lock leaves world mode and the lease is given back; after unlock and re-entry one lease, the
+HUD mapped and the Director opening; the same after DPMS off and on.
+
+---
+
 # IPC 0.26 debug tool, companion pace, whole pocket list — 2026-10-13
 
 `python3 -m unittest discover -s tests`: **363 pass**, including `tests/test_ipc26.py`
