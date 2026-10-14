@@ -13,6 +13,7 @@ import "Companion.js" as Companion
 import "Library.js" as Library
 import "Sources.js" as Sources
 import "Import.js" as Import
+import "Builder.js" as Builder
 pragma Singleton
 
 QtObject {
@@ -517,6 +518,91 @@ QtObject {
         onExited: (code) => Qt.callLater(() => root.importEnded(code, importErr.text))
         onRunningChanged: { if (!running && !started) root.importEnded(-1, ''); }
     }
+    // ---- World folders (RFC-0014 as amended): Director > Builder over the hyprune CLI ----
+    // `builder create|save|release|sky|remote --json` run one at a time (JSON lines); list and
+    // status refresh on their own process. A folder opens with world.load local.<slug>: core
+    // loads it in editor mode (state.builder) and writes the placements; git is the CLI's.
+    readonly property var builderState: state && state.builder ? state.builder : null
+    readonly property bool builderEditing: builderState !== null
+    readonly property bool builderVisible: director && tab === tabBuilder
+    property var builderJob: null           // Builder.newJob(): running, done, failed
+    property var builderProjects: []        // `builder list`
+    property var builderStatus: null        // `builder status` of the loaded folder
+    property var builderSky: null           // the sky form while choosing an image: {path, license, author, source}
+    property var builderIdentity: null      // {name, email} when git has none (asked on create)
+    readonly property bool builderBusy: !!builderJob && builderJob.phase === 'running'
+    function builderRun(job, args) {
+        if (builderBusy) return false;
+        builderJob = job;
+        builderProcess.command = libraryCli.concat(args);
+        builderProcess.started = false;
+        builderProcess.running = true;
+        return true;
+    }
+    function builderCreate(name) {
+        if (Builder.nameError(name) || Builder.identityErrors(builderIdentity).length) return false;
+        return builderRun(Builder.newJob('create', '', {name: String(name).trim()}), Builder.createArgs(name, builderIdentity));
+    }
+    function builderOpen(slug) { if (slug) action('world.load', {worldId: Builder.worldId(slug)}); }
+    function builderSave(message) { return builderEditing && builderRun(Builder.newJob('save', builderState.projectId), Builder.saveArgs(builderState.projectId, message)); }
+    function builderRelease(version, notes) {
+        if (!builderEditing || Builder.versionError(version)) return false;
+        return builderRun(Builder.newJob('release', builderState.projectId), Builder.releaseArgs(builderState.projectId, version, notes));
+    }
+    function builderSkyPick(path) { if (Builder.skyImage(path)) builderSky = {path: path, license: '', author: '', source: ''}; }
+    function builderSkyForm(patch) { if (builderSky) builderSky = Object.assign({}, builderSky, patch); }
+    function builderSkyApply() {
+        if (!builderEditing || Builder.skyErrors(builderSky).length) return false;
+        return builderRun(Builder.newJob('sky', builderState.projectId), Builder.skyArgs(builderState.projectId, builderSky));
+    }
+    function builderRemote(url) {
+        if (!builderEditing || Builder.remoteError(url)) return false;
+        return builderRun(Builder.newJob('remote', builderState.projectId), Builder.remoteArgs(builderState.projectId, url));
+    }
+    function builderClose() { if (!builderBusy) builderJob = null; }
+    function builderEnded(code, errors) {
+        var job = Builder.jobFinished(builderJob, code, errors);
+        builderJob = job;
+        if (!job) return;
+        if (job.phase === 'failed' && job.error && job.error.code === 'git.identity') builderIdentity = builderIdentity || {name: '', email: ''};
+        if (job.phase !== 'done') return;
+        var r = job.result || {};
+        if (r.status && builderEditing && r.status.projectId === builderState.projectId) builderStatus = r.status;
+        if (job.kind === 'create') { builderIdentity = null; builderOpen(r.projectId); }
+        if (job.kind === 'sky') { builderSky = null; builderOpen(job.slug); } // the panorama loads with the world
+        builderRefresh();
+    }
+    function builderRefresh() {
+        if (builderPoll.running) { builderPollAgain = true; return; }
+        builderPoll.command = libraryCli.concat(builderEditing ? Builder.statusArgs(builderState.projectId) : Builder.listArgs());
+        builderPoll.running = true;
+    }
+    property bool builderPollAgain: false
+    property Process builderProcess: Process {
+        property bool started: false
+        stdout: SplitParser { onRead: (line) => root.builderJob = Builder.jobEvent(root.builderJob, line) }
+        stderr: StdioCollector { id: builderErr }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.builderEnded(code, builderErr.text))
+        onRunningChanged: { if (!running && !started) root.builderEnded(-1, ''); }
+    }
+    property Process builderPoll: Process {
+        stdout: SplitParser {
+            onRead: (line) => {
+                var e = null;
+                try { e = JSON.parse(line); } catch (x) { return; }
+                if (!e || e.event !== 'done' || !e.result) return;
+                if (e.result.projects) root.builderProjects = e.result.projects;
+                else if (root.builderEditing && e.result.projectId === root.builderState.projectId) root.builderStatus = e.result;
+            }
+        }
+        onRunningChanged: { if (!running && root.builderPollAgain) { root.builderPollAgain = false; Qt.callLater(root.builderRefresh); } }
+    }
+    // Core counts its project writes: each is a pending change to show.
+    property Timer builderStatusTimer: Timer { interval: 500; onTriggered: root.builderRefresh() }
+    readonly property string builderKey: builderState ? builderState.projectId + ':' + builderState.revision : ''
+    onBuilderKeyChanged: { if (!builderState) builderStatus = null; if (builderVisible || builderEditing) builderStatusTimer.restart(); }
+    onBuilderVisibleChanged: { if (builderVisible) builderRefresh(); }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')
@@ -626,11 +712,12 @@ QtObject {
     readonly property int tabObjects: 2
     // Library follows Objects (RFC-0015).
     readonly property int tabLibrary: 3
-    readonly property int tabSettings: 9
-    readonly property int tabPerformance: 10
-    readonly property int tabCount: 11
+    readonly property int tabBuilder: 4
+    readonly property int tabSettings: 10
+    readonly property int tabPerformance: 11
+    readonly property int tabCount: 12
     // Stable names for the Director tabs (dev hooks and checks address tabs by name, not position).
-    readonly property var tabKeys: ['map', 'quests', 'objects', 'library', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
+    readonly property var tabKeys: ['map', 'quests', 'objects', 'library', 'builder', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)

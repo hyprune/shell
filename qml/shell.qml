@@ -260,7 +260,7 @@ ShellRoot {
         function tab(index: int): void {
             if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
-        // By name: map, quests, objects, library, places, surfaces, workspaces, help, whatsnew, settings, performance.
+        // By name: map, quests, objects, library, builder, places, surfaces, workspaces, help, whatsnew, settings, performance.
         function tabNamed(name: string): void {
             const index = ShellState.tabKeys.indexOf(name);
             if (ShellState.dev && index >= 0) ShellState.tab = index;
@@ -328,6 +328,23 @@ ShellRoot {
             var browser = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'importBrowser');
             if (!browser) return false;
             browser.open(path);
+            return true;
+        }
+        // Any named text field (nested checks type into the Builder page this way, then press).
+        function fieldText(name: string, text: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var item = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), name);
+            if (!item || item.text === undefined) return false;
+            item.text = text;
+            item.textEdited();
+            return true;
+        }
+        // Builder > Sky (RFC-0014): open the page's file browser at a folder.
+        function builderSkyBrowse(path: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'directorBuilder');
+            if (!page) return false;
+            page.openSkyBrowser(path);
             return true;
         }
         function objectFilter(source: string, category: string, query: string): bool {
@@ -529,6 +546,14 @@ ShellRoot {
                                                               inspection: ShellState.importJob.inspection ? {triangles: ShellState.importJob.inspection.triangles, unitsGuess: ShellState.importJob.inspection.unitsGuess} : null,
                                                               ref: ShellState.importJob.result ? ShellState.importJob.result.ref : null,
                                                               error: ShellState.importJob.error, listed: ShellState.importListed} : null};
+                })(),
+                builder: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var feedback = ShellState.director ? Audit.find(view, 'builderFeedback') : null;
+                    var pending = ShellState.director ? Audit.find(view, 'builderPending') : null;
+                    return {state: ShellState.builderState, status: ShellState.builderStatus, projects: ShellState.builderProjects.map(p => p.projectId),
+                            job: ShellState.builderJob, sky: ShellState.builderSky, identity: ShellState.builderIdentity,
+                            feedback: feedback && feedback.visible ? feedback.text : null, pending: pending ? pending.text : null};
                 })(),
                 npcs: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);

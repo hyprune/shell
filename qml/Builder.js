@@ -1,0 +1,147 @@
+// RFC-0014 world folders (phase 1 as amended): Director > Builder runs the hyprune CLI's
+// `builder` commands (create, list, status, save, release, sky, remote) as JSON-lines jobs and
+// opens a folder with world.load local.<slug>. Core loads it in editor mode and writes the
+// placements; git runs only in the CLI. Pure helpers: tested with node in tests/test_builder.py.
+
+var NAME_MAX = 64, MESSAGE_MAX = 500, NOTES_MAX = 4000;
+var SKY_FORMATS = ['png', 'jpg', 'jpeg'];
+var STAGES = {version: 'Writing the version', build: 'Building the release files', push: 'Pushing to the remote', release: 'Creating the GitHub release'};
+var CODES = {
+    'git.missing': 'Building worlds needs git 2.30 or newer: install git, then try again.',
+    'git.identity': 'git doesn\'t know who you are yet: give a name and an email for this world\'s saves.',
+    'git.failed': 'git failed.',
+    'project.unknown': 'That world folder is gone.',
+    'project.invalid': 'The world folder\'s project file is damaged.',
+    'save.nothing': 'Nothing to save: there are no changes since the last save.',
+    'make.invalid': 'The world couldn\'t be made from this folder.',
+    'release.unsaved': 'Save first: a release is made from the saved world.',
+    'release.version': 'Pick a newer version (like 0.2.0).',
+    'release.id': 'This remote needs a published world id.',
+    'remote.invalid': 'That isn\'t a remote URL: use https://…, ssh://… or user@host:path.',
+    'remote.auth': 'Set up access to this remote in a terminal (your git credentials or SSH key), then release again.',
+    'remote.rejected': 'The remote has changes Hyprune won\'t merge: resolve them with git, then release again.',
+    'sky.invalid': 'That image can\'t be a sky.',
+    'builder.busy': 'Another save or release is still running on this world.',
+    'cli.missing': 'The hyprune command didn\'t run: set HYPRUNE_CLI or put hyprune on PATH.'};
+var LABELS = {create: 'Creating the world', list: 'Listing your worlds', status: 'Checking for changes', save: 'Saving', release: 'Releasing', sky: 'Setting the sky', remote: 'Setting the remote'};
+
+function extension(path) { var m = /\.([a-z0-9]+)$/i.exec(String(path || '')); return m ? m[1].toLowerCase() : ''; }
+function skyImage(path) { return SKY_FORMATS.indexOf(extension(path)) >= 0; }
+function worldId(slug) { return 'local.' + slug; }
+
+function nameError(name) {
+    var n = String(name || '').trim();
+    if (!n) return 'Give the world a name.';
+    if (n.length > NAME_MAX) return 'A name is at most ' + NAME_MAX + ' characters.';
+    if (/[\u0000-\u001f\u007f]/.test(n)) return 'A name has no control characters.';
+    return '';
+}
+function versionError(v) {
+    var s = String(v || '').trim();
+    if (!s) return '';
+    return /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(s) ? '' : 'A version looks like 0.2.0.';
+}
+function remoteError(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    return /^(https:\/\/|ssh:\/\/)[^\s]+$/.test(u) || /^[A-Za-z0-9._-]+@[^\s/:]+:[^\s]+$/.test(u) ? '' : CODES['remote.invalid'];
+}
+function identityErrors(identity) {
+    var e = [];
+    if (!identity) return e;
+    if (!String(identity.name || '').trim()) e.push('Give a name for your saves.');
+    if (!/^[^\s<>@]+@[^\s<>@]+$/.test(String(identity.email || '').trim())) e.push('Give an email address for your saves.');
+    return e;
+}
+function skyErrors(form) {
+    var e = [];
+    if (!form || !form.path) e.push('Choose an image.');
+    if (!String(form && form.license || '').trim()) e.push('Give the image\'s licence (an SPDX id like CC0-1.0).');
+    if (!String(form && form.author || '').trim()) e.push('Give the image\'s author.');
+    if (!String(form && form.source || '').trim()) e.push('Say where the image comes from.');
+    return e;
+}
+
+// ---- command lines (the CLI's JSON lines) ----
+function createArgs(name, identity) {
+    var a = ['builder', 'create', String(name).trim(), '--json'];
+    if (identity) a.push('--git-name', String(identity.name).trim(), '--git-email', String(identity.email).trim());
+    return a;
+}
+function listArgs() { return ['builder', 'list', '--json']; }
+function statusArgs(slug) { return ['builder', 'status', slug, '--json']; }
+function saveArgs(slug, message) {
+    var a = ['builder', 'save', slug, '--json'], m = String(message || '').trim().slice(0, MESSAGE_MAX);
+    if (m) a.push('-m', m);
+    return a;
+}
+function releaseArgs(slug, version, notes) {
+    var a = ['builder', 'release', slug], v = String(version || '').trim(), n = String(notes || '').trim().slice(0, NOTES_MAX);
+    if (v) a.push(v);
+    a.push('--json');
+    if (n) a.push('--notes', n);
+    return a;
+}
+function skyArgs(slug, form) {
+    return ['builder', 'sky', slug, form.path, '--license', String(form.license).trim(), '--author', String(form.author).trim(),
+            '--source', String(form.source).trim(), '--json'];
+}
+function remoteArgs(slug, url) { return url ? ['builder', 'remote', slug, String(url).trim(), '--json'] : ['builder', 'remote', slug, '--clear', '--json']; }
+
+// ---- jobs ----
+function newJob(kind, slug, extra) { return Object.assign({kind: kind, slug: slug || '', phase: 'running', stage: '', result: null, error: null}, extra || {}); }
+function jobEvent(job, line) {
+    var e = null;
+    try { e = JSON.parse(line); } catch (x) { return job; }
+    if (!job || !e || typeof e !== 'object') return job;
+    var next = Object.assign({}, job);
+    if (e.event === 'stage') next.stage = e.stage;
+    else if (e.event === 'done') { next.phase = 'done'; next.result = e.result; }
+    else if (e.event === 'error') { next.phase = 'failed'; next.error = e.error || {message: 'The builder failed.', code: ''}; }
+    return next;
+}
+function jobFinished(job, code, errors) {
+    if (!job || job.phase !== 'running') return job;
+    var tail = String(errors || '').trim().split('\n').filter(function (l) { return l.trim(); }).pop() || '';
+    return Object.assign({}, job, {phase: 'failed', error: code < 0 ? {message: CODES['cli.missing'], code: 'cli.missing'}
+                                                        : {message: tail.replace(/^Error:\s*/, '') || 'The builder stopped (exit code ' + code + ').', code: ''}});
+}
+function errorText(error) {
+    if (!error) return '';
+    var known = error.code && CODES[error.code];
+    if (!known) return error.message || 'The builder failed.';
+    // The CLI's own message is the more specific one for these.
+    if (error.code === 'save.nothing' || error.code === 'release.unsaved' || error.code === 'release.version' || error.code === 'sky.invalid' || error.code === 'git.failed' || error.code === 'make.invalid') return error.message || known;
+    return known;
+}
+function busyText(job) { return job ? (job.stage && STAGES[job.stage] ? STAGES[job.stage] : LABELS[job.kind] || 'Working') + '…' : ''; }
+
+// ---- what the page shows ----
+// "Unsaved: placed 3 objects (12 files)": the change in words (the CLI reads it from the
+// project files), with the file count git sees; files alone when only they changed.
+function pendingText(status) {
+    if (!status || !status.pending) return '';
+    var n = status.pending.total, files = n + ' file' + (n === 1 ? '' : 's');
+    if (!n) return 'Everything is saved';
+    return status.changes ? 'Unsaved: ' + status.changes + ' (' + files + ')' : files + ' not saved';
+}
+function lastSaveText(status) {
+    if (!status || !status.lastSave) return 'No saves yet';
+    return 'Last save: ' + String(status.lastSave.message || '').split('\n')[0];
+}
+function versionText(status) {
+    if (!status) return '';
+    return status.lastVersion ? 'Latest version ' + status.lastVersion.tag + (status.remote ? '' : ' (local tag)') : 'Not released yet';
+}
+function remoteText(status) { return status && status.remote ? status.remote.url : 'No remote: releases stay on this computer as git tags.'; }
+function resultText(job) {
+    if (!job || job.phase !== 'done' || !job.result) return '';
+    var r = job.result;
+    if (job.kind === 'create') return 'Created ' + r.name + ' in ' + r.folder + '.';
+    if (job.kind === 'save') return 'Saved: ' + r.message;
+    if (job.kind === 'release') return 'Released ' + r.tag + (r.pushed ? ' and pushed' : ' as a local tag') + (r.release ? ': ' + r.release : '.');
+    if (job.kind === 'sky') return 'The sky is set (' + r.width + ' × ' + r.height + '); the world reloads to show it.';
+    if (job.kind === 'remote') return r.remote ? 'Remote set to ' + r.remote.url + '.' : 'Remote cleared.';
+    return '';
+}
+function warningsOf(job) { return job && job.result && job.result.warnings ? job.result.warnings.filter(function (w) { return !/core runtime validation|core validation/.test(w); }) : []; }

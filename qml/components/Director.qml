@@ -7,7 +7,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Library', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
+    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Library', 'Builder', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
@@ -198,11 +198,12 @@ Item {
             DirectorQuests { anchors.fill: parent; visible: ShellState.tab === ShellState.tabQuests }
             DirectorObjects { anchors.fill: parent; visible: ShellState.tab === ShellState.tabObjects }
             DirectorLibrary { anchors.fill: parent; visible: ShellState.tab === ShellState.tabLibrary }
-            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 4 }
-            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 5 }
-            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 6 }
-            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 7 }
-            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 8 }
+            DirectorBuilder { anchors.fill: parent; visible: ShellState.tab === ShellState.tabBuilder }
+            DirectorPlaces { anchors.fill: parent; visible: ShellState.tab === 5 }
+            DirectorSurfaces { anchors.fill: parent; visible: ShellState.tab === 6 }
+            DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 7 }
+            DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 8 }
+            DirectorNews { anchors.fill: parent; visible: ShellState.tab === 9 }
             DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === ShellState.tabPerformance }
             DirectorSettings { anchors.fill: parent; visible: ShellState.tab === ShellState.tabSettings }
         }
@@ -242,6 +243,9 @@ Item {
                          : ShellState.libraryView === 'browse' ? '↑ ↓  Move    Enter  Install or update    /  Search    V  View    ← →  Views    Esc  Close'
                          : ShellState.libraryView === 'installed' ? '↑ ↓  Move    U  Update    P  Pin    V  View    ← →  Views    Esc  Close'
                          : '↑ ↓  Move    R  Refresh    V  View    ← →  Views    Esc  Close')
+                      : ShellState.tab === ShellState.tabBuilder
+                      ? (ShellState.builderEditing ? 'S  Save    R  Release    K  Sky    Tab  Focus    ← →  Views    Esc  Close'
+                         : 'N  New world    ↑ ↓  Move    Enter  Edit    Tab  Focus    ← →  Views    Esc  Close')
                       : '← →  Views      Tab  Focus      Esc  Close'
                 font.family: Tokens.mono
                 font.pixelSize: 11

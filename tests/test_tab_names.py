@@ -18,7 +18,8 @@ class TabNames(unittest.TestCase):
         self.assertEqual(keys.index('quests'), keys.index('map') + 1)
         self.assertEqual(keys.index('objects'), keys.index('quests') + 1)  # RFC-0011: after Quests
         self.assertEqual(keys.index('library'), keys.index('objects') + 1)  # RFC-0015: after Objects
-        for name in ['map', 'quests', 'objects', 'library', 'settings', 'performance']:
+        self.assertEqual(keys.index('builder'), keys.index('library') + 1)  # RFC-0014: after Library
+        for name in ['map', 'quests', 'objects', 'library', 'builder', 'settings', 'performance']:
             index = re.search(r'tab%s: (\d+)' % name.capitalize(), state)
             self.assertEqual(int(index.group(1)), keys.index(name), name)
 
