@@ -366,6 +366,21 @@ class Spawn(unittest.TestCase):
         self.assertEqual(call('routeText', PATHS, 'plaza-loop'), 'Plaza loop')  # bare id = package/<id>
         self.assertEqual(call('routeText', PATHS, 'user/gone'), 'gone')
 
+    def test_drawn_paths_are_offered(self):
+        # A path drawn with tool 3 is generic; core makes it a route when a character is put on it.
+        drawn = path('path-7', source='user', use='generic', walkable=None, closed=True)
+        empty = {**path('path-8', source='user', use='generic', walkable=None), 'points': []}
+        package_generic = path('vista', use='generic', walkable=None)
+        rows = call('routeOptions', [drawn, empty, package_generic])
+        self.assertEqual([r['ref'] for r in rows], ['user/path-7'])
+        row = rows[0]
+        self.assertEqual((row['label'], row['sourceLabel'], row['enabled'], row['closed'], row['note']),
+                         ('Drawn path', 'Mine', True, True, 'Drawn with tool 3 · becomes a route'))
+        named = call('routeOptions', [{**drawn, 'name': 'Square'}])[0]
+        self.assertEqual(named['label'], 'Square')
+        request = call('bindRequest', instance(), {'kind': 'route', 'path': 'user/path-7'}, {'speed': 1, 'phase': 0, 'reverse': False, 'accent': ''})
+        self.assertEqual(request, {'method': 'npcs.bind', 'params': {'id': 'u-npc001', 'path': 'user/path-7'}})
+
     def test_accent_round_trip_and_settings(self):
         for hexa in js('ACCENTS'):
             self.assertEqual(call('hexFromAccent', call('accentFromHex', hexa)), hexa)

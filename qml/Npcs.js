@@ -60,9 +60,17 @@ function pathFor(paths, ref) {
 }
 
 // The route column: package and user routes (use "route") from paths.list, each enabled only
-// when core says it is walkable and has room for another character.
+// when core says it is walkable and has room for another character. Paths the user drew with
+// tool 3 (user, "generic") are listed too: core makes one a route when a character is put on
+// it and it is walkable for that character (core 0.8.4), else refuses with the reason.
+function drawnPath(p) { return !!p && p.source === 'user' && p.use === 'generic' && (p.points || []).length >= 2; }
+
 function routeOptions(paths) {
-    return (paths || []).filter(function (p) { return p.use === 'route'; }).map(function (p) {
+    return (paths || []).filter(function (p) { return p.use === 'route' || drawnPath(p); }).map(function (p) {
+        if (drawnPath(p))
+            return {ref: p.ref, id: p.id, source: p.source, sourceLabel: sourceLabel(p.source), label: p.name || 'Drawn path',
+                    points: (p.points || []).length, closed: !!p.closed, walkable: false, bound: 0, enabled: true,
+                    note: 'Drawn with tool 3 · becomes a route', level: ''};
         var bound = (p.bound || []).length, full = bound >= PER_PATH;
         var note = p.walkable !== true ? (p.problems && p.problems.length ? p.problems[0] : 'Not walkable')
                  : full ? PER_PATH + ' characters already walk it'
