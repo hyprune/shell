@@ -131,7 +131,7 @@ Rectangle {
                             text: panel.inspection ? [panel.inspection.format.toUpperCase() + (panel.inspection.backend === 'assimp' ? ' (through Assimp)' : ''),
                                    Import.count(panel.inspection.triangles) + ' triangles', panel.inspection.meshes + ' meshes', panel.inspection.materials + ' materials',
                                    panel.inspection.textures.length ? panel.inspection.textures.length + ' textures, largest ' + panel.inspection.maxTexture + ' px' : 'no textures',
-                                   Import.mib(panel.inspection.bytes) + ' file'].join('  ·  ') : ''
+                                   Import.fileSize(panel.inspection.bytes) + (panel.inspection.format === 'gltf' ? ' (the .gltf alone)' : '')].join('  ·  ') : ''
                             wrapMode: Text.Wrap; font.pixelSize: 13
                         }
                         Repeater {

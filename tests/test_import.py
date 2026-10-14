@@ -48,6 +48,9 @@ class Form(unittest.TestCase):
         self.assertEqual(len(call('formErrors', dict(form, maxTriangles='50'))), 1)
         self.assertEqual(len(call('formErrors', dict(form, licence='other', licenceOther=''))), 1)
 
+    def test_file_size(self):
+        self.assertEqual([call('fileSize', b) for b in [500, 2046, 5 * 1048576, 3 * 1073741824]], ['500 bytes', '2 KiB', '5 MiB', '3 GiB'])
+
     def test_arguments(self):
         form = dict(call('defaultForm', INSPECTION), up='z', maxTriangles='5000', licence='CC0-1.0', author=' A. Modeller ', source='')
         self.assertEqual(call('inspectArgs', '/x/b.gltf'), ['object', 'import', '/x/b.gltf', '--inspect', '--json'])

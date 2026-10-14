@@ -148,6 +148,12 @@ function stageRows(job) {
 }
 
 function mib(bytes) { var v = (bytes || 0) / 1048576; return (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + ' MiB'; }
+// A file size: bytes, KiB, MiB or GiB.
+function fileSize(bytes) {
+    var units = ['bytes', 'KiB', 'MiB', 'GiB'], v = Number(bytes) || 0, i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return (i ? (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) : v) + ' ' + units[i];
+}
 
 // What the finished import did, line by line, and its warnings.
 function resultLines(result) {
