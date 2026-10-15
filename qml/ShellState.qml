@@ -765,6 +765,7 @@ QtObject {
             moves.forEach(function (m) { root.shapesSwap(m.id, m.ref); });
             sayObjects('Saved the material ' + job.key + (moves.length ? '; ' + moves.length + ' placed shape' + (moves.length === 1 ? '' : 's') + ' updated' : ''), 'info');
         }
+        if (job.kind === 'make' || job.kind === 'apply') shapesLoadMaterials(); // a built-in texture may have joined the library
         catalogRefresh.restart();
     }
     property Process shapesProcess: Process {

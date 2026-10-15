@@ -35,6 +35,11 @@ Item {
         enabled: !ShellState.shapesBusy
         background: Rectangle { radius: Tokens.radius; color: Tokens.panel; border.width: parent.activeFocus ? 2 : 1; border.color: parent.activeFocus ? Tokens.gold : Tokens.line }
     }
+    // A check box whose label reads on the dark panels.
+    component HudCheck: CheckBox {
+        id: check
+        contentItem: HudLabel { text: check.text; leftPadding: check.indicator.width + 6; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; color: Tokens.text }
+    }
     component Caption: HudLabel { font.pixelSize: 11; color: Tokens.gold; font.letterSpacing: 2 }
     component Note: HudLabel { Layout.fillWidth: true; font.pixelSize: 12; color: Tokens.muted; wrapMode: Text.Wrap }
 
@@ -159,7 +164,7 @@ Item {
                                     required property var modelData
                                     objectName: 'material-preset:' + modelData.key
                                     text: modelData.label
-                                    implicitWidth: 110
+                                    implicitWidth: 126
                                     primary: !!root.material && root.material.texture.preset === modelData.key
                                     onClicked: root.material = Object.assign({}, root.material, {texture: {kind: 'preset', preset: modelData.key}})
                                 }
@@ -182,7 +187,7 @@ Item {
                         }
                         RowLayout {
                             spacing: 8
-                            CheckBox {
+                            HudCheck {
                                 objectName: 'materialGlow'
                                 text: 'Glows'
                                 checked: !!root.material && !!root.material.glow

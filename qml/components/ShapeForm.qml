@@ -32,6 +32,11 @@ ColumnLayout {
         enabled: !ShellState.shapesBusy
         background: Rectangle { radius: Tokens.radius; color: Tokens.panel; border.width: parent.activeFocus ? 2 : 1; border.color: parent.activeFocus ? Tokens.gold : Tokens.line }
     }
+    // A check box whose label reads on the dark panels.
+    component HudCheck: CheckBox {
+        id: check
+        contentItem: HudLabel { text: check.text; leftPadding: check.indicator.width + 6; verticalAlignment: Text.AlignVCenter; font.pixelSize: 13; color: Tokens.text }
+    }
     component Caption: HudLabel { font.pixelSize: 11; color: Tokens.muted }
     component Swatch: AbstractButton {
         id: sw
@@ -144,7 +149,7 @@ ColumnLayout {
         RowLayout {
             spacing: 10
             Field { objectName: form.prefix + 'Colour'; Layout.preferredWidth: 140; Layout.fillWidth: false; text: form.value.material.colour; placeholderText: '#rrggbb'; onTextEdited: form.setMaterial({colour: text}) }
-            CheckBox {
+            HudCheck {
                 objectName: form.prefix + 'Glow'
                 text: 'Glows'
                 checked: !!form.value.material.glow
