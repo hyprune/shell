@@ -83,14 +83,19 @@ ColumnLayout {
             Layout.preferredWidth: root.controlWidth * .7
             from: root.range[0]; to: root.range[1]; stepSize: root.row.step || 0.01
             enabled: root.editable
-            onMoved: root.set(root.row.step && root.row.step >= 1 ? Math.round(value) : Math.round(value / root.row.step) * root.row.step)
-            Binding on value { value: root.entry.value === null || root.entry.value === undefined ? slider.from : Number(root.entry.value); when: !slider.pressed }
+            // Renderer settings (graphics.*: target FPS, power cap, scale) apply once the slider
+            // settles (release, or 300 ms after a key step); the rest follow every step.
+            readonly property bool settles: root.row.key.startsWith('graphics.')
+            function rounded(v) { return root.row.step && root.row.step >= 1 ? Math.round(v) : Math.round(v / root.row.step) * root.row.step; }
+            onMoved: if (!settles) root.set(rounded(value))
+            onSettled: v => { if (settles) root.set(rounded(v)); }
+            target: root.entry.value === null || root.entry.value === undefined ? slider.from : Number(root.entry.value)
         }
         HudLabel {
             visible: slider.visible
             Layout.preferredWidth: root.controlWidth * .3 - 12
             horizontalAlignment: Text.AlignRight
-            text: root.row.kind === 'cap' && (root.entry.value === null || root.entry.value === undefined) && !slider.pressed ? 'Automatic' : Model.format(root.row, slider.pressed ? slider.value : root.entry.value)
+            text: root.row.kind === 'cap' && (root.entry.value === null || root.entry.value === undefined) && !slider.settling ? 'Automatic' : Model.format(root.row, slider.settling ? slider.value : root.entry.value)
             font.pixelSize: 12
         }
         Item { visible: root.row.kind === 'toggle'; Layout.preferredWidth: root.controlWidth - Math.min(140, root.controlWidth) - 12 }

@@ -150,6 +150,10 @@ class Wiring(unittest.TestCase):
         row = (ROOT / 'qml/components/SettingRow.qml').read_text()
         for name in ["'overridden:' + root.row.key", "'reset:' + root.row.key", 'Model.resetRequest', 'Model.setRequest']:
             self.assertIn(name, row)
+        # Renderer sliders apply when they settle, not on every step of a drag.
+        for name in ["settles: root.row.key.startsWith('graphics.')", 'onSettled: v => { if (settles)', 'onMoved: if (!settles)', 'target: root.entry.value']:
+            self.assertIn(name, row)
+        self.assertIn('signal settled(real value)', (ROOT / 'qml/components/SettingSlider.qml').read_text())
 
 
 if __name__ == '__main__':
