@@ -59,9 +59,9 @@ ColumnLayout {
         Layout.fillWidth:true;visible:root.config.offload_power_cap_w!==undefined
         HudLabel {Layout.preferredWidth:190;text:'Power cap';wrapMode:Text.Wrap}
         Choice {objectName:'graphics-offload_power_cap_mode';Layout.preferredWidth:180;visible:root.deviceAware;model:['Cap · Automatic','Cap · Custom'];enabled:ShellState.available('graphics.set');currentIndex:root.config.offload_power_cap_w===null ? 0 : 1;onActivated:root.setValue('offload_power_cap_w',currentIndex===0 ? null : Math.round(Math.max(20,Math.min(root.capMax,(root.performance && root.performance.capW) || 80))))}
-        SettingSlider {objectName:'graphics-offload_power_cap_w';Layout.fillWidth:true;visible:!root.deviceAware || root.config.offload_power_cap_w!==null;from:20;to:root.capMax;stepSize:root.capMax>100 ? 5 : 1;value:root.config.offload_power_cap_w || 80;enabled:ShellState.available('graphics.set');onMoved:root.setValue('offload_power_cap_w',Math.round(value))}
+        SettingSlider {id:capSlider;objectName:'graphics-offload_power_cap_w';Layout.fillWidth:true;visible:!root.deviceAware || root.config.offload_power_cap_w!==null;from:20;to:root.capMax;stepSize:root.capMax>100 ? 5 : 1;target:root.config.offload_power_cap_w || 80;enabled:ShellState.available('graphics.set');onSettled:value=>root.setValue('offload_power_cap_w',Math.round(value))}
         Item {Layout.fillWidth:true;visible:root.deviceAware && root.config.offload_power_cap_w===null}
-        HudLabel {Layout.preferredWidth:180;text:(root.config.offload_power_cap_w===null ? 'Automatic' : (root.config.offload_power_cap_w || 80)+' W requested')+(root.performance ? ' / '+root.performance.capW+' W policy' : '');font.pixelSize:12;wrapMode:Text.Wrap}
+        HudLabel {Layout.preferredWidth:180;text:(root.config.offload_power_cap_w===null ? 'Automatic' : (capSlider.settling ? Math.round(capSlider.value) : root.config.offload_power_cap_w || 80)+' W requested')+(root.performance ? ' / '+root.performance.capW+' W policy' : '');font.pixelSize:12;wrapMode:Text.Wrap}
     }
     RowLayout {
         Layout.fillWidth:true;visible:root.deviceAware && root.offloadDevice!==null
@@ -76,8 +76,8 @@ ColumnLayout {
             required property var modelData
             Layout.fillWidth:true
             HudLabel {Layout.preferredWidth:190;text:modelData.name;wrapMode:Text.Wrap}
-            SettingSlider {objectName:'graphics-'+modelData.key;Layout.fillWidth:true;from:modelData.min;to:modelData.max;stepSize:modelData.step;value:root.config[modelData.key] || from;enabled:ShellState.available('graphics.set');onMoved:root.setValue(modelData.key,modelData.step===1 ? Math.round(value) : value)}
-            HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? (root.cost('sharpen') ? ' / '+root.cost('sharpen') : '') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
+            SettingSlider {id:rateSlider;objectName:'graphics-'+modelData.key;Layout.fillWidth:true;from:modelData.min;to:modelData.max;stepSize:modelData.step;target:root.config[modelData.key] || from;enabled:ShellState.available('graphics.set');onSettled:value=>root.setValue(modelData.key,modelData.step===1 ? Math.round(value) : value)}
+            HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(rateSlider.settling ? rateSlider.value : root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? (root.cost('sharpen') ? ' / '+root.cost('sharpen') : '') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
         }
     }
     RowLayout {
@@ -114,8 +114,8 @@ ColumnLayout {
         RowLayout {
             required property string modelData;Layout.fillWidth:true
             HudLabel {Layout.preferredWidth:190;text:modelData==='scale_min' ? 'Minimum scale' : 'Maximum scale'}
-            SettingSlider {objectName:'graphics-'+modelData;Layout.fillWidth:true;from:modelData==='scale_max' ? root.config.scale_min : .375;to:modelData==='scale_min' ? root.config.scale_max : 1;stepSize:.025;value:root.config[modelData];enabled:ShellState.available('graphics.set');onMoved:root.setValue(modelData,value)}
-            HudLabel {Layout.preferredWidth:180;text:Math.round(root.config[modelData]*100)+'%';horizontalAlignment:Text.AlignRight;font.pixelSize:12}
+            SettingSlider {id:scaleSlider;objectName:'graphics-'+modelData;Layout.fillWidth:true;from:modelData==='scale_max' ? root.config.scale_min : .375;to:modelData==='scale_min' ? root.config.scale_max : 1;stepSize:.025;target:root.config[modelData];enabled:ShellState.available('graphics.set');onSettled:value=>root.setValue(modelData,value)}
+            HudLabel {Layout.preferredWidth:180;text:Math.round((scaleSlider.settling ? scaleSlider.value : root.config[modelData])*100)+'%';horizontalAlignment:Text.AlignRight;font.pixelSize:12}
         }
     }
     HudLabel {Layout.fillWidth:true;visible:root.config.dynamic_resolution===true && root.config.scale_min===undefined;text:'Dynamic scale limits are managed by core.';wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12}

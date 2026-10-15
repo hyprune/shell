@@ -5,6 +5,20 @@ import "../theme"
 Slider {
     id: root
     implicitHeight: 36
+    // Settings that reconfigure the renderer (target FPS, power cap, scale): settled once,
+    // on release or settleMs after the last key step, instead of on every step of a drag.
+    // target: the value from state; it is not pushed into the handle while it is dragged or
+    // settling (a state poll mid-drag used to snap the handle back).
+    signal settled(real value)
+    property int settleMs: 300
+    property var target: undefined
+    readonly property bool settling: pressed || settle.running
+    Binding on value { value: Number(root.target); when: root.target !== undefined && !root.settling }
+    property bool unsettled: false // moved since the last settled()
+    function settle_() { settle.stop(); if (unsettled) { unsettled = false; settled(value); } }
+    Timer { id: settle; interval: root.settleMs; onTriggered: if (!root.pressed) root.settle_() }
+    onMoved: { unsettled = true; settle.restart(); }
+    onPressedChanged: if (!pressed) settle_()
     background: Rectangle {
         x: root.leftPadding; y: root.topPadding + root.availableHeight / 2 - height / 2
         width: root.availableWidth; height: 3; radius: 1.5; color: Tokens.line
