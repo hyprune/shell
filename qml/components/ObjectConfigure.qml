@@ -305,7 +305,8 @@ ColumnLayout {
         property string loadedFor: ''
         readonly property bool isShape: !!(panel.entry && panel.entry.primitive)
         function load() {
-            var key = panel.instance ? panel.instance.id + '|' + panel.instance.ref : '';
+            // The catalog entry can arrive after the instance: reload when it does.
+            var key = panel.instance ? panel.instance.id + '|' + panel.instance.ref + '|' + (panel.entry && panel.entry.primitive ? 'shape' : '') : '';
             if (key === loadedFor) return;
             loadedFor = key;
             draft = Shapes.formFromEntry(panel.entry);
