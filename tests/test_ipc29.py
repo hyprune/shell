@@ -1,7 +1,7 @@
 """IPC 0.29 (draft, motion feel): the debug recording (Ctrl+R). The bridge opens the note
 prompt as a label prompt when a recording stops, Enter labels it (recording.label with the
 shell version), an empty Enter or Esc keeps the time-only name; the HUD's REC indicator reads
-state.recording. Input version 3 (Ctrl sprints, Shift goes down) is a core keymap.
+state.recording. Input version 3 (Shift sprints, Ctrl goes down, Ctrl+R records) is a core keymap.
 
 Wire checks run against the vendored 0.29 pin; 0.28 must refuse the new shapes."""
 import asyncio

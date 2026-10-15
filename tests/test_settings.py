@@ -33,9 +33,9 @@ SETTINGS = {'preset': 'medium', 'overrides': 2, 'path': '/x/settings.json', 'err
             'settings': {'graphics.msaa': entry(1, 1), 'graphics.target_fps': entry(110, 60, 'user'), 'player.walk_speed': entry(4, 4),
                          'player.run_speed': entry(12, 10, 'user'), 'graphics.outline_width_px': entry(3, None, 'user')},
             'keymapDefaults': {'longHoldMs': 1000, 'scopeVignette': True, 'invert_y': False, 'show_area_markers': False,
-                               'modes': {'world': {'sprint': ['Control_L'], 'down': ['Shift_L']}}}}
+                               'modes': {'world': {'sprint': ['Shift_L'], 'down': ['Control_L']}}}}
 KEYMAP = {'config': {'longHoldMs': 1000, 'scopeVignette': True, 'invert_y': True, 'show_area_markers': False,
-                     'modes': {'world': {'sprint': ['Shift_L'], 'down': ['Shift_L']}}}}
+                     'modes': {'world': {'sprint': ['Control_L'], 'down': ['Control_L']}}}}
 GRAPHICS = {'config': {'msaa': None, 'target_fps': 110, 'quality': 'medium', 'outline_width_px': 3}, 'effective': {'msaa': 1, 'target_fps': 110},
             'overrides': {'target_fps': 110, 'msaa': None}}
 PLAYER = {'config': {'walk_speed': 4, 'run_speed': 12, 'look_inertia': .03, 'move_inertia': .05}, 'defaults': {'walk_speed': 4, 'run_speed': 10}, 'overrides': {'run_speed': 12}}

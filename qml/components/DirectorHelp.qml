@@ -44,7 +44,7 @@ RowLayout {
 
         Repeater {
             model: ShellState.supportsProtocol(6) ? [
-                ['MOVEMENT','HJKL / WASD / arrows; '+Manipulation.keyName(ShellState.state,'sprint','Ctrl')+' sprints, Space jumps/up, '+Manipulation.keyName(ShellState.state,'down','Shift')+' crouches/down.'],
+                ['MOVEMENT','HJKL / WASD / arrows; '+Manipulation.keyName(ShellState.state,'sprint','Shift')+' sprints, Space jumps/up, '+Manipulation.keyName(ShellState.state,'down','Ctrl')+' crouches/down.'],
                 ['USE / FOCUS','E uses a window or workspace in place. F zooms to fullscreen. Super+Tab or Back returns.'],
                 ['MAP / SETTINGS','Hold Tab for the Director. Settings → Appearance selects Adventure, Instrument or Minimal.'],
                 ['TOOLS','1–5 select tools; 9 is the debug tool, one debug layer at a time (Cycle steps through them). Primary, Secondary, Alternate and Cycle use the actions published by core below. Hold Super or Super+Shift for global gestures.'],
