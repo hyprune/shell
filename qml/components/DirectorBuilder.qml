@@ -100,7 +100,7 @@ Item {
             border.color: own.chosen ? Tokens.gold : own.activeFocus ? Tokens.accent : Tokens.line
         }
         contentItem: Item {
-            HudLabel { anchors.centerIn: parent; text: '＋\n' + own.label; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 13; color: own.chosen ? Tokens.gold : Tokens.text }
+            HudLabel { anchors.centerIn: parent; text: '+\n' + own.label; horizontalAlignment: Text.AlignHCenter; font.pixelSize: 13; color: own.chosen ? Tokens.gold : Tokens.text }
         }
     }
 
