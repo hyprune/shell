@@ -113,7 +113,7 @@ ColumnLayout {
                 }
             }
             ActionButton { objectName: 'behaviour-edit:' + modelData.key; text: 'Edit'; implicitWidth: 64; onClicked: panel.open(modelData, modelData.key) }
-            ActionButton { objectName: 'behaviour-remove:' + modelData.key; text: 'Remove'; implicitWidth: 80; onClicked: panel.remove(modelData.key) }
+            ActionButton { objectName: 'behaviour-remove:' + modelData.key; text: 'Remove'; implicitWidth: 96; onClicked: panel.remove(modelData.key) }
         }
     }
     Flow {
@@ -126,7 +126,7 @@ ColumnLayout {
                 required property var modelData
                 objectName: 'behaviour-add:' + modelData.id
                 text: '+ ' + modelData.label
-                implicitWidth: 112
+                implicitWidth: 126
                 onClicked: panel.open(B.newBehaviour(modelData.id, panel.list), '')
             }
         }
@@ -187,7 +187,7 @@ ColumnLayout {
                     required property string modelData
                     objectName: 'behaviour-anchor:' + modelData
                     text: modelData
-                    implicitWidth: 72
+                    implicitWidth: 84
                     primary: !!panel.draft && panel.draft.anchor === modelData
                     onClicked: panel.set({anchor: modelData})
                 }
@@ -238,7 +238,7 @@ ColumnLayout {
                     required property string modelData
                     objectName: 'behaviour-easing:' + modelData
                     text: modelData
-                    implicitWidth: 92
+                    implicitWidth: 112
                     primary: !!panel.draft && panel.draft.easing === modelData
                     onClicked: panel.set({easing: modelData})
                 }

@@ -305,9 +305,11 @@ ColumnLayout {
         property string loadedFor: ''
         readonly property bool isShape: !!(panel.entry && panel.entry.primitive)
         function load() {
-            // The catalog entry can arrive after the instance: reload when it does.
-            var key = panel.instance ? panel.instance.id + '|' + panel.instance.ref + '|' + (panel.entry && panel.entry.primitive ? 'shape' : '') : '';
+            // The catalog entry can arrive after the instance (and lag behind a new selection):
+            // reload whenever the entry that matches the instance's ref is in.
+            var key = panel.instance ? panel.instance.id + '|' + panel.instance.ref + '|' + (panel.entry ? panel.entry.ref : '') + '|' + (panel.entry && panel.entry.primitive ? 'shape' : '') : '';
             if (key === loadedFor) return;
+            if (panel.entry && panel.instance && panel.entry.ref !== panel.instance.ref) return; // the entry is still the last selection's
             loadedFor = key;
             draft = Shapes.formFromEntry(panel.entry);
             keyField.text = panel.instance && panel.instance.key ? panel.instance.key : '';
