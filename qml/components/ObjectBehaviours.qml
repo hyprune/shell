@@ -29,6 +29,15 @@ ColumnLayout {
         editing = key || '';
         draftFor = instance ? instance.id : '';
         rest = B.restOf(instance);
+        Qt.callLater(reveal);
+    }
+    // Scroll the configure panel so the editor is in view (it opens below the list).
+    function reveal() {
+        var f = panel.parent;
+        while (f && (f.contentY === undefined || f.contentHeight === undefined)) f = f.parent;
+        if (!f || !editorBox.visible) return;
+        var p = editorBox.mapToItem(f.contentItem, 0, 0);
+        f.contentY = Math.max(0, Math.min(p.y - 60, f.contentHeight - f.height));
     }
     function close() {
         if (rest && instance && B.moved(rest, instance)) ShellState.objectAction('objects.transform', B.restParams(instance.id, rest));
@@ -125,6 +134,7 @@ ColumnLayout {
 
     // ---- the editor ----
     ColumnLayout {
+        id: editorBox
         objectName: 'behaviourEditor'
         Layout.fillWidth: true
         visible: !!panel.draft
