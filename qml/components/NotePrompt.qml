@@ -3,7 +3,8 @@ import ".."
 import QtQuick
 
 // IPC 0.17 debug capture note: one line, Enter saves (empty allowed), Esc (core's
-// menu exit) saves nothing. The capture itself is already on disk.
+// menu exit) saves nothing. The capture itself is already on disk. IPC 0.29: the same prompt
+// labels a debug recording just stopped (Ctrl+R); Esc keeps its time-only name.
 Rectangle {
     id: root
 
@@ -17,7 +18,7 @@ Rectangle {
     Text {
         id: label
         anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
-        text: 'WHY?'
+        text: ShellState.noteRecording ? 'LABEL' : 'WHY?'
         color: Tokens.gold
         font { family: Tokens.mono; pixelSize: 13; letterSpacing: 1.5; bold: true }
     }
@@ -28,7 +29,7 @@ Rectangle {
         anchors { left: label.right; leftMargin: 14; right: hint.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
         focus: true
         clip: true
-        maximumLength: 1000
+        maximumLength: ShellState.noteRecording ? 120 : 1000
         color: Tokens.text
         selectionColor: Tokens.accent
         selectedTextColor: Tokens.ink
@@ -46,7 +47,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             visible: !field.text
-            text: 'Why? (Enter to skip)'
+            text: ShellState.noteRecording ? 'Label this recording (Enter to skip)' : 'Why? (Enter to skip)'
             color: Tokens.muted
             font: field.font
         }
@@ -55,7 +56,7 @@ Rectangle {
     Text {
         id: hint
         anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
-        text: field.length > 900 ? (1000 - field.length) + ' left' : 'Enter · save   Esc · none'
+        text: field.length > field.maximumLength - 100 ? (field.maximumLength - field.length) + ' left' : 'Enter · save   Esc · none'
         color: Tokens.muted
         font { family: Tokens.mono; pixelSize: 11 }
     }

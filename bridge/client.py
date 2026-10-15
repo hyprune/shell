@@ -14,6 +14,10 @@ import socket
 import stat
 import struct
 from protocol import frame, read_frame, validate_response, VALIDATORS, SUPPORTED_PROTOCOLS, at_least
+try:
+    SHELL_VERSION = (Path(__file__).resolve().parent.parent / 'VERSION').read_text().strip()
+except OSError:
+    SHELL_VERSION = 'unknown'
 
 
 class OutgoingInvalid(ValueError):
@@ -362,10 +366,12 @@ class Client:
                 if p['baseRevision'] != self.revision or p['revision'] <= self.revision:
                     self.request_resync()
                     continue
+                before = self.state.get('recording')
                 self.state = {**self.state, **p['changes']}
                 self.revision = p['revision']
                 self.publish()
                 self.spawn(self.reconcile())
+                self.recording_stopped(before, self.state.get('recording'))
 
     def spawn(self, coro):
         task = asyncio.create_task(coro)
@@ -611,9 +617,22 @@ class Client:
             # QML saves the previous capture's text as-is before clearing the field.
             self.emit({'type': 'capture.prompt', 'captureId': p['captureId'], 'previous': previous})
 
+    def recording_stopped(self, before, after):
+        """IPC 0.29: a debug recording (Ctrl+R) just stopped: the note prompt asks for its
+        label (id recording:<path>); Enter labels it, an empty Enter or Esc keeps the time name."""
+        if not at_least(self.protocol, 29) or not before or not after or not before.get('active') or after.get('active'):
+            return
+        last = after.get('last')
+        if last and last.get('label') is None:
+            self.spawn(self.capture_taken({'captureId': 'recording:' + last['path'], 'mode': 'world'}))
+
     async def capture_note(self, capture_id, note, release=True):
-        """Enter: write the note (empty allowed); release=False keeps input for the next prompt."""
-        if note is not None:
+        """Enter: write the note (empty allowed); release=False keeps input for the next prompt.
+        A recording's prompt (recording:<path>) labels the recording instead (empty: no label)."""
+        if capture_id.startswith('recording:'):
+            if note and note.strip():
+                await self.call('recording.label', {'label': note.strip()[:120], 'meta': {'shell': {'version': SHELL_VERSION}}})
+        elif note is not None:
             await self.call('capture.annotate', {'captureId': capture_id, 'note': note})
         if release:
             await self.capture_release(capture_id)

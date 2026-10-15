@@ -34,6 +34,41 @@ Item {
         anchors.horizontalCenter:parent.horizontalCenter; y: root.inset; width: Math.min(510,root.width*.38); height:70; edgeY:-1
         Compass { anchors.fill:parent }
     }
+    // IPC 0.29 debug recording (Ctrl+R): a red REC dot and the elapsed time while it runs, so
+    // it is not left on by accident.
+    Rectangle {
+        id: rec
+        objectName: 'hudRecording'
+        readonly property var state: ShellState.state && ShellState.state.recording
+        readonly property bool on: !!state && state.active && state.startedAt !== null
+        property double now: 0
+        z: 3
+        visible: on
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.inset + 78
+        width: recRow.width + 20; height: 26; radius: 13
+        color: Tokens.light ? '#e6ffffff' : '#cc0b1420'
+        border.width: 1; border.color: '#d93a3a'
+        Timer { interval: 500; repeat: true; running: rec.on; triggeredOnStart: true; onTriggered: rec.now = ShellState.monotonicNow() || 0 }
+        Row {
+            id: recRow
+            anchors.centerIn: parent
+            spacing: 8
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 10; height: 10; radius: 5; color: '#e53935'
+                SequentialAnimation on opacity { running: rec.on && !Tokens.reducedMotion; loops: Animation.Infinite
+                    NumberAnimation { to: .35; duration: 700 } NumberAnimation { to: 1; duration: 700 } }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                readonly property int seconds: rec.on && rec.now > 0 ? Math.max(0, Math.floor((rec.now - rec.state.startedAt) / 1000)) : 0
+                text: 'REC ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0')
+                color: Tokens.text
+                font { family: Tokens.mono; pixelSize: 12; letterSpacing: 1.5; bold: true }
+            }
+        }
+    }
     HudCluster {
         z:2
         anchors.right:parent.right; anchors.rightMargin:root.inset-24; y:root.inset-24; width: (root.compact ? 230 : 310)+48; height:120

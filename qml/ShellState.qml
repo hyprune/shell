@@ -716,6 +716,8 @@ QtObject {
     // IPC 0.17 debug capture note: the capture awaiting a note ('' = no prompt).
     property string notePrompt: ''
     property string noteText: ''
+    // IPC 0.29: the prompt labels a debug recording just stopped (id recording:<path>).
+    readonly property bool noteRecording: notePrompt.indexOf('recording:') === 0
     function cleanNote(text) { return String(text).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 1000); }
     function submitNote() { if (notePrompt) send({type: 'capture.note', captureId: notePrompt, note: cleanNote(noteText), release: true}); }
     function dismissNote() { if (notePrompt) send({type: 'capture.dismiss', captureId: notePrompt}); }

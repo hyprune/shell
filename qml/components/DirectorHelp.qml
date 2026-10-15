@@ -51,7 +51,8 @@ RowLayout {
                 ['CARRY ORIENTATION',HudData.placement.available ? Manipulation.binding(ShellState.state,'carry.facing','R')+' toggles Facing you / Keep angle while carrying.' : 'Carry orientation feedback requires the updated core.'],
                 ['ROTATE',Manipulation.binding(ShellState.state,'rotate','Super+Ctrl+Wheel')+' rotates a carried window.'],
                 ['CONTENT SCALE',HudData.placement.available ? Manipulation.binding(ShellState.state,'content.scale','Super+Shift+Wheel')+' adjusts client content scale. '+Manipulation.binding(ShellState.state,'window.reset','Super+Shift+MMB')+' resets it.' : 'Content scale and window reset require the updated core.'],
-                ['SCOPE / DEBUG','Hold Q and wheel to zoom; F3/Y toggles debug; U saves a state capture.']
+                ['SCOPE / DEBUG','Hold Q and wheel to zoom; F3/Y toggles debug; U saves a state capture.'],
+                ['RECORD',Manipulation.keyName(ShellState.state,'record.toggle','Ctrl+R')+' records a debug stream (input, camera, frame timing) for measuring motion feel; a red REC dot shows while it runs. On stop, type a label or press Enter to skip.']
             ].concat(Manipulation.toolHelp(ShellState.state)) : [['OVERVIEW','Core owns the hold-to-open binding and timing.'],['ESCAPE','Return to desktop restores ordinary input through core.'],['KEYBOARD','Tab moves focus. Left / Right change view. Esc closes.']]
 
             delegate: RowLayout {
