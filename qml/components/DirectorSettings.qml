@@ -178,12 +178,12 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 16
-            // Categories (and the search).
+            // Categories (and the search), scrolling when they don't fit (2x scale).
             ColumnLayout {
                 Layout.preferredWidth: 250
                 Layout.maximumWidth: 250
                 Layout.fillHeight: true
-                spacing: 4
+                spacing: 6
                 TextField {
                     id: searchField
                     objectName: 'settings-search'
@@ -192,16 +192,26 @@ Item {
                     onTextEdited: ShellState.settingsSearch = text
                     Binding on text { value: root.query; when: !searchField.activeFocus || root.query === '' }
                     color: Tokens.text
+                    placeholderTextColor: Tokens.muted
                     font.pixelSize: 13
                     background: Rectangle { radius: Tokens.radius; color: Tokens.panel; border.color: searchField.activeFocus ? Tokens.gold : Tokens.line }
                     Keys.onEscapePressed: event => { if (root.query) { ShellState.settingsSearch = ''; event.accepted = true; } else event.accepted = false; }
                 }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    contentWidth: availableWidth
+                    clip: true
+                    ColumnLayout {
+                    width: parent ? parent.width : 250
+                    spacing: 4
                 Repeater {
                     model: Model.CATEGORIES
                     ActionButton {
                         required property var modelData
                         required property int index
                         objectName: 'settings-category-' + modelData.id
+                        implicitHeight: 36
                         Layout.fillWidth: true
                         text: modelData.name + (root.counts[modelData.id] ? '  ·  ' + root.counts[modelData.id] : '')
                         primary: !root.query && root.category === modelData.id
@@ -210,7 +220,8 @@ Item {
                         Keys.onDownPressed: { if (index < Model.CATEGORIES.length - 1) { root.show(Model.CATEGORIES[index + 1].id); nextItemInFocusChain(true).forceActiveFocus(); } }
                     }
                 }
-                Item { Layout.fillHeight: true }
+                    }
+                }
             }
             ScrollView {
                 id: scroll

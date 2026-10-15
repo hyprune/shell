@@ -30,9 +30,12 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         spacing: 12
+        // The label column: a fixed width, so every control lines up (a nested layout would
+        // otherwise share the row's spare width with the slider).
         RowLayout {
-            Layout.preferredWidth: 280
-            Layout.minimumWidth: 160
+            Layout.fillWidth: false
+            Layout.preferredWidth: 300
+            Layout.maximumWidth: 300
             spacing: 6
             Rectangle {
                 objectName: 'overridden:' + root.row.key
@@ -50,8 +53,7 @@ ColumnLayout {
             id: choice
             objectName: root.objectKey
             visible: root.row.kind === 'choice' || root.row.kind === 'colour'
-            Layout.fillWidth: true
-            Layout.maximumWidth: 360
+            Layout.preferredWidth: 360
             model: root.options.map(o => o.label).concat(root.row.kind === 'colour' && root.optionIndex(root.entry.value) < 0 ? ['Custom'] : [])
             enabled: root.editable
             onActivated: index => { if (index < root.options.length) root.set(root.options[index].value); }
@@ -61,7 +63,7 @@ ColumnLayout {
         ActionButton {
             objectName: root.objectKey
             visible: root.row.kind === 'toggle'
-            Layout.preferredWidth: 120
+            Layout.preferredWidth: 360
             text: root.entry.value ? 'On' : 'Off'
             primary: !!root.entry.value
             enabled: root.editable
@@ -72,7 +74,7 @@ ColumnLayout {
             id: slider
             objectName: root.objectKey
             visible: root.row.kind === 'slider' || root.row.kind === 'cap'
-            Layout.fillWidth: true
+            Layout.preferredWidth: 250
             from: root.range[0]; to: root.range[1]; stepSize: root.row.step || 0.01
             enabled: root.editable
             onMoved: root.set(root.row.step && root.row.step >= 1 ? Math.round(value) : Math.round(value / root.row.step) * root.row.step)
@@ -80,11 +82,12 @@ ColumnLayout {
         }
         HudLabel {
             visible: slider.visible
-            Layout.preferredWidth: 110
+            Layout.preferredWidth: 100
             horizontalAlignment: Text.AlignRight
             text: root.row.kind === 'cap' && (root.entry.value === null || root.entry.value === undefined) && !slider.pressed ? 'Automatic' : Model.format(root.row, slider.pressed ? slider.value : root.entry.value)
             font.pixelSize: 12
         }
+        Item { Layout.fillWidth: true }
         ActionButton {
             objectName: 'reset:' + root.row.key
             implicitWidth: 36; leftPadding: 6; rightPadding: 6
