@@ -18,8 +18,10 @@ ColumnLayout {
     readonly property real capMax: deviceAware ? Math.max(100, Math.min(1000, (offloadDevice && offloadDevice.enforcedLimitW) || 350)) : 100
     // IPC 0.16: FSR 1 / bilinear reconstruction below output size.
     readonly property bool upscalerSupported:ShellState.supportsProtocol(16) && !!(graphics && graphics.options && graphics.options.upscaler)
-    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : []).concat(upscalerSupported ? ['upscaler'] : [])
-    readonly property var labels:({quality:'Preset',sky:'Sky',msaa:'MSAA',bloom:'Bloom',fog:'Fog',reflections:'Reflections',normal_maps:'Normal maps',specular:'Specular highlights',ambient_occlusion:'Ambient occlusion',alpha_haze:'Glass / haze',anisotropy:'Anisotropy',dynamic_resolution:'Dynamic resolution'})
+    // IPC 0.29: frame pacing of a rate-capped renderer (offload), inherited from the preset.
+    readonly property bool pacingSupported: !!(graphics && graphics.options && graphics.options.frame_pacing)
+    readonly property var inherited:['msaa','bloom','fog','sky','reflections','normal_maps','specular','ambient_occlusion','alpha_haze','anisotropy'].concat(config.outline !== undefined ? ['outline'] : []).concat(config.outline_quality !== undefined ? ['outline_quality','outline_width_px','outline_colour'] : []).concat(upscalerSupported ? ['upscaler'] : []).concat(pacingSupported ? ['frame_pacing'] : [])
+    readonly property var labels:({frame_pacing:'Frame pacing',quality:'Preset',sky:'Sky',msaa:'MSAA',bloom:'Bloom',fog:'Fog',reflections:'Reflections',normal_maps:'Normal maps',specular:'Specular highlights',ambient_occlusion:'Ambient occlusion',alpha_haze:'Glass / haze',anisotropy:'Anisotropy',dynamic_resolution:'Dynamic resolution'})
     property var pendingPatch:({})
     spacing:12
     function label(v){return v === null ? 'Preset' : v === true ? 'On' : v === false ? 'Off' : String(v).replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());}
@@ -78,6 +80,13 @@ ColumnLayout {
             HudLabel {Layout.preferredWidth:180;text:(root.config[modelData.key] === undefined ? '—' : Number(root.config[modelData.key]).toFixed(modelData.step===1 ? 0 : 2))+(modelData.key==='sharpen' ? (root.cost('sharpen') ? ' / '+root.cost('sharpen') : '') : ' FPS');horizontalAlignment:Text.AlignRight;font.pixelSize:12}
         }
     }
+    RowLayout {
+        Layout.fillWidth:true;visible:root.pacingSupported
+        HudLabel {Layout.fillWidth:true;text:'Frame pacing';wrapMode:Text.Wrap}
+        HudLabel {Layout.preferredWidth:180;text:'Active: '+(root.effective.frame_pacing==='max_rate' ? 'Max rate' : 'Even');color:Tokens.muted;font.pixelSize:12}
+        Choice {objectName:'graphics-frame_pacing';Layout.preferredWidth:220;model:root.values('frame_pacing').map(v=>v===null ? 'Preset' : v==='even' ? 'Even' : 'Max rate');currentIndex:root.values('frame_pacing').indexOf(root.config.frame_pacing === undefined ? null : root.config.frame_pacing);enabled:ShellState.available('graphics.set');onActivated:root.setValue('frame_pacing',root.values('frame_pacing')[currentIndex])}
+    }
+    HudLabel {Layout.fillWidth:true;visible:root.pacingSupported;wrapMode:Text.Wrap;color:Tokens.muted;font.pixelSize:12;text:'When the offload renderer is capped below the refresh rate: Even shows its frames on a steady fraction of the refresh (smooth, a little more latency); Max rate shows as many as the cap allows, unevenly spaced.'}
     RowLayout {
         Layout.fillWidth:true;visible:root.upscalerSupported
         HudLabel {Layout.fillWidth:true;text:'Upscaler';wrapMode:Text.Wrap}

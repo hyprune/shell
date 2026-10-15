@@ -95,7 +95,7 @@ class Helpers(unittest.TestCase):
         self.assertEqual(evaluate('RETICLE_STYLES.map(o=>o.name)'), ['Cross with dot', 'T with dot', 'Circle with dot', 'Dot', 'Cross', 'Chevron'])
         self.assertEqual(evaluate('MOVEMENT_KEYS'), MOVEMENT)
         self.assertEqual(evaluate('RETICLE_KEYS'), RETICLE)
-        self.assertEqual(sorted(evaluate('Object.keys(DEFAULTS)')), sorted(MOVEMENT + RETICLE))
+        self.assertEqual(sorted(evaluate('Object.keys(DEFAULTS)')), sorted(MOVEMENT + RETICLE + evaluate('FEEL_KEYS')))  # feel: IPC 0.29
         self.assertEqual(evaluate('[FOV_RANGE,FOV_DEFAULT]'), [[30, 120], 65])
 
     def test_reset_patches_remove_overrides(self):
@@ -146,11 +146,14 @@ class Wire(unittest.TestCase):
         enum = lambda key: next(b['enum'] for b in props[key]['anyOf'] if 'enum' in b)
         self.assertEqual(evaluate('VIEW_BOB.map(o=>o.value)'), enum('view_bob'))
         self.assertEqual(evaluate('RETICLE_STYLES.map(o=>o.value)'), enum('reticle_style'))
+        feel = evaluate('FEEL_KEYS')  # IPC 0.29 (tests/test_ipc29.py)
         for key, (low, high) in evaluate('RANGES').items():
+            if key in feel:
+                continue
             number = next(b for b in props[key]['anyOf'] if b.get('type') == 'number')
             self.assertEqual((number['minimum'], number['maximum']), (low, high), key)
         self.assertEqual(sorted(MOVEMENT + RETICLE), sorted(props))
-        self.v19.validate(player_set(evaluate('DEFAULTS')))
+        self.v19.validate(player_set({k: v for k, v in evaluate('DEFAULTS').items() if k not in feel}))
 
     def test_shell_patches_validate(self):
         patches = [evaluate('resetPatch(MOVEMENT_KEYS)'), evaluate('resetPatch(RETICLE_KEYS)')]

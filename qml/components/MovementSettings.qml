@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../PlayerSettings.js" as Player
+import "../HudManipulation.js" as Manipulation
 // IPC 0.19: field of view (graphics.set), walk/run speed, view bob and reach (player.set).
 ColumnLayout {
     id: root
@@ -33,7 +34,7 @@ ColumnLayout {
     Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
     Repeater {
         model: [{key: 'walk_speed', name: 'Walk speed', note: 'Walking and flight base speed.'},
-                {key: 'run_speed', name: 'Run speed', note: 'While Shift is held. Flight scales by run / walk.'}]
+                {key: 'run_speed', name: 'Run speed', note: 'While sprint (' + Manipulation.keyName(ShellState.state, 'sprint', 'Ctrl') + ') is held. Flight scales by run / walk.'}]
         ColumnLayout {
             required property var modelData
             Layout.fillWidth: true
@@ -53,6 +54,24 @@ ColumnLayout {
         Choice { objectName: 'player-view_bob'; Layout.preferredWidth: 220; model: Player.VIEW_BOB.map(o => o.name); currentIndex: Player.viewBobIndex(root.value('view_bob')); enabled: root.editable; onActivated: root.set('view_bob', Player.VIEW_BOB[currentIndex].value) }
     }
     HudLabel { Layout.fillWidth: true; text: root.reducedMotion ? 'View bob is off while Reduced motion is on in graphics settings.' : 'A gentle sway while walking. Reduced motion always turns it off.'; color: root.reducedMotion ? Tokens.gold : Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
+    // IPC 0.29 feel settings: smoothing, head tilt and how a carried window follows.
+    Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line; visible: Player.feelSupported(root.settings) }
+    HudLabel { text: 'FEEL'; color: Tokens.gold; font.pixelSize: Tokens.caption; font.letterSpacing: 1.5; Layout.fillWidth: true; visible: Player.feelSupported(root.settings) }
+    Repeater {
+        model: Player.feelSupported(root.settings) ? Player.FEEL : []
+        ColumnLayout {
+            required property var modelData
+            Layout.fillWidth: true
+            spacing: 2
+            RowLayout {
+                Layout.fillWidth: true
+                HudLabel { text: modelData.name; Layout.preferredWidth: 190; wrapMode: Text.Wrap }
+                SettingSlider { id: feelSlider; objectName: 'player-' + modelData.key; Layout.fillWidth: true; from: root.range(modelData.key)[0]; to: root.range(modelData.key)[1]; stepSize: modelData.ms ? 0.005 : 0.1; value: root.value(modelData.key); enabled: root.editable; onMoved: root.set(modelData.key, value) }
+                HudLabel { Layout.preferredWidth: 180; text: Player.feelText(modelData, feelSlider.value); horizontalAlignment: Text.AlignRight; font.pixelSize: 12 }
+            }
+            HudLabel { Layout.fillWidth: true; text: modelData.note + '  Default ' + Player.feelText(modelData, Player.defaultValue(root.settings, modelData.key)) + '.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
+        }
+    }
     Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
     HudLabel { text: 'REACH'; color: Tokens.gold; font.pixelSize: Tokens.caption; font.letterSpacing: 1.5; Layout.fillWidth: true }
     Repeater {
@@ -73,7 +92,7 @@ ColumnLayout {
         }
     }
     HudLabel { Layout.fillWidth: true; text: 'Beyond reach, the reticle dims and shows the distance; the action does nothing.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
-    ActionButton { objectName: 'player-reset_movement'; text: 'Reset movement'; Layout.fillWidth: true; enabled: root.editable; onClicked: { ShellState.patchPlayer(Player.resetPatch(Player.MOVEMENT_KEYS)); if (root.fov !== Player.FOV_DEFAULT && ShellState.available('graphics.set')) ShellState.action('graphics.set', {patch: {fov: Player.FOV_DEFAULT}}); } }
-    HudLabel { Layout.fillWidth: true; text: 'Reset restores field of view, speeds, view bob and reach to their defaults.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
+    ActionButton { objectName: 'player-reset_movement'; text: 'Reset movement'; Layout.fillWidth: true; enabled: root.editable; onClicked: { ShellState.patchPlayer(Player.resetPatch(Player.feelSupported(root.settings) ? Player.MOVEMENT_KEYS.concat(Player.FEEL_KEYS) : Player.MOVEMENT_KEYS)); if (root.fov !== Player.FOV_DEFAULT && ShellState.available('graphics.set')) ShellState.action('graphics.set', {patch: {fov: Player.FOV_DEFAULT}}); } }
+    HudLabel { Layout.fillWidth: true; text: 'Reset restores field of view, speeds, view bob, feel and reach to their defaults.'; color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap }
     HudLabel { Layout.fillWidth: true; visible: text !== ''; text: root.settings ? root.settings.error || '' : ''; color: Tokens.gold; font.pixelSize: 12; wrapMode: Text.Wrap }
 }

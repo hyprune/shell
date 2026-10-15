@@ -98,6 +98,30 @@ class LabelPrompt(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.prompts(), [])
 
 
+class FeelSettings(unittest.TestCase):
+    def test_ranges_defaults_and_patches_match_the_schema(self):
+        import subprocess
+        script = (ROOT / 'qml/PlayerSettings.js').read_text()
+        js = lambda e: json.loads(subprocess.check_output(['node', '-e', script + '\nconsole.log(JSON.stringify(' + e + '));'], text=True))
+        keys = js('FEEL_KEYS')
+        self.assertEqual(keys, ['look_inertia', 'move_inertia', 'view_bob_roll', 'carry_turn', 'carry_follow'])
+        props = V29.schema['$defs']['playerPatch']['properties']
+        for key in keys:
+            number = next(b for b in props[key]['anyOf'] if b.get('type') == 'number')
+            self.assertEqual([number['minimum'], number['maximum']], js('RANGES.' + key), key)
+        frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'player.set', 'params': {'patch': js('DEFAULTS')}}, V29)
+        frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'player.set', 'params': {'patch': js('resetPatch(FEEL_KEYS)')}}, V29)
+        self.assertEqual(js("patch(null, 'carry_turn', 0.1234)"), {'carry_turn': 0.123})
+        self.assertEqual(js("[ms(0.11), feelText(FEEL[2], 0.4)]"), ['110 ms', '0.4°'])
+        with self.assertRaises(Exception):
+            frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'player.set', 'params': {'patch': {'carry_turn': .2}}}, V28)
+
+    def test_frame_pacing_choice(self):
+        graphics = (ROOT / 'qml/components/GraphicsSettings.qml').read_text()
+        self.assertIn("objectName:'graphics-frame_pacing'", graphics)
+        frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'graphics.set', 'params': {'patch': {'frame_pacing': 'max_rate'}}}, V29)
+
+
 class Qml(unittest.TestCase):
     def test_hud_and_prompt_wiring(self):
         hud = (ROOT / 'qml/components/Hud.qml').read_text()
