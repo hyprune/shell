@@ -739,6 +739,11 @@ QtObject {
         shapesSwaps = shapesSwaps.filter(function (s) { return s.id !== id; }).concat([{id: id, ref: ref, tries: 0}]);
         objectAction('objects.configure', {id: id, patch: {ref: ref}});
     }
+    function shapesQuiet(method, params) {
+        if (!params) return false;
+        if (method === 'objects.pocket') return !!shapesPocket && params.ref === shapesPocket.ref;
+        return method === 'objects.configure' && !!params.patch && shapesSwaps.some(function (s) { return s.id === params.id && s.ref === params.patch.ref; });
+    }
     function shapesLoadMaterials() {
         if (shapesMaterialsProc.running) return;
         shapesMaterialsProc.command = libraryCli.concat(Shapes.materialsArgs(shapesSlug));
@@ -1390,6 +1395,11 @@ QtObject {
                 break;
             }
             if (msg.code === 'shell.action' && /^(objects|libraries)\./.test(msg.method || '')) {
+                // A made shape that is still decoding: Shapes tries again quietly (no toast).
+                if (msg.error && msg.error.data && msg.error.data.retryable && shapesQuiet(msg.method, msg.params)) {
+                    objectActionFailed(msg.method, msg.params || null, String(msg.message));
+                    break;
+                }
                 // A short toast with core's words (and the placement rule), and the page line.
                 var refusal = Objects.errorToast(msg.method, msg.error || null, msg.message);
                 showToast(refusal);
