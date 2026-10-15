@@ -806,6 +806,13 @@ QtObject {
         shapesSwaps = shapesSwaps.filter(function (s) { return s.id !== id; }).concat([{id: id, ref: ref, tries: 0}]);
         objectAction('objects.configure', {id: id, patch: {ref: ref}});
     }
+    // Behaviours' Data source…: Objects > Data sources on this entry (made when it is missing).
+    property string sourcesFocus: ''
+    function openSourceFor(id) {
+        if (!id) return;
+        sourcesFocus = id;
+        objectsView = 'sources';
+    }
     function shapesQuiet(method, params) {
         if (!params) return false;
         if (method === 'objects.pocket') return !!shapesPocket && params.ref === shapesPocket.ref;

@@ -56,6 +56,17 @@ RowLayout {
         selected = id; fresh = ''; previous = id; test = null; feedback = null;
         load(DS.draft(list && list.entries ? list.entries.find(e => e && e.id === id) : null));
     }
+    // Behaviours' Data source… (ShellState.sourcesFocus): this entry, or a new command entry with
+    // that id once the list is in.
+    function focusSource() {
+        var id = ShellState.sourcesFocus;
+        if (!id || !list || !list.entries) return;
+        ShellState.sourcesFocus = '';
+        if (list.entries.some(e => e && e.id === id)) open(id);
+        else { create('command'); idField.text = id; edited(); }
+    }
+    Connections { target: ShellState; function onSourcesFocusChanged() { page.focusSource(); } }
+    onListChanged: focusSource()
     function create(k) {
         var id = DS.freeId(list, k);
         selected = id; fresh = k; previous = ''; test = null; feedback = null;

@@ -345,4 +345,11 @@ ColumnLayout {
             onClicked: ShellState.shapesApply(panel.instance.id, shapeEdit.draft)
         }
     }
+
+    // ---- IPC 0.31: data-driven behaviours (any user placement) ----
+    ObjectBehaviours {
+        Layout.fillWidth: true
+        visible: !!panel.instance && panel.instance.source === 'user' && ShellState.shapesSupported && ShellState.available('objects.configure')
+        instance: panel.instance
+    }
 }
