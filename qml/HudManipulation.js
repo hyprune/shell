@@ -5,6 +5,10 @@ function binding(state, action, fallback) {
     var value=modes && modes.world && modes.world[action];
     return Array.isArray(value) ? (value.length ? value.join(' / ') : 'Unbound') : (fallback || '');
 }
+// Like binding(), with modifier keys as people say them (Control_L reads Ctrl).
+function keyName(state, action, fallback) {
+    return binding(state, action, fallback).replace(/Control_[LR]/g,'Ctrl').replace(/Shift_[LR]/g,'Shift');
+}
 function empty() {
     return {placement:{available:false,active:false,count:0,index:-1,app:null,size:null,ghost:false,objects:[],object:null},
             carry:{active:false,label:'',toggle:''},content:null,hints:{context:'',actions:[]}};
