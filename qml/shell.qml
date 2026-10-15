@@ -275,6 +275,13 @@ ShellRoot {
         function settingsReset(key: string): void { if (ShellState.dev) ShellState.action('settings.set', {reset: [key]}); }
         function settingsSearch(text: string): void { if (ShellState.dev) ShellState.settingsSearch = text; }
         function settingsConfirmReset(open: bool): void { if (ShellState.dev) ShellState.settingsConfirm = open; }
+        // Keyboard focus on the current category's button (dev only), to drive the list with keys.
+        function settingsFocusCategory(): void {
+            if (!ShellState.dev) return;
+            var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+            var item = view ? Audit.find(view, 'settings-category-' + ShellState.settingsCategory) : null;
+            if (item) item.forceActiveFocus();
+        }
         // IPC 0.21 preview (dev only): quests.list/get and guidance.get answers, events, keys.
         function questPreview(json: string): void {
             if (!ShellState.dev) return;
@@ -529,6 +536,7 @@ ShellRoot {
                 worldStyle: Tokens.skin.worldId || null, styleId: Tokens.skin.id || null, styleVersion: Tokens.skin.version || null, worldStyles: Tokens.worldStyles, hudFrame: ShellState.hudFrame,
                 manipulation: HudData.manipulation, readyText:ShellState.readyText, concept: Tokens.hudConcept, curvature: Tokens.hudCurvature, banner: ShellState.banner, subtype: HudData.subtype,
                 graphics: ShellState.graphics, player: ShellState.playerSettings, playerSupported: ShellState.playerSupported,
+                settings: {category: ShellState.settingsCategory, search: ShellState.settingsSearch, confirm: ShellState.settingsConfirm, preset: ShellState.settingsState ? ShellState.settingsState.preset : null},
                 menuHold: ShellState.menuHold,
                 holdFilling: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdFilling || false,
                 holdStats: ShellState.holdStats,
