@@ -221,7 +221,7 @@ QtObject {
     property bool objectCatalogLoaded: false
     property var libraries: null             // libraries.list result
     property string selectedObject: ''       // instance id (Director > Objects > Placed)
-    property string objectsView: 'catalog'   // Director > Objects view: catalog | placed
+    property string objectsView: 'catalog'   // Director > Objects view: catalog | placed | characters | sources
     property var objectFeedback: null        // {level, text, at}: last object result or refusal
     property Timer objectFeedbackTimer: Timer { interval: 8000; onTriggered: root.objectFeedback = null }
     property var objectPreview: null         // DEV ONLY: objects.catalog / libraries.list answers

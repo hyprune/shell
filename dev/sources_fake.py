@@ -30,6 +30,13 @@ def status(config, connected=True, now=None):
 TEST = {'ok': True, 'values': {'value': 71, 'display': '71%', 'label': 'RAM', 'level': 'ok', '_status': 'ok'},
         'stdout': '{"value": 71, "display": "71%", "label": "RAM", "level": "ok"}\n', 'stderr': '',
         'error': None, 'exitCode': 0, 'durationMs': 38}
+# An HTTP source's test (data sources phase 2): the raw body beside the mapped values.
+TEST_HTTP = {'ok': True, 'values': {'name': 'ingest', 'value': 66.67, 'level': 'warn', 'display': '40 s behind', 'label': 'Ingest'},
+             'stdout': '', 'stderr': '', 'error': None, 'exitCode': None, 'durationMs': 112,
+             'raw': '{"items": [{"state": "ok", "lag": 3}, {"state": "late", "lag": 40}], "name": "ingest"}',
+             'rawBytes': 84, 'httpStatus': 200, 'contentType': 'application/json', 'secrets': {'api-key': 'file'}}
+SECRETS = {'ok': True, 'file': '/home/user/.config/hyprune/secrets.json', 'fileProblem': None, 'keyring': False,
+           'names': {'api-key': 'file', 'ci-token': None}}
 
 
 class FakeHelper:
@@ -51,8 +58,13 @@ class FakeHelper:
         if op == 'status':
             return status(self.config, self.connected)
         if op == 'test':
-            argv = ((message.get('source') or {}).get('argv') or [''])
+            source = message.get('source') or {}
+            if source.get('kind') == 'http':
+                return self.tests.get(source.get('url'), TEST_HTTP)
+            argv = (source.get('argv') or [''])
             return self.tests.get(argv[0], TEST)
+        if op == 'secrets':
+            return SECRETS
         if op in ('restart', 'restart-all', 'reload'):
             return {'ok': True}
         return {'ok': False, 'error': 'unknown op'}

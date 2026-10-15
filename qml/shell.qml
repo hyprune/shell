@@ -290,7 +290,7 @@ ShellRoot {
             ShellState.objectPreview = json ? JSON.parse(json) : null;
             if (ShellState.objectPreview) ShellState.refreshCatalog();
         }
-        function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'placed', 'characters'].indexOf(view) >= 0) ShellState.objectsView = view; }
+        function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'placed', 'characters', 'sources'].indexOf(view) >= 0) ShellState.objectsView = view; }
         // IPC 0.23 preview (dev only): paths.list answer, spawn / rebind panel, characters, choice list.
         // json: {"paths": [...]} (qs ipc splits a top-level [list] argument).
         function pathPreview(json: string): void {
@@ -546,6 +546,15 @@ ShellRoot {
                                                               inspection: ShellState.importJob.inspection ? {triangles: ShellState.importJob.inspection.triangles, unitsGuess: ShellState.importJob.inspection.unitsGuess} : null,
                                                               ref: ShellState.importJob.result ? ShellState.importJob.result.ref : null,
                                                               error: ShellState.importJob.error, listed: ShellState.importListed} : null};
+                })(),
+                // Director > Objects > Data sources (data sources phase 2).
+                dataSources: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var page = ShellState.director ? Audit.find(view, 'dataSources') : null;
+                    if (!page) return null;
+                    return {visible: page.visible, selected: page.selected, fresh: page.fresh, dirty: page.dirty, busy: page.busy,
+                            rows: page.rows.map(r => ({id: r.id, kind: r.kind, state: r.state})), names: page.names,
+                            secrets: page.secretsFound, feedback: page.feedback, test: page.test};
                 })(),
                 builder: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);

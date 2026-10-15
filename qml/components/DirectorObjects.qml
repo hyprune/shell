@@ -33,7 +33,8 @@ FocusScope {
     readonly property bool spawning: ShellState.spawnRef !== '' || ShellState.rebindId !== ''
     // Import… (RFC-0014): its panel replaces the views while it is open.
     readonly property bool importing: ShellState.importing
-    readonly property var views: ['catalog', 'placed'].concat(ShellState.npcsSupported ? ['characters'] : [])
+    // Data sources (sources.json and the source helper) are local: every session has them.
+    readonly property var views: ['catalog', 'placed'].concat(ShellState.npcsSupported ? ['characters'] : []).concat(['sources'])
     readonly property var selected: Objects.selectedInstance(instances, ShellState.selectedObject)
     readonly property bool hasUser: instances.some(i => i.source === 'user')
     readonly property bool hasAuthored: instances.some(i => i.source === 'authored')
@@ -49,6 +50,7 @@ FocusScope {
         else if (spawning) spawnPanel.forceActiveFocus();
         else if (view === 'placed') placedList.forceActiveFocus();
         else if (view === 'characters') npcPanel.focusList();
+        else if (view === 'sources') sourcesPanel.forceActiveFocus();
         else grid.forceActiveFocus();
     }
     onSpawningChanged: Qt.callLater(focusView)
@@ -125,9 +127,10 @@ FocusScope {
             spacing: 16
             Segmented {
                 objectName: 'objectsView'
-                Layout.preferredWidth: ShellState.npcsSupported ? 450 : 300
+                Layout.preferredWidth: ShellState.npcsSupported ? 600 : 450
                 model: [{id: 'catalog', label: 'Catalog'}, {id: 'placed', label: 'Placed  ·  ' + root.instances.length}]
                        .concat(ShellState.npcsSupported ? [{id: 'characters', label: 'Characters  ·  ' + ShellState.characterInstances.length}] : [])
+                       .concat([{id: 'sources', label: 'Data sources'}])
                 current: root.view
                 onPicked: (id) => root.setView(id)
             }
@@ -321,6 +324,14 @@ FocusScope {
                     color: Tokens.muted; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter
                 }
             }
+        }
+
+        // ---- Data sources ----
+        DataSources {
+            id: sourcesPanel
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.view === 'sources' && !root.spawning && !root.importing
         }
 
         // ---- Placed ----
