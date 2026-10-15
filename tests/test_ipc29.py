@@ -117,8 +117,8 @@ class FeelSettings(unittest.TestCase):
             frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'player.set', 'params': {'patch': {'carry_turn': .2}}}, V28)
 
     def test_frame_pacing_choice(self):
-        graphics = (ROOT / 'qml/components/GraphicsSettings.qml').read_text()
-        self.assertIn("objectName:'graphics-frame_pacing'", graphics)
+        model = (ROOT / 'qml/SettingsModel.js').read_text()
+        self.assertIn("{key: 'graphics.frame_pacing', category: 'display'", model)
         frame({'jsonrpc': '2.0', 'id': 'r', 'method': 'graphics.set', 'params': {'patch': {'frame_pacing': 'max_rate'}}}, V29)
 
 

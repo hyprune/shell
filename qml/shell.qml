@@ -260,11 +260,21 @@ ShellRoot {
         function tab(index: int): void {
             if (ShellState.dev) ShellState.tab = Math.max(0, Math.min(ShellState.tabCount - 1, index));
         }
-        // By name: map, quests, objects, library, builder, places, surfaces, workspaces, help, whatsnew, settings, performance.
+        // By name: map, quests, objects, library, builder, places, surfaces, workspaces, help, whatsnew, settings;
+        // performance opens Settings > Display & performance (the page it was).
         function tabNamed(name: string): void {
+            if (ShellState.dev && name === 'performance') { ShellState.settingsCategory = 'display'; ShellState.tab = ShellState.tabSettings; return; }
             const index = ShellState.tabKeys.indexOf(name);
             if (ShellState.dev && index >= 0) ShellState.tab = index;
         }
+        // Settings category by id (SettingsModel.CATEGORIES): display, movement, controls, hud, ...
+        function settingsCategory(id: string): void { if (ShellState.dev) { ShellState.settingsCategory = id; ShellState.tab = ShellState.tabSettings; } }
+        // IPC 0.30 settings (dev only), as the Settings page sends them: a preset, a value, a reset, reset all.
+        function settingsPreset(id: string): void { if (ShellState.dev) ShellState.setPreset(id); }
+        function settingsSet(key: string, json: string): void { if (ShellState.dev) { var p = {}; p[key] = JSON.parse(json); ShellState.action('settings.set', {set: p}); } }
+        function settingsReset(key: string): void { if (ShellState.dev) ShellState.action('settings.set', {reset: [key]}); }
+        function settingsSearch(text: string): void { if (ShellState.dev) ShellState.settingsSearch = text; }
+        function settingsConfirmReset(open: bool): void { if (ShellState.dev) ShellState.settingsConfirm = open; }
         // IPC 0.21 preview (dev only): quests.list/get and guidance.get answers, events, keys.
         function questPreview(json: string): void {
             if (!ShellState.dev) return;

@@ -65,7 +65,8 @@ def shell_actions(protocol):
             (QUEST_ACTIONS if at_least(protocol, 21) else []) +
             (OBJECT_ACTIONS if at_least(protocol, 22) else []) +
             (NPC_ACTIONS if at_least(protocol, 23) else []) +
-            (COMPANION_ACTIONS if at_least(protocol, 25) else []))
+            (COMPANION_ACTIONS if at_least(protocol, 25) else []) +
+            (['settings.get', 'settings.set'] if at_least(protocol, 30) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.

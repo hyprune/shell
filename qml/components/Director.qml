@@ -7,7 +7,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Library', 'Builder', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings", "Performance"]
+    readonly property var tabs: ['Map', 'Quests', 'Objects', 'Library', 'Builder', 'Places', 'Surfaces', 'Workspaces', 'Help', "What's new", "Settings"]
 
     focus: true
     Keys.onEscapePressed: ShellState.close()
@@ -204,7 +204,6 @@ Item {
             DirectorWorkspaces { anchors.fill: parent; visible: ShellState.tab === 7 }
             DirectorHelp { anchors.fill: parent; visible: ShellState.tab === 8 }
             DirectorNews { anchors.fill: parent; visible: ShellState.tab === 9 }
-            DirectorPerformance { anchors.fill: parent; visible: ShellState.tab === ShellState.tabPerformance }
             DirectorSettings { anchors.fill: parent; visible: ShellState.tab === ShellState.tabSettings }
         }
 

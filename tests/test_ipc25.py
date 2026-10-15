@@ -154,7 +154,7 @@ class Picker(unittest.TestCase):
 
     def test_settings_section(self):
         settings = (ROOT / 'qml/components/DirectorSettings.qml').read_text()
-        self.assertIn("ShellState.companionSupported ? [{name:'Companion',section:6}]", settings)
+        self.assertIn("root.category === 'world' && ShellState.companionSupported", settings)
         self.assertIn('CompanionSettings {', settings)
         picker = (ROOT / 'qml/components/CompanionSettings.qml').read_text()
         for name in ['companionSettings', 'companionStatus', 'companionMode', "'companionChoice:'"]:

@@ -71,6 +71,8 @@ class UpscalerText(unittest.TestCase):
         self.assertEqual(evaluate("upscaler(null)"), 'Active: —')
 
     def test_settings_row_uses_shared_protocol_helper(self):
-        qml = (Path(__file__).resolve().parents[1] / 'qml/components/GraphicsSettings.qml').read_text()
-        self.assertIn("ShellState.supportsProtocol(16)", qml)
-        self.assertIn("objectName:'graphics-upscaler'", qml)
+        model = (Path(__file__).resolve().parents[1] / 'qml/SettingsModel.js').read_text()
+        self.assertIn("{key: 'graphics.upscaler', category: 'display'", model)
+        self.assertIn("protocol: 16", model[model.index("graphics.upscaler"):model.index("graphics.upscaler") + 300])
+        row = (Path(__file__).resolve().parents[1] / 'qml/components/SettingRow.qml').read_text()
+        self.assertIn("readonly property string objectKey: row.key.replace('.', '-')", row)  # graphics-upscaler

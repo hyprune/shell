@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 
-DEFAULTS = dict(version=1, concept='Adventure', curvature=.8, curved=True, resource='gpu', worldStyles=True)
+DEFAULTS = dict(version=1, concept='Adventure', curvature=.8, curved=True, resource='gpu', worldStyles=True, theme='night')
 # Concept names from earlier releases, still accepted in saved preferences and patches.
 LEGACY_CONCEPTS = {'Vanguard': 'Adventure'}
 
@@ -19,6 +19,7 @@ def validate(patch):
         if key == 'resource' and value not in ['gpu','cpu','ram','tool']: raise ValueError('Unknown HUD resource')
         if key in ['curved','worldStyles'] and not isinstance(value, bool): raise ValueError('Curved must be boolean')
         if key == 'curvature' and (type(value) not in [int,float] or not 0 <= value <= 1): raise ValueError('Curvature must be 0–1')
+        if key == 'theme' and value not in ['night','paper']: raise ValueError('Unknown theme')
     return patch
 
 class Preferences:

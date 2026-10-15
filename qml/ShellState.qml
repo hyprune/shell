@@ -46,7 +46,43 @@ QtObject {
     function supportsProtocol(minor) { var v=protocol.split('.'); return v[0]==='0' && Number(v[1])>=minor; }
     readonly property bool authoredCamera: supportsProtocol(13) && (!camera || camera.held)
     property Timer cameraPoll: Timer { interval:250; running:root.active && root.supportsProtocol(13) && root.available('camera.get'); repeat:true; triggeredOnStart:true; onTriggered:root.action('camera.get',{}) }
-    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === root.tabPerformance && root.supportsProtocol(13) && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
+    property Timer outlinePoll: Timer { interval:1000; running:root.active && root.director && root.tab === root.tabSettings && root.settingsCategory === 'display' && root.supportsProtocol(13) && root.available('atmosphere.get'); repeat:true; triggeredOnStart:true; onTriggered:root.refreshOutline() }
+    // ---- IPC 0.30 settings: one preset for every graphics and player setting, overrides on top ----
+    property var settingsState: null // settings.get / settings.set result
+    property string settingsCategory: 'display'
+    property string settingsSearch: ''      // the Settings search text (dev hooks set it too)
+    property bool settingsConfirm: false   // the reset-all confirmation is open
+    readonly property bool presetsSupported: supportsProtocol(30) && available('settings.get')
+    function refreshSettings() { if (presetsSupported) action('settings.get', {}); }
+    property Timer settingsPoll: Timer { interval: 1000; running: root.active && root.director && root.tab === root.tabSettings && root.presetsSupported; repeat: true; triggeredOnStart: true; onTriggered: root.refreshSettings() }
+    // Slider drags coalesce into one settings.set per 120 ms.
+    property var settingsPending: ({})
+    property Timer settingsCommit: Timer { interval: 120; onTriggered: { if (Object.keys(root.settingsPending).length) root.action('settings.set', {set: root.settingsPending}); root.settingsPending = ({}); } }
+    function setPreset(id) { if (presetsSupported) action('settings.set', {preset: id}); }
+    // A SettingsModel request: set or reset a setting in its store.
+    function settingRequest(req) {
+        if (!req) return;
+        if (req.type === 'core') {
+            if (req.params.set && Object.keys(req.params).length === 1) { settingsPending = Object.assign({}, settingsPending, req.params.set); settingsCommit.restart(); }
+            else action('settings.set', req.params);
+        } else if (req.type === 'graphics') action('graphics.set', {patch: req.patch});
+        else if (req.type === 'player') patchPlayer(req.patch);
+        else if (req.type === 'guidance') patchGuidance(req.patch);
+        else if (req.type === 'input') action('input.set', {config: req.config});
+        else if (req.type === 'shell') applyPreferences(req.patch);
+    }
+    // Shell presentation preferences: shown at once, saved by the bridge (shell.json).
+    function applyPreferences(patch) {
+        if (patch.concept !== undefined) Tokens.hudConcept = patch.concept;
+        if (patch.resource !== undefined) Tokens.hudResource = patch.resource;
+        if (patch.worldStyles !== undefined) Tokens.worldStyles = patch.worldStyles;
+        if (patch.curved !== undefined) Tokens.hudCurved = patch.curved;
+        if (patch.curvature !== undefined) Tokens.hudCurvature = patch.curvature;
+        if (patch.theme !== undefined) Tokens.light = patch.theme === 'paper';
+        preference(patch);
+    }
+    readonly property var shellPreferences: ({concept: Tokens.hudConcept, resource: Tokens.hudResource, worldStyles: Tokens.worldStyles,
+                                              curved: Tokens.hudCurved, curvature: Tokens.hudCurvature, theme: Tokens.light ? 'paper' : 'night'})
     function refreshOutline() { if (state && state.world) send({type:'outline.get',worldId:state.world.id}); }
     function patchOutline(patch) { if (state && state.world) send({type:'outline.patch',worldId:state.world.id,patch:patch}); }
     property var graphics: null
@@ -731,10 +767,9 @@ QtObject {
     readonly property int tabLibrary: 3
     readonly property int tabBuilder: 4
     readonly property int tabSettings: 10
-    readonly property int tabPerformance: 11
-    readonly property int tabCount: 12
+    readonly property int tabCount: 11
     // Stable names for the Director tabs (dev hooks and checks address tabs by name, not position).
-    readonly property var tabKeys: ['map', 'quests', 'objects', 'library', 'builder', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings', 'performance']
+    readonly property var tabKeys: ['map', 'quests', 'objects', 'library', 'builder', 'places', 'surfaces', 'workspaces', 'help', 'whatsnew', 'settings']
     property var lastCapturedInput: null
     signal beginInputCapture(string mode, string action, int slot)
     signal browseSettings(int section)
@@ -981,6 +1016,7 @@ QtObject {
             Tokens.hudCurvature = msg.value.curvature;
             Tokens.hudResource = msg.value.resource;
             Tokens.worldStyles = msg.value.worldStyles;
+            if (msg.value.theme !== undefined) Tokens.light = msg.value.theme === 'paper';
             break;
         case 'transition.clear':
             warpActive = false;
@@ -1119,6 +1155,12 @@ QtObject {
             if (msg.method === 'graphics.get' || msg.method === 'graphics.set') {
                 previousTimings = graphics ? graphics.timings : null;
                 graphics = msg.result;
+                // The HUD's animations follow the world's reduced motion setting.
+                if (graphics && graphics.effective && graphics.effective.reduced_motion !== undefined) Tokens.reducedMotion = !!graphics.effective.reduced_motion;
+            }
+            if (msg.method === 'settings.get' || msg.method === 'settings.set') {
+                settingsState = msg.result;
+                if (msg.method === 'settings.set') { refreshPlayer(); action('graphics.get', {}); }
             }
             if (msg.method === 'input.preview' || msg.method === 'input.get') inputFeedback(msg.result);
             if (msg.method === 'player.get' || msg.method === 'player.set') player = msg.result;
