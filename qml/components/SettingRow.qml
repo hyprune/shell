@@ -19,6 +19,10 @@ ColumnLayout {
     readonly property var options: Model.options(row, ctx)
     readonly property var range: Model.range(row, ctx)
     readonly property string objectKey: row.key.replace('.', '-')
+    // Narrow (2x scale, small windows): the columns share the width instead of fixed sizes.
+    readonly property bool compact: width > 0 && width < 800
+    readonly property real labelWidth: compact ? width * .36 : 300
+    readonly property real controlWidth: compact ? width * .44 : 360
     function set(v) { ShellState.settingRequest(Model.setRequest(row, v, ctx)); }
     function reset() { ShellState.settingRequest(Model.resetRequest(row, ctx)); }
     function costText(ms) { return ms ? 'GPU ' + ms + '.' : ''; }
@@ -34,8 +38,8 @@ ColumnLayout {
         // otherwise share the row's spare width with the slider).
         RowLayout {
             Layout.fillWidth: false
-            Layout.preferredWidth: 300
-            Layout.maximumWidth: 300
+            Layout.preferredWidth: root.labelWidth
+            Layout.maximumWidth: root.labelWidth
             spacing: 6
             Rectangle {
                 objectName: 'overridden:' + root.row.key
@@ -53,7 +57,7 @@ ColumnLayout {
             id: choice
             objectName: root.objectKey
             visible: root.row.kind === 'choice' || root.row.kind === 'colour'
-            Layout.preferredWidth: 360
+            Layout.preferredWidth: root.controlWidth
             model: root.options.map(o => o.label).concat(root.row.kind === 'colour' && root.optionIndex(root.entry.value) < 0 ? ['Custom'] : [])
             enabled: root.editable
             onActivated: index => { if (index < root.options.length) root.set(root.options[index].value); }
@@ -63,7 +67,7 @@ ColumnLayout {
         ActionButton {
             objectName: root.objectKey
             visible: root.row.kind === 'toggle'
-            Layout.preferredWidth: 360
+            Layout.preferredWidth: Math.min(140, root.controlWidth)
             text: root.entry.value ? 'On' : 'Off'
             primary: !!root.entry.value
             enabled: root.editable
@@ -74,7 +78,7 @@ ColumnLayout {
             id: slider
             objectName: root.objectKey
             visible: root.row.kind === 'slider' || root.row.kind === 'cap'
-            Layout.preferredWidth: 250
+            Layout.preferredWidth: root.controlWidth * .7
             from: root.range[0]; to: root.range[1]; stepSize: root.row.step || 0.01
             enabled: root.editable
             onMoved: root.set(root.row.step && root.row.step >= 1 ? Math.round(value) : Math.round(value / root.row.step) * root.row.step)
@@ -82,12 +86,12 @@ ColumnLayout {
         }
         HudLabel {
             visible: slider.visible
-            Layout.preferredWidth: 100
+            Layout.preferredWidth: root.controlWidth * .3 - 12
             horizontalAlignment: Text.AlignRight
             text: root.row.kind === 'cap' && (root.entry.value === null || root.entry.value === undefined) && !slider.pressed ? 'Automatic' : Model.format(root.row, slider.pressed ? slider.value : root.entry.value)
             font.pixelSize: 12
         }
-        Item { Layout.fillWidth: true }
+        Item { visible: root.row.kind === 'toggle'; Layout.preferredWidth: root.controlWidth - Math.min(140, root.controlWidth) - 12 }
         ActionButton {
             objectName: 'reset:' + root.row.key
             implicitWidth: 36; leftPadding: 6; rightPadding: 6

@@ -180,8 +180,8 @@ Item {
             spacing: 16
             // Categories (and the search), scrolling when they don't fit (2x scale).
             ColumnLayout {
-                Layout.preferredWidth: 250
-                Layout.maximumWidth: 250
+                Layout.preferredWidth: root.width < 1200 ? 190 : 250
+                Layout.maximumWidth: root.width < 1200 ? 190 : 250
                 Layout.fillHeight: true
                 spacing: 6
                 TextField {
