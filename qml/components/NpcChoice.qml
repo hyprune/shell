@@ -7,20 +7,33 @@ import "../Npcs.js" as Npcs
 // exclusive input while it is shown, so it takes the keyboard and the mouse: Up/Down and
 // Enter, 1-8 pick directly, a click picks; Esc (or core's menu exit) ends the interaction
 // with interaction.choose null. Styled like the HUD tiles; reduced motion is instant.
+// IPC 0.28: Dance opens the character's dances (Any dance first); Esc goes back to the list.
 Item {
     id: root
     objectName: 'npcChoice'
     readonly property var interaction: ShellState.npcChoice
-    readonly property var items: Npcs.choiceItems(interaction)
-    readonly property string speaker: interaction ? ShellState.characterName(interaction.objectId) || interaction.label : ''
+    property var dances: null      // the dance list on screen (IPC 0.28 options), else null
+    property string danceId: ''    // the dance interaction it belongs to
+    readonly property var items: dances ? Npcs.danceItems(dances) : Npcs.choiceItems(interaction)
+    readonly property string speaker: interaction ? (ShellState.characterName(interaction.objectId) || interaction.label) + (dances ? ' · Dance' : '') : ''
     readonly property bool technical: Tokens.hudConcept === 'Instrument'
     readonly property bool minimal: Tokens.hudConcept === 'Minimal'
     property int cursor: 0
     implicitWidth: 460
     implicitHeight: column.implicitHeight + 28
-    onInteractionChanged: { cursor = 0; if (interaction) Qt.callLater(() => keys.forceActiveFocus()); }
+    onInteractionChanged: { cursor = 0; dances = null; danceId = ''; if (interaction) Qt.callLater(() => keys.forceActiveFocus()); }
 
-    function pick(index) { if (index >= 0 && index < items.length) ShellState.chooseInteraction(items[index].id); }
+    function pick(index) {
+        if (index < 0 || index >= items.length) return;
+        if (dances) { ShellState.chooseInteraction(danceId, items[index].id); return; }
+        var options = ShellState.danceOptions(interaction.objectId, items[index].id);
+        if (options) { danceId = items[index].id; dances = options; cursor = 0; return; }
+        ShellState.chooseInteraction(items[index].id);
+    }
+    function back() {
+        if (dances) { cursor = Math.max(0, Npcs.choiceItems(interaction).findIndex(i => i.id === danceId)); dances = null; danceId = ''; }
+        else ShellState.chooseInteraction(null);
+    }
 
     Item {
         id: keys
@@ -30,10 +43,10 @@ Item {
         Keys.onTabPressed: root.cursor = Npcs.choiceMove(root.cursor, root.items.length, 'next')
         Keys.onReturnPressed: root.pick(root.cursor)
         Keys.onEnterPressed: root.pick(root.cursor)
-        Keys.onEscapePressed: ShellState.chooseInteraction(null)
+        Keys.onEscapePressed: root.back()
         Keys.onPressed: (event) => {
             var n = event.key - Qt.Key_1;
-            if (n >= 0 && n < root.items.length) { root.pick(n); event.accepted = true; }
+            if (n >= 0 && n < Math.min(9, root.items.length)) { root.pick(n); event.accepted = true; }
         }
     }
 
@@ -69,7 +82,7 @@ Item {
                 Accessible.name: modelData.label
                 Accessible.selected: current
                 width: column.width
-                height: 38
+                height: root.dances ? 30 : 38
                 Rectangle {
                     anchors.fill: parent
                     radius: root.minimal ? 0 : 3
@@ -100,7 +113,7 @@ Item {
         }
         HudText {
             width: parent.width
-            text: '↑↓ · Enter   1–' + Math.max(1, root.items.length) + '   Esc · leave'
+            text: '↑↓ · Enter   1–' + Math.max(1, Math.min(9, root.items.length)) + '   Esc · ' + (root.dances ? 'back' : 'leave')
             font.pixelSize: 11; font.family: Tokens.mono
             color: Tokens.hudMuted
         }

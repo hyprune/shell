@@ -6,7 +6,7 @@ var MODES = [{id: 'follow', label: 'Follow'}, {id: 'stay', label: 'Stay'}];
 var PACES = [{id: 'walk', label: 'Walk'}, {id: 'run', label: 'Run'}];
 var ACTIVITIES = {
     following: 'following you', walking: 'walking', running: 'catching up', idle: 'idle', talking: 'talking',
-    sitting: 'sitting', waiting: 'waiting for a free spot', carried: 'carried'};
+    sitting: 'sitting', waiting: 'waiting for a free spot', carried: 'carried', dancing: 'dancing'};
 
 // The picker's entries: installed characters that can be companions (library and user ones,
 // capable first, by name), each {ref, name, thumbnail, source, capable, reason}. A world's
@@ -58,4 +58,16 @@ function paceParams(companion, pace) {
     if (!companion || !companion.ref || (companion.mode !== 'follow' && companion.mode !== 'stay')) return null;
     if (pace !== 'walk' && pace !== 'run') return null;
     return {mode: companion.mode, pace: pace};
+}
+
+// IPC 0.28: the companion.mode params that change one style role (walk, run or idle; '' for
+// plain) and keep the others and the mode. null on a route (Follow first) or for no change.
+function styleParams(companion, role, style) {
+    if (!companion || !companion.ref || (companion.mode !== 'follow' && companion.mode !== 'stay')) return null;
+    if (role !== 'walk' && role !== 'run' && role !== 'idle') return null;
+    var next = {};
+    ['walk', 'run', 'idle'].forEach(function (r) { var v = companion.style ? companion.style[r] : ''; if (v) next[r] = v; });
+    if ((next[role] || '') === (style || '')) return null;
+    if (style) next[role] = style; else delete next[role];
+    return {mode: companion.mode, style: Object.keys(next).length ? next : null};
 }

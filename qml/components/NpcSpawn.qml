@@ -33,15 +33,22 @@ FocusScope {
     property real phase: 0
     property bool reverse: false
     property string accent: ''
+    // IPC 0.28: walk, run and idle styles the character can play ('' plain), from the catalog.
+    readonly property var motion: ShellState.styleSupported ? ShellState.catalogMotion(rebinding ? (instance ? instance.ref : '') : ShellState.spawnRef) : null
+    readonly property bool styled: Npcs.hasStyles(motion)
+    property var style: ({walk: '', run: '', idle: ''})
     property var stops: []
     property string stopsFor: ''
-    readonly property var settings: ({speed: speed, phase: phase, reverse: reverse, accent: accent})
+    readonly property var settings: styled ? {speed: speed, phase: phase, reverse: reverse, accent: accent, style: style, clearStyle: rebinding}
+                                           : {speed: speed, phase: phase, reverse: reverse, accent: accent}
     readonly property var request: rebinding ? Npcs.bindRequest(instance, choice, settings) : Npcs.spawnRequest(ShellState.spawnRef, choice, settings)
     readonly property bool ready: !!request && !!row && row.enabled && !full && ShellState.npcsCan(request.method)
 
     function reset() {
         speed = 1; phase = 0; reverse = false; stops = []; stopsFor = '';
         accent = rebinding && instance && instance.accent ? Npcs.hexFromAccent(instance.accent) : '';
+        var was = rebinding && instance && instance.style ? instance.style : {};
+        style = {walk: was.walk || '', run: was.run || '', idle: was.idle || ''};
         cursor = rebinding ? Math.max(0, rows.findIndex(r => r.kind === 'route' && instance && r.ref === instance.path)) : Math.min(1, rows.length - 1);
     }
     onVisibleChanged: { if (visible) { reset(); Qt.callLater(() => list.forceActiveFocus()); } }
@@ -246,6 +253,26 @@ FocusScope {
                         }
                     }
                     Note { text: root.accent ? 'Recolours the character\'s accent material.' : 'No accent: the character keeps its own colours.' }
+                    Repeater {
+                        model: root.styled ? Npcs.STYLE_ROLES : []
+                        delegate: RowLayout {
+                            id: styleRow
+                            required property var modelData
+                            readonly property var choices: Npcs.styleChoices(root.motion, modelData.id)
+                            Layout.fillWidth: true
+                            visible: choices.length > 1
+                            HudLabel { text: styleRow.modelData.label + ' style'; Layout.preferredWidth: 120 }
+                            Choice {
+                                objectName: 'npc-style:' + styleRow.modelData.id
+                                implicitWidth: 220
+                                model: styleRow.choices.map(c => c.label)
+                                currentIndex: Math.max(0, styleRow.choices.findIndex(c => c.id === (root.style[styleRow.modelData.id] || '')))
+                                onActivated: (i) => { var next = Object.assign({}, root.style); next[styleRow.modelData.id] = styleRow.choices[i].id; root.style = next; }
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                    }
+                    Note { visible: root.styled; text: 'Styles come from the character\'s own clips and the motion packs installed with your libraries.' }
 
                     // Stops on a user route: per point, wait, a gesture or a seat.
                     Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line; visible: Npcs.editableRoute(root.record) }

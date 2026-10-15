@@ -4,10 +4,11 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../Companion.js" as Companion
+import "../Npcs.js" as Npcs
 
 // Settings > Companion (IPC 0.25 draft, RFC-0010 companions amendment): None or one of the
-// installed companion-capable characters (thumbnails from the catalog), Follow / Stay and
-// (IPC 0.26) Walk / Run.
+// installed companion-capable characters (thumbnails from the catalog), Follow / Stay,
+// (IPC 0.26) Walk / Run and (IPC 0.28) its walk, run and idle styles.
 // Putting it on a route is tool 3 (or carrying it to a path) in the world.
 ColumnLayout {
     id: root
@@ -54,6 +55,27 @@ ColumnLayout {
             Layout.fillWidth: true
             text: 'How it keeps up while following.'
             color: Tokens.muted; font.pixelSize: 12; wrapMode: Text.Wrap
+        }
+    }
+    // IPC 0.28: walk, run and idle styles (the chosen companion's own clips and motion packs).
+    Repeater {
+        model: !!root.chosen && ShellState.styleSupported ? Npcs.STYLE_ROLES : []
+        delegate: RowLayout {
+            id: styleRow
+            required property var modelData
+            readonly property var choices: Npcs.styleChoices(ShellState.catalogMotion(root.chosen), modelData.id)
+            Layout.fillWidth: true
+            visible: choices.length > 1
+            HudLabel { text: styleRow.modelData.label + ' style'; Layout.preferredWidth: 140 }
+            Choice {
+                objectName: 'companionStyle:' + styleRow.modelData.id
+                implicitWidth: 240
+                enabled: ShellState.objectsCan('companion.mode') && !!Companion.paceParams(root.companion, 'walk')
+                model: styleRow.choices.map(c => c.label)
+                currentIndex: Math.max(0, styleRow.choices.findIndex(c => c.id === (root.companion && root.companion.style ? root.companion.style[styleRow.modelData.id] || '' : '')))
+                onActivated: (i) => ShellState.companionStyle(styleRow.modelData.id, styleRow.choices[i].id)
+            }
+            Item { Layout.fillWidth: true }
         }
     }
     HudLabel { text: 'CHOOSE'; color: Tokens.gold; font.pixelSize: Tokens.caption; font.letterSpacing: 1.5; Layout.fillWidth: true }

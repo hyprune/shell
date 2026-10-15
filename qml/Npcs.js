@@ -117,10 +117,16 @@ function hexFromAccent(accent) {
     }).join('');
 }
 
-// Spawn / bind settings {speed, phase, accent: '#rrggbb'|'' , reverse} as params: defaults
+// Spawn / bind settings {speed, phase, accent: '#rrggbb'|'' , reverse, style?} as params: defaults
 // (speed 1, phase 0, no accent, forward) are left out; phase and reverse only with a route.
+// style (IPC 0.28): {walk, run, idle} ('' plain) when the core and character take styles;
+// spawn sends a style only when one is set, a rebind always (null clears it).
 function settingsParams(settings, onRoute) {
     var s = settings || {}, out = {};
+    if (s.style) {
+        var style = styleParam(s.style);
+        if (style || s.clearStyle) out.style = style;
+    }
     var speed = clampSpeed(s.speed === undefined ? 1 : s.speed);
     if (speed !== 1) out.speed = speed;
     var accent = accentFromHex(s.accent);
@@ -144,6 +150,7 @@ function spawnRequest(ref, choice, settings) {
     if (choice.kind === 'draw') {
         var spawn = merge({ref: ref}, settingsParams(settings, true));
         delete spawn.reverse; // a drawn route starts where the player starts drawing
+        delete spawn.style;   // paths.draw spawn takes no style (set it after, with a rebind)
         return {method: 'paths.draw', params: {use: 'route', spawn: spawn}};
     }
     return null;
@@ -353,9 +360,53 @@ function choiceMove(index, count, key) {
     return clamp(index, 0, count - 1);
 }
 
-function chooseParams(interaction, choiceId) {
+// option (IPC 0.28): a dance interaction's chosen dance; left out for "any".
+function chooseParams(interaction, choiceId, option) {
     if (!interaction) return null;
-    return {objectId: interaction.objectId, interactionId: choiceId || null};
+    var params = {objectId: interaction.objectId, interactionId: choiceId || null};
+    if (choiceId && option) params.option = option;
+    return params;
+}
+
+// ---- Styles and dances (IPC 0.28, the shared clip library) ----
+
+var STYLE_ROLES = [{id: 'walk', label: 'Walk'}, {id: 'run', label: 'Run'}, {id: 'idle', label: 'Idle'}];
+
+// "calm-2" -> "Calm 2", "hip-hop" -> "Hip hop".
+function styleLabel(style) {
+    var s = String(style || '').replace(/-/g, ' ');
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Plain';
+}
+
+// A catalog entry's motion (catalogEntry.motion): does it offer any walk, run or idle style?
+function hasStyles(motion) {
+    return !!motion && !!motion.styles && STYLE_ROLES.some(function (r) { return (motion.styles[r.id] || []).length > 0; });
+}
+
+// The choices for one role: Plain, then the styles the character can play.
+function styleChoices(motion, role) {
+    var list = motion && motion.styles ? motion.styles[role] || [] : [];
+    return [{id: '', label: 'Plain'}].concat(list.map(function (s) { return {id: s, label: styleLabel(s)}; }));
+}
+
+// {walk, run, idle} with '' for plain -> the characterStyle param, or null when all are plain.
+function styleParam(style) {
+    var out = {};
+    STYLE_ROLES.forEach(function (r) { if (style && typeof style[r.id] === 'string' && style[r.id]) out[r.id] = style[r.id]; });
+    return Object.keys(out).length ? out : null;
+}
+
+// A character's dances: the options of its dance interaction (from npcs.aimed), or null.
+function danceOptions(interactions, interactionId) {
+    var found = (interactions || []).filter(function (i) { return i.id === interactionId && i.type === 'dance'; })[0];
+    return found && found.options && found.options.length ? found.options : null;
+}
+
+// The dance list: "Any dance" first (core picks), then each dance; keys 1-9.
+function danceItems(options) {
+    return [{id: '', label: 'Any dance'}].concat((options || []).slice(0, 16)).map(function (o, i) {
+        return {id: o.id, label: o.label, key: i < 9 ? String(i + 1) : ''};
+    });
 }
 
 // The compact caption (type say): who speaks, the current line, and the key hint.
