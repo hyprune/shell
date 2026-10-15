@@ -15,14 +15,11 @@ class SliderSettle(unittest.TestCase):
             self.assertIn(needle, slider)
 
     def test_graphics_sliders_apply_on_settle(self):
-        graphics = (ROOT / 'qml/components/GraphicsSettings.qml').read_text()
-        sliders = re.findall(r'SettingSlider \{[^\n]*', graphics)
-        self.assertEqual(len(sliders), 3)
-        for s in sliders:
-            self.assertIn('onSettled:', s)
-            self.assertNotIn('onMoved:', s)
-            self.assertIn('target:', s)
-
+        row = (ROOT / 'qml/components/SettingRow.qml').read_text()
+        for needle in ["readonly property bool settles: root.row.key.startsWith('graphics.')",
+                       'onMoved: if (!settles) root.set(rounded(value))',
+                       'onSettled: v => { if (settles) root.set(rounded(v)); }']:
+            self.assertIn(needle, row)
 
 if __name__ == '__main__':
     unittest.main()
