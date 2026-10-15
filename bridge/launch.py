@@ -130,7 +130,11 @@ def action_notice(cmd, error):
         # Object and character refusals become short toasts: core's own words and the
         # placement or walkability rule.
         notice['error'] = {'code': error.code, 'message': error.message[:512],
-                           **({'rule': error.rule} if error.rule else {})}
+                           **({'rule': error.rule} if error.rule else {}),
+                           # IPC 0.31: whether trying again can work (a just-made shape still decoding)
+                           # and how to fix it.
+                           **({'retryable': True} if error.data.get('retryable') else {}),
+                           **({'hint': str(error.data['hint'])[:256]} if error.data.get('hint') else {})}
     return notice
 
 

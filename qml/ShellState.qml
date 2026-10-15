@@ -1396,7 +1396,7 @@ QtObject {
             }
             if (msg.code === 'shell.action' && /^(objects|libraries)\./.test(msg.method || '')) {
                 // A made shape that is still decoding: Shapes tries again quietly (no toast).
-                if (msg.error && msg.error.data && msg.error.data.retryable && shapesQuiet(msg.method, msg.params)) {
+                if (msg.error && msg.error.retryable && shapesQuiet(msg.method, msg.params)) {
                     objectActionFailed(msg.method, msg.params || null, String(msg.message));
                     break;
                 }

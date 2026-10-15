@@ -6,8 +6,10 @@ primitive's form. The CLI is covered by the SDK's tests, core's keys and swaps b
 import json
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'bridge'))
 SHAPES = (ROOT / 'qml/Shapes.js').read_text()
 
 
@@ -85,6 +87,19 @@ class Placed(unittest.TestCase):
         self.assertEqual(call('summary', form, [{'key': 'oak', 'name': 'Oak planks'}]), 'Box 2 × 0.2 × 1 m · Oak planks')
         self.assertEqual(call('errorText', {'code': 'primitive.invalid', 'message': 'There is no shape "torus"', 'hint': 'Shapes: cube, box'}),
                          'There is no shape "torus". Shapes: cube, box.')
+
+
+class Bridge(unittest.TestCase):
+    def test_refusals_say_retryable_and_hint(self):
+        from client import CoreError
+        from launch import action_notice
+        cmd = {'type': 'action', 'method': 'objects.configure', 'params': {'id': 'u-000001', 'patch': {'ref': 'world/box-aaa'}}}
+        n = action_notice(cmd, CoreError(-32004, 'Box is still loading; retry', {'retryable': True}))
+        self.assertEqual(n['error'], {'code': -32004, 'message': 'Box is still loading; retry', 'retryable': True})
+        self.assertEqual(n['params'], cmd['params'])
+        n = action_notice(dict(cmd, method='objects.place'), CoreError(-32005, 'the key beacon names Box', {'retryable': False, 'rule': 'key.taken', 'hint': 'Use another key'}))
+        self.assertEqual(n['error']['hint'], 'Use another key')
+        self.assertNotIn('retryable', n['error'])
 
 
 class Wiring(unittest.TestCase):
