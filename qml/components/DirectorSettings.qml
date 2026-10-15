@@ -213,7 +213,16 @@ Item {
                         objectName: 'settings-category-' + modelData.id
                         implicitHeight: 36
                         Layout.fillWidth: true
-                        text: modelData.name + (root.counts[modelData.id] ? '  ·  ' + root.counts[modelData.id] : '')
+                        text: modelData.name
+                        rightPadding: root.counts[modelData.id] ? 34 : 16
+                        // The changes in this category: a badge that never truncates with the name.
+                        HudLabel {
+                            objectName: 'settings-count-' + modelData.id
+                            visible: !!root.counts[modelData.id]
+                            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                            text: root.counts[modelData.id] || ''
+                            color: Tokens.accent; font.family: Tokens.mono; font.pixelSize: 12
+                        }
                         primary: !root.query && root.category === modelData.id
                         onClicked: root.show(modelData.id)
                         Keys.onUpPressed: { if (index > 0) { root.show(Model.CATEGORIES[index - 1].id); nextItemInFocusChain(false).forceActiveFocus(); } }
