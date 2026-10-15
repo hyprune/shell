@@ -706,6 +706,7 @@ QtObject {
     property var shapesJob: null            // {kind: make | apply | material | rebuild, phase, result, error, id?, key?}
     property var shapesMaterials: []        // `materials`: the library of the folder (or the user's)
     property var shapesPocket: null         // {ref, tries}: a made shape waiting for the catalog to list it
+    property var shapesSwaps: []            // [{id, ref, tries}]: swaps waiting for their new asset to load
     readonly property bool shapesBusy: !!shapesJob && shapesJob.phase === 'running'
     function shapesRun(job, args) {
         if (shapesBusy) return false;
@@ -732,6 +733,12 @@ QtObject {
         objectAction('objects.configure', {id: id, patch: {key: String(key || '').trim() || null}});
         return true;
     }
+    // A swap to a just-made shape: its asset may still be decoding (a retryable refusal), so it is
+    // tried again for a few seconds.
+    function shapesSwap(id, ref) {
+        shapesSwaps = shapesSwaps.filter(function (s) { return s.id !== id; }).concat([{id: id, ref: ref, tries: 0}]);
+        objectAction('objects.configure', {id: id, patch: {ref: ref}});
+    }
     function shapesLoadMaterials() {
         if (shapesMaterialsProc.running) return;
         shapesMaterialsProc.command = libraryCli.concat(Shapes.materialsArgs(shapesSlug));
@@ -748,14 +755,14 @@ QtObject {
             sayObjects((r.created ? 'Made ' : 'Reused ') + r.name + ': place it with tool 5', 'info');
         } else if (job.kind === 'apply') {
             var inst = Objects.selectedInstance(objectsState ? objectsState.instances : [], job.id);
-            if (inst && inst.ref !== r.ref) objectAction('objects.configure', {id: job.id, patch: {ref: r.ref}});
+            if (inst && inst.ref !== r.ref) shapesSwap(job.id, r.ref);
         } else if (job.kind === 'material') {
             shapesLoadMaterials();
             if (r.stale && r.stale.length) Qt.callLater(function () { root.shapesRun({kind: 'rebuild', key: job.key}, Shapes.rebuildArgs(root.shapesSlug, job.key)); });
             else sayObjects('Saved the material ' + job.key, 'info');
         } else if (job.kind === 'rebuild') {
             var moves = Shapes.swapsFor(objectsState ? objectsState.instances : [], r.swaps);
-            moves.forEach(function (m) { root.objectAction('objects.configure', {id: m.id, patch: {ref: m.ref}}); });
+            moves.forEach(function (m) { root.shapesSwap(m.id, m.ref); });
             sayObjects('Saved the material ' + job.key + (moves.length ? '; ' + moves.length + ' placed shape' + (moves.length === 1 ? '' : 's') + ' updated' : ''), 'info');
         }
         catalogRefresh.restart();
@@ -779,13 +786,33 @@ QtObject {
     }
     // Outside a world folder the user folder is rescanned on its own clock: try the pocket again.
     property Timer shapesPocketRetry: Timer { interval: 700; onTriggered: { if (root.shapesPocket) root.pocketObject(root.shapesPocket.ref); } }
+    property Timer shapesSwapRetry: Timer {
+        interval: 500
+        onTriggered: {
+            var due = root.shapesSwaps.filter(function (s) { return s.waiting; });
+            root.shapesSwaps = root.shapesSwaps.map(function (s) { return Object.assign({}, s, {waiting: false}); });
+            due.forEach(function (s) { root.objectAction('objects.configure', {id: s.id, patch: {ref: s.ref}}); });
+        }
+    }
     onObjectActionFailed: (method, params, message) => {
+        if (method === 'objects.configure' && params && params.patch && params.patch.ref) {
+            var swap = shapesSwaps.filter(function (s) { return s.id === params.id && s.ref === params.patch.ref; })[0];
+            if (!swap) return;
+            if (swap.tries >= 16) { shapesSwaps = shapesSwaps.filter(function (s) { return s !== swap; }); return; }
+            shapesSwaps = shapesSwaps.map(function (s) { return s === swap ? Object.assign({}, s, {tries: s.tries + 1, waiting: true}) : s; });
+            shapesSwapRetry.restart();
+            return;
+        }
         if (method !== 'objects.pocket' || !shapesPocket || !params || params.ref !== shapesPocket.ref) return;
         if (shapesPocket.tries >= 12) { shapesPocket = null; return; }
         shapesPocket = {ref: shapesPocket.ref, tries: shapesPocket.tries + 1};
         shapesPocketRetry.restart();
     }
-    onObjectActionDone: (method, params, result) => { if (method === 'objects.pocket' && shapesPocket && params && params.ref === shapesPocket.ref) shapesPocket = null; }
+    onObjectActionDone: (method, params, result) => {
+        if (method === 'objects.pocket' && shapesPocket && params && params.ref === shapesPocket.ref) shapesPocket = null;
+        if (method === 'objects.configure' && params && params.patch && params.patch.ref)
+            shapesSwaps = shapesSwaps.filter(function (s) { return !(s.id === params.id && s.ref === params.patch.ref); });
+    }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')

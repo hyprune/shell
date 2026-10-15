@@ -90,7 +90,8 @@ class Wiring(unittest.TestCase):
         for name in ['objectShapeEdit', 'objectKey', 'object-key-set', 'shape-apply']:
             self.assertIn(name, edit, name)
         state = (ROOT / 'qml/ShellState.qml').read_text()
-        self.assertIn("objectAction('objects.configure', {id: job.id, patch: {ref: r.ref}})", state)
+        self.assertIn('shapesSwap(job.id, r.ref)', state)
+        self.assertIn("objectAction('objects.configure', {id: id, patch: {ref: ref}})", state)
         self.assertIn('supportsProtocol(31)', state)
 
 
