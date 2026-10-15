@@ -573,6 +573,10 @@ QtObject {
     property var builderStatus: null        // `builder status` of the loaded folder
     property var builderSky: null           // the sky form while choosing an image: {path, license, author, source}
     property var builderIdentity: null      // {name, email} when git has none (asked on create)
+    property var builderWizard: null        // Builder.newWizard() while New world is open
+    property var builderFloor: null         // the floor form in a folder: {preset, tile} or {path, license, author, source, tile}
+    property var builderSkies: []           // `builder skies`: built-in skies with thumbnails
+    property var builderFloors: []          // `builder floors`: built-in floors with thumbnails
     readonly property bool builderBusy: !!builderJob && builderJob.phase === 'running'
     function builderRun(job, args) {
         if (builderBusy) return false;
@@ -587,6 +591,50 @@ QtObject {
         return builderRun(Builder.newJob('create', '', {name: String(name).trim()}), Builder.createArgs(name, builderIdentity));
     }
     function builderOpen(slug) { if (slug) action('world.load', {worldId: Builder.worldId(slug)}); }
+    // ---- New world: name (and starter), sky, floor, where you start; then create and open ----
+    function builderWizardStart() { if (builderBusy) return; builderWizard = Builder.newWizard(); builderJob = null; builderLoadPresets(); }
+    function builderWizardSet(patch) { if (builderWizard) builderWizard = Object.assign({}, builderWizard, patch); }
+    function builderWizardMove(delta) {
+        if (!builderWizard || (delta > 0 && Builder.wizardErrors(builderWizard, builderIdentity).length)) return false;
+        builderWizard = Builder.wizardMove(builderWizard, delta);
+        return true;
+    }
+    function builderWizardCreate() {
+        var w = builderWizard;
+        if (!w || builderBusy) return false;
+        for (var i = 0; i < Builder.WIZARD_STEPS.length; i++)
+            if (Builder.wizardErrors(Object.assign({}, w, {step: i}), builderIdentity).length) { builderWizard = Object.assign({}, w, {step: i}); return false; }
+        return builderRun(Builder.newJob('create', '', {name: String(w.name).trim()}), Builder.createArgs(w.name, builderIdentity, w));
+    }
+    function builderLoadPresets() {
+        if (builderSkies.length && builderFloors.length) return;
+        builderPresetsProc.command = libraryCli.concat(builderSkies.length ? Builder.floorsArgs() : Builder.skiesArgs());
+        builderPresetsProc.running = true;
+    }
+    property Process builderPresetsProc: Process {
+        stdout: SplitParser {
+            onRead: (line) => {
+                var e = null;
+                try { e = JSON.parse(line); } catch (x) { return; }
+                if (!e || e.event !== 'done' || !e.result) return;
+                if (e.result.skies) root.builderSkies = e.result.skies;
+                if (e.result.floors) root.builderFloors = e.result.floors;
+            }
+        }
+        onRunningChanged: { if (!running && root.builderSkies.length && !root.builderFloors.length) Qt.callLater(root.builderLoadPresets); }
+    }
+    // ---- sky and floor of the open folder (the same choices as the wizard) ----
+    function builderSkyPreset(id) {
+        if (!builderEditing || !id) return false;
+        return builderRun(Builder.newJob('sky', builderState.projectId), Builder.skyArgs(builderState.projectId, {preset: id}));
+    }
+    function builderFloorPick(path) { if (Builder.floorImage(path)) builderFloor = {path: path, license: '', author: '', source: '', tile: 2}; }
+    function builderFloorForm(patch) { if (builderFloor) builderFloor = Object.assign({}, builderFloor, patch); }
+    function builderFloorApply(form) {
+        var f = form || builderFloor;
+        if (!builderEditing || !f || Builder.floorErrors(f).length) return false;
+        return builderRun(Builder.newJob('floor', builderState.projectId), Builder.floorArgs(builderState.projectId, f));
+    }
     function builderSave(message) { return builderEditing && builderRun(Builder.newJob('save', builderState.projectId), Builder.saveArgs(builderState.projectId, message)); }
     function builderRelease(version, notes) {
         if (!builderEditing || Builder.versionError(version)) return false;
@@ -611,8 +659,9 @@ QtObject {
         if (job.phase !== 'done') return;
         var r = job.result || {};
         if (r.status && builderEditing && r.status.projectId === builderState.projectId) builderStatus = r.status;
-        if (job.kind === 'create') { builderIdentity = null; builderOpen(r.projectId); }
+        if (job.kind === 'create') { builderIdentity = null; builderWizard = null; builderOpen(r.projectId); }
         if (job.kind === 'sky') { builderSky = null; builderOpen(job.slug); } // the panorama loads with the world
+        if (job.kind === 'floor') { builderFloor = null; builderOpen(job.slug); }
         builderRefresh();
     }
     function builderRefresh() {
@@ -645,7 +694,7 @@ QtObject {
     property Timer builderStatusTimer: Timer { interval: 500; onTriggered: root.builderRefresh() }
     readonly property string builderKey: builderState ? builderState.projectId + ':' + builderState.revision : ''
     onBuilderKeyChanged: { if (!builderState) builderStatus = null; if (builderVisible || builderEditing) builderStatusTimer.restart(); }
-    onBuilderVisibleChanged: { if (builderVisible) builderRefresh(); }
+    onBuilderVisibleChanged: { if (builderVisible) { builderRefresh(); if (builderEditing) builderLoadPresets(); } }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')

@@ -38,7 +38,17 @@ class Validation(unittest.TestCase):
         self.assertEqual(len(call('identityErrors', {'name': '', 'email': 'nope'})), 2)
         self.assertEqual(call('identityErrors', {'name': 'Ada', 'email': 'ada@example.com'}), [])
         self.assertTrue(call('skyImage', '/x/Dusk.JPG'))
-        self.assertFalse(call('skyImage', '/x/dusk.hdr'))
+        self.assertTrue(call('skyImage', '/x/dusk.hdr'))
+        self.assertTrue(call('skyImage', '/x/studio.EXR'))
+        self.assertFalse(call('skyImage', '/x/dusk.webp'))
+        self.assertTrue(call('floorImage', '/x/tiles.jpg'))
+        self.assertFalse(call('floorImage', '/x/tiles.exr'))
+        self.assertEqual(call('skyErrors', {'preset': 'sunset'}), [])
+        self.assertEqual(call('floorErrors', {'preset': 'grass', 'tile': None}), [])
+        self.assertEqual(len(call('floorErrors', {'preset': 'grass', 'tile': '0.1'})), 1)
+        self.assertEqual(len(call('floorErrors', {'path': '/x/t.jpg', 'license': '', 'author': '', 'source': '', 'tile': 2})), 3)
+        self.assertEqual([call('tileError', t) for t in ['2', 0.25, 100]], ['', '', ''])
+        self.assertNotEqual(call('tileError', ''), '')
         self.assertEqual(len(call('skyErrors', {'path': '/x/a.png', 'license': '', 'author': '', 'source': ''})), 3)
         self.assertEqual(call('skyErrors', {'path': '/x/a.png', 'license': 'CC0-1.0', 'author': 'Me', 'source': 'my camera'}), [])
 
@@ -55,6 +65,40 @@ class Commands(unittest.TestCase):
         self.assertEqual(call('skyArgs', 'harbour', {'path': '/x/a.jpg', 'license': 'CC0-1.0', 'author': 'Me', 'source': 'mine'}),
                          ['builder', 'sky', 'harbour', '/x/a.jpg', '--license', 'CC0-1.0', '--author', 'Me', '--source', 'mine', '--json'])
         self.assertEqual(call('remoteArgs', 'harbour', ''), ['builder', 'remote', 'harbour', '--clear', '--json'])
+        self.assertEqual(call('skyArgs', 'harbour', {'preset': 'night'}), ['builder', 'sky', 'harbour', '--preset', 'night', '--json'])
+        self.assertEqual(call('floorArgs', 'harbour', {'preset': 'sand'}), ['builder', 'floor', 'harbour', '--preset', 'sand', '--json'])
+        self.assertEqual(call('floorArgs', 'harbour', {'tile': '3'}), ['builder', 'floor', 'harbour', '--tile', '3', '--json'])
+        self.assertEqual(call('floorArgs', 'harbour', {'path': '/x/t.jpg', 'license': 'CC0-1.0', 'author': 'Me', 'source': 'mine', 'tile': 1.5}),
+                         ['builder', 'floor', 'harbour', '/x/t.jpg', '--license', 'CC0-1.0', '--author', 'Me', '--source', 'mine', '--tile', '1.5', '--json'])
+        wizard = dict(call('newWizard'), name='Garden', sky={'path': '/x/s.exr', 'license': 'CC0-1.0', 'author': 'Me', 'source': 'mine'},
+                      floor={'preset': 'grass', 'tile': '3'}, facing='sun')
+        self.assertEqual(call('createArgs', 'Garden', None, wizard),
+                         ['builder', 'create', 'Garden', '--json', '--starter', 'open-plain', '--sky-image', '/x/s.exr', '--sky-license', 'CC0-1.0',
+                          '--sky-author', 'Me', '--sky-source', 'mine', '--floor', 'grass', '--tile', '3', '--facing', 'sun'])
+        self.assertEqual(call('skiesArgs'), ['builder', 'skies', '--json'])
+
+
+class Wizard(unittest.TestCase):
+    def test_steps(self):
+        w = call('newWizard')
+        self.assertEqual(call('wizardStep', w), 'name')
+        self.assertIn('name', call('wizardErrors', w, None)[0])
+        self.assertEqual(call('wizardErrors', dict(w, name='Garden'), None), [])
+        self.assertEqual(len(call('wizardErrors', dict(w, name='Garden'), {'name': '', 'email': ''})), 2)
+        w = call('wizardMove', dict(w, name='Garden'), 1)
+        self.assertEqual(call('wizardStep', w), 'sky')
+        self.assertEqual(call('wizardErrors', w, None), [])
+        self.assertEqual(len(call('wizardErrors', dict(w, sky={'path': '', 'license': '', 'author': '', 'source': ''}), None)), 4)
+        w = call('wizardMove', call('wizardMove', w, 1), 5)
+        self.assertEqual(call('wizardStep', w), 'spawn')
+        self.assertTrue(call('wizardLast', w))
+        self.assertEqual(call('wizardStep', call('wizardMove', w, -9)), 'name')
+        skies = [{'id': 'clear-day', 'name': 'Clear day'}]
+        floors = [{'id': 'grid', 'name': 'Grid'}]
+        self.assertEqual(call('wizardSummary', w, skies, floors), 'Open Plain · Clear day sky · Grid floor · sun behind you')
+        self.assertEqual(call('floorLabel', {'preset': 'grid', 'tile': 5}, floors), 'Grid, every 5 m')
+        hint = call('errorText', {'code': 'floor.invalid', 'message': 'There is no floor "lava"', 'hint': 'Floors: grid, grass'})
+        self.assertEqual(hint, 'There is no floor "lava". Floors: grid, grass.')
         self.assertEqual(call('worldId', 'harbour'), 'local.harbour')
 
 
@@ -92,7 +136,9 @@ class Wiring(unittest.TestCase):
     def test_page_and_state(self):
         page = (ROOT / 'qml/components/DirectorBuilder.qml').read_text()
         state = (ROOT / 'qml/ShellState.qml').read_text()
-        for name in ['builderName', 'builder-create', 'builderMessage', 'builder-save', 'builderVersion', 'builder-release', 'builder-sky', 'builder-sky-apply',
+        for name in ['builder-new', 'builder-wizard-next', 'builder-wizard-back', 'builder-wizard-cancel', 'builder-sky-preset:', 'builder-floor-preset:',
+                     'builder-facing:', 'builderTile', 'builder-set-sky:', 'builder-set-floor:', 'builder-floor-image', 'builder-floor-apply', 'builderFloorTile',
+                     'builder-wizard-sky-image', 'builder-wizard-floor-image', 'builderName', 'builder-create', 'builderMessage', 'builder-save', 'builderVersion', 'builder-release', 'builder-sky', 'builder-sky-apply',
                      'builderRemote', 'builder-remote-set', 'builderPending', 'builderFeedback', 'builderSkyBrowser']:
             self.assertIn("'" + name, page, name)
         # Git and the network stay in the CLI: the shell only loads the folder over IPC.

@@ -1,10 +1,13 @@
-// RFC-0014 world folders (phase 1 as amended): Director > Builder runs the hyprune CLI's
-// `builder` commands (create, list, status, save, release, sky, remote) as JSON-lines jobs and
+// RFC-0014 world folders (phase 1 and the world wizard as amended): Director > Builder runs the
+// hyprune CLI's `builder` commands (create, list, status, save, release, sky, floor, spawn,
+// remote, skies, floors) as JSON-lines jobs and
 // opens a folder with world.load local.<slug>. Core loads it in editor mode and writes the
 // placements; git runs only in the CLI. Pure helpers: tested with node in tests/test_builder.py.
 
 var NAME_MAX = 64, MESSAGE_MAX = 500, NOTES_MAX = 4000;
-var SKY_FORMATS = ['png', 'jpg', 'jpeg'];
+var SKY_FORMATS = ['png', 'jpg', 'jpeg', 'exr', 'hdr'];
+var FLOOR_FORMATS = ['png', 'jpg', 'jpeg'];
+var TILE_MIN = 0.25, TILE_MAX = 100;
 var STAGES = {version: 'Writing the version', build: 'Building the release files', push: 'Pushing to the remote', release: 'Creating the GitHub release'};
 var CODES = {
     'git.missing': 'Building worlds needs git 2.30 or newer: install git, then try again.',
@@ -21,12 +24,26 @@ var CODES = {
     'remote.auth': 'Set up access to this remote in a terminal (your git credentials or SSH key), then release again.',
     'remote.rejected': 'The remote has changes Hyprune won\'t merge: resolve them with git, then release again.',
     'sky.invalid': 'That image can\'t be a sky.',
+    'floor.invalid': 'That can\'t be the floor.',
+    'spawn.invalid': 'That spawn is outside the plain.',
+    'starter.unknown': 'That starter isn\'t available.',
+    'project.exists': 'A world with that name already exists.',
     'builder.busy': 'Another save or release is still running on this world.',
     'cli.missing': 'The hyprune command didn\'t run: set HYPRUNE_CLI or put hyprune on PATH.'};
-var LABELS = {create: 'Creating the world', list: 'Listing your worlds', status: 'Checking for changes', save: 'Saving', release: 'Releasing', sky: 'Setting the sky', remote: 'Setting the remote'};
+var LABELS = {create: 'Creating the world', list: 'Listing your worlds', status: 'Checking for changes', save: 'Saving', release: 'Releasing', sky: 'Setting the sky',
+              floor: 'Setting the floor', spawn: 'Moving the spawn', remote: 'Setting the remote'};
+// Where the world starts, relative to the sun (or the moon): the wizard's spawn choices.
+var FACINGS = [{id: 'away', label: 'Sun behind you'}, {id: 'sun', label: 'Facing the sun'}, {id: 'left', label: 'Sun on your left'}, {id: 'right', label: 'Sun on your right'}];
+var WIZARD_STEPS = ['name', 'sky', 'floor', 'spawn'];
+var STEP_TITLES = {name: 'Name and starter', sky: 'Sky', floor: 'Floor', spawn: 'Where you start'};
 
 function extension(path) { var m = /\.([a-z0-9]+)$/i.exec(String(path || '')); return m ? m[1].toLowerCase() : ''; }
 function skyImage(path) { return SKY_FORMATS.indexOf(extension(path)) >= 0; }
+function floorImage(path) { return FLOOR_FORMATS.indexOf(extension(path)) >= 0; }
+function tileError(tile) {
+    var t = Number(tile);
+    return String(tile).trim() !== '' && isFinite(t) && t >= TILE_MIN && t <= TILE_MAX ? '' : 'A tile is ' + TILE_MIN + ' to ' + TILE_MAX + ' metres.';
+}
 function worldId(slug) { return 'local.' + slug; }
 
 function nameError(name) {
@@ -55,6 +72,7 @@ function identityErrors(identity) {
 }
 function skyErrors(form) {
     var e = [];
+    if (form && form.preset) return e;
     if (!form || !form.path) e.push('Choose an image.');
     if (!String(form && form.license || '').trim()) e.push('Give the image\'s licence (an SPDX id like CC0-1.0).');
     if (!String(form && form.author || '').trim()) e.push('Give the image\'s author.');
@@ -62,11 +80,76 @@ function skyErrors(form) {
     return e;
 }
 
+// The floor form: a preset (with its tile) or an image with provenance and a tile.
+function floorErrors(form) {
+    var e = [];
+    if (!form) return ['Choose a floor.'];
+    if (form.tile !== undefined && form.tile !== null && tileError(form.tile)) e.push(tileError(form.tile));
+    if (form.preset) return e;
+    if (!form.path) e.push('Choose an image.');
+    if (!String(form.license || '').trim()) e.push('Give the image\'s licence (an SPDX id like CC0-1.0).');
+    if (!String(form.author || '').trim()) e.push('Give the image\'s author.');
+    if (!String(form.source || '').trim()) e.push('Say where the image comes from.');
+    return e;
+}
+
+// ---- the New world wizard: name (and starter), sky, floor, where you start ----
+function newWizard() {
+    return {step: 0, name: '', starter: 'open-plain', sky: {preset: 'clear-day'}, floor: {preset: 'grid', tile: null}, facing: 'away'};
+}
+function wizardStep(w) { return WIZARD_STEPS[Math.max(0, Math.min(WIZARD_STEPS.length - 1, w ? w.step : 0))]; }
+function wizardErrors(w, identity) {
+    if (!w) return ['No wizard.'];
+    var step = wizardStep(w);
+    if (step === 'name') return (nameError(w.name) ? [nameError(w.name)] : []).concat(identityErrors(identity));
+    if (step === 'sky') return skyErrors(w.sky);
+    if (step === 'floor') return floorErrors(w.floor);
+    return FACINGS.some(function (f) { return f.id === w.facing; }) ? [] : ['Choose where you start.'];
+}
+function wizardMove(w, delta) {
+    var next = Object.assign({}, w);
+    next.step = Math.max(0, Math.min(WIZARD_STEPS.length - 1, w.step + delta));
+    return next;
+}
+function wizardLast(w) { return !!w && w.step === WIZARD_STEPS.length - 1; }
+function skyLabel(form, skies) {
+    if (!form) return '';
+    if (form.preset) { var p = (skies || []).filter(function (s) { return s.id === form.preset; })[0]; return p ? p.name : form.preset; }
+    return String(form.path || '').split('/').pop();
+}
+function floorLabel(form, floors) {
+    if (!form) return '';
+    var name = form.preset ? (((floors || []).filter(function (f) { return f.id === form.preset; })[0] || {}).name || form.preset) : String(form.path || '').split('/').pop();
+    return form.tile ? name + ', every ' + form.tile + ' m' : name;
+}
+function wizardSummary(w, skies, floors) {
+    if (!w) return '';
+    var facing = FACINGS.filter(function (f) { return f.id === w.facing; })[0];
+    return 'Open Plain · ' + skyLabel(w.sky, skies) + ' sky · ' + floorLabel(w.floor, floors) + ' floor · ' + (facing ? facing.label.toLowerCase() : '');
+}
+
 // ---- command lines (the CLI's JSON lines) ----
-function createArgs(name, identity) {
+function skyOptions(prefix, form) {
+    if (!form) return [];
+    if (form.preset) return ['--' + prefix, form.preset];
+    return ['--' + prefix + '-image', form.path, '--' + prefix + '-license', String(form.license).trim(), '--' + prefix + '-author', String(form.author).trim(),
+            '--' + prefix + '-source', String(form.source).trim()];
+}
+function tileOptions(form) { return form && form.tile !== undefined && form.tile !== null && String(form.tile).trim() !== '' ? ['--tile', String(Number(form.tile))] : []; }
+function createArgs(name, identity, wizard) {
     var a = ['builder', 'create', String(name).trim(), '--json'];
     if (identity) a.push('--git-name', String(identity.name).trim(), '--git-email', String(identity.email).trim());
+    if (wizard) a = a.concat(['--starter', wizard.starter || 'open-plain'], skyOptions('sky', wizard.sky), skyOptions('floor', wizard.floor), tileOptions(wizard.floor),
+                             wizard.facing ? ['--facing', wizard.facing] : []);
     return a;
+}
+function skiesArgs() { return ['builder', 'skies', '--json']; }
+function floorsArgs() { return ['builder', 'floors', '--json']; }
+function floorArgs(slug, form) {
+    if (form.preset) return ['builder', 'floor', slug, '--preset', form.preset].concat(tileOptions(form), ['--json']);
+    if (!form.path) return ['builder', 'floor', slug].concat(tileOptions(form), ['--json']);
+    return ['builder', 'floor', slug, form.path, '--license', String(form.license).trim(), '--author', String(form.author).trim(), '--source', String(form.source).trim()]
+        .concat(tileOptions(form), ['--json']);
 }
 function listArgs() { return ['builder', 'list', '--json']; }
 function statusArgs(slug) { return ['builder', 'status', slug, '--json']; }
@@ -83,6 +166,7 @@ function releaseArgs(slug, version, notes) {
     return a;
 }
 function skyArgs(slug, form) {
+    if (form.preset) return ['builder', 'sky', slug, '--preset', form.preset, '--json'];
     return ['builder', 'sky', slug, form.path, '--license', String(form.license).trim(), '--author', String(form.author).trim(),
             '--source', String(form.source).trim(), '--json'];
 }
@@ -109,9 +193,10 @@ function jobFinished(job, code, errors) {
 function errorText(error) {
     if (!error) return '';
     var known = error.code && CODES[error.code];
-    if (!known) return error.message || 'The builder failed.';
+    if (!known) return (error.message || 'The builder failed.') + (error.hint ? ' ' + error.hint + '.' : '');
     // The CLI's own message is the more specific one for these.
-    if (error.code === 'save.nothing' || error.code === 'release.unsaved' || error.code === 'release.version' || error.code === 'sky.invalid' || error.code === 'git.failed' || error.code === 'make.invalid') return error.message || known;
+    if (['save.nothing', 'release.unsaved', 'release.version', 'sky.invalid', 'floor.invalid', 'spawn.invalid', 'git.failed', 'make.invalid'].indexOf(error.code) >= 0)
+        return (error.message || known) + (error.hint ? '. ' + error.hint + '.' : '');
     return known;
 }
 function busyText(job) { return job ? (job.stage && STAGES[job.stage] ? STAGES[job.stage] : LABELS[job.kind] || 'Working') + '…' : ''; }
@@ -140,7 +225,9 @@ function resultText(job) {
     if (job.kind === 'create') return 'Created ' + r.name + ' in ' + r.folder + '.';
     if (job.kind === 'save') return 'Saved: ' + r.message;
     if (job.kind === 'release') return 'Released ' + r.tag + (r.pushed ? ' and pushed' : ' as a local tag') + (r.release ? ': ' + r.release : '.');
-    if (job.kind === 'sky') return 'The sky is set (' + r.width + ' × ' + r.height + '); the world reloads to show it.';
+    if (job.kind === 'sky') return (r.preset ? 'The sky is set' : 'The sky is set (' + r.width + ' × ' + r.height + ')') + '; the world reloads to show it.';
+    if (job.kind === 'floor') return 'The floor is set (every ' + r.floor.tile + ' m); the world reloads to show it.';
+    if (job.kind === 'spawn') return 'The spawn moved; the world reloads to show it.';
     if (job.kind === 'remote') return r.remote ? 'Remote set to ' + r.remote.url + '.' : 'Remote cleared.';
     return '';
 }

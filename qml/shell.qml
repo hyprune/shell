@@ -580,6 +580,7 @@ ShellRoot {
                     var pending = ShellState.director ? Audit.find(view, 'builderPending') : null;
                     return {state: ShellState.builderState, status: ShellState.builderStatus, projects: ShellState.builderProjects.map(p => p.projectId),
                             job: ShellState.builderJob, sky: ShellState.builderSky, identity: ShellState.builderIdentity,
+                            wizard: ShellState.builderWizard, floor: ShellState.builderFloor, skies: ShellState.builderSkies.map(p => p.id), floors: ShellState.builderFloors.map(p => p.id),
                             feedback: feedback && feedback.visible ? feedback.text : null, pending: pending ? pending.text : null};
                 })(),
                 npcs: (function() {
