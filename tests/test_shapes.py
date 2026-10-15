@@ -68,12 +68,18 @@ class Placed(unittest.TestCase):
         instances = [{'id': 'u-000001', 'source': 'user', 'ref': 'world/box-aaa'}, {'id': 'u-000002', 'source': 'user', 'ref': 'world/box-bbb'},
                      {'id': 'desk', 'source': 'authored', 'ref': 'world/box-aaa'}]
         self.assertEqual(call('swapsFor', instances, [{'from': 'world/box-aaa', 'to': 'world/box-ccc'}]), [{'id': 'u-000001', 'ref': 'world/box-ccc'}])
-        entry = {'primitive': {'shape': 'box', 'size': [2, 0.2, 1], 'material': {'key': 'oak', 'name': 'Oak', 'colour': '#ffffff', 'textured': True}}}
+        entry = {'primitive': {'shape': 'box', 'size': [2, 0.2, 1], 'material': {'key': 'oak', 'name': 'Oak', 'colour': '#ffffff', 'textured': True, 'glow': None}}}
         form = call('formFromEntry', entry)
         self.assertEqual(form['material'], {'kind': 'key', 'key': 'oak', 'colour': '#ffffff', 'glow': None})
         self.assertTrue(call('sameShape', form, entry))
         self.assertFalse(call('sameShape', call('setSize', form, 1, '0.3'), entry))
         self.assertIsNone(call('formFromEntry', {'primitive': None}))
+        glowing = {'primitive': {'shape': 'box', 'size': [0.6, 1.6, 0.6], 'material': {'key': None, 'name': 'Colour', 'colour': '#202020', 'textured': False,
+                                                                                    'glow': {'colour': '#30e0ff', 'strength': 4}}}}
+        g = call('formFromEntry', glowing)
+        self.assertEqual(g['material']['glow'], {'colour': '#30e0ff', 'strength': '4'}, 'a resize keeps the glow')
+        self.assertTrue(call('sameShape', g, glowing))
+        self.assertFalse(call('sameShape', dict(g, material=dict(g['material'], glow=None)), glowing))
         self.assertEqual(call('keyError', 'cpu-tower'), '')
         self.assertNotEqual(call('keyError', 'CPU tower'), '')
         self.assertEqual(call('summary', form, [{'key': 'oak', 'name': 'Oak planks'}]), 'Box 2 × 0.2 × 1 m · Oak planks')

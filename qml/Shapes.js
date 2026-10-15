@@ -142,14 +142,19 @@ function formFromEntry(entry) {
     var p = entry && entry.primitive;
     if (!p) return null;
     return {shape: p.shape, size: p.size.map(function (v) { return String(v); }), steps: null,
-            material: p.material.key ? {kind: 'key', key: p.material.key, colour: p.material.colour, glow: null} : {kind: 'colour', colour: p.material.colour, key: '', glow: null}};
+            material: p.material.key ? {kind: 'key', key: p.material.key, colour: p.material.colour, glow: null}
+                                     : {kind: 'colour', colour: p.material.colour, key: '', glow: p.material.glow ? {colour: p.material.glow.colour, strength: String(p.material.glow.strength)} : null}};
+}
+function sameGlow(a, b) {
+    if (!a || !b) return !a && !b;
+    return hex(a.colour) === hex(b.colour) && Number(a.strength) === Number(b.strength);
 }
 function sameShape(form, entry) {
     var p = entry && entry.primitive;
     if (!p || !form) return false;
     var m = form.material || {};
     return p.shape === form.shape && sizeText(p.size) === sizeText(form.size) && !form.steps &&
-           (m.kind === 'key' ? p.material.key === m.key : !p.material.key && p.material.colour === hex(m.colour) && !m.glow);
+           (m.kind === 'key' ? p.material.key === m.key : !p.material.key && p.material.colour === hex(m.colour) && sameGlow(p.material.glow, m.glow));
 }
 function keyError(key) {
     var k = String(key || '').trim();
