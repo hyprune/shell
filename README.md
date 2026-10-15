@@ -53,7 +53,13 @@ instance id (`ID  u-3f9a1c`) and is built from sections in a fixed order (Transf
 Remove / Reset or Hide / Reset, and Data: for a machine, `Data source id: u-3f9a1c`, the
 `com.hyprune.sources.<id>` source it reads by default, which a sources.json entry with that
 id publishes; RFC-0013 draft), with "Show and reset authored objects" and "Remove my
-objects" behind a second press, and user placement usage against core's limits. Keys: Up /
+objects" behind a second press, and user placement usage against core's limits.
+**Data sources** (data sources phase 2) lists every `sources.json` entry with the source
+helper's state and edits command and HTTP sources whole: the request (method, URL, headers
+with secrets by name, body), output, interval and the gauge map (value path, scale, level
+thresholds or matched text, display template, label). Test shows the raw response beside the
+mapped values and a gauge preview; missing secrets are stored from a password field in the
+secrets file (0600) or the keyring (`secret-tool`), never in `sources.json`. Keys: Up /
 Down move, Enter adds or edits, / searches, V switches the view, L lock, H hide, R reset,
 Delete remove. The tool 5 HUD lists pocketed objects (cube glyph, the selected one
 highlighted) and shows a selected object item in the placement card; tool 4 shows the
