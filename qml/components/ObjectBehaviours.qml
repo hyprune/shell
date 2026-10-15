@@ -29,8 +29,10 @@ ColumnLayout {
         editing = key || '';
         draftFor = instance ? instance.id : '';
         rest = B.restOf(instance);
-        Qt.callLater(reveal);
+        revealTimer.restart();
     }
+    // After the editor's layout settles (a frame or two), not at once.
+    Timer { id: revealTimer; interval: 150; onTriggered: panel.reveal() }
     // Scroll the configure panel so the editor is in view (it opens below the list).
     function reveal() {
         var f = panel.parent;

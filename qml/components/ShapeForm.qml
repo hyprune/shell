@@ -98,9 +98,13 @@ ColumnLayout {
                 Field {
                     id: axisField
                     objectName: form.prefix + 'Size' + 'XYZ'[index]
-                    text: String(form.value.size[index])
+                    // Set from the value whenever it changes (not a binding: an assignment from
+                    // script or a dev hook would break it), except while this field is edited.
+                    function load() { if (!activeFocus || text === '') text = String(form.value.size[index]); }
                     onTextEdited: form.edited(Shapes.setSize(form.value, index, text))
-                    Component.onCompleted: { if (index === 0) form.sizeXField = axisField; }
+                    Component.onCompleted: { load(); if (index === 0) form.sizeXField = axisField; }
+                    Connections { target: form; function onValueChanged() { axisField.load(); } }
+                    onActiveFocusChanged: { if (!activeFocus) load(); }
                 }
             }
         }
