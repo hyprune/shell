@@ -238,6 +238,7 @@ Item {
                 contentWidth: availableWidth
                 clip: true
                 ColumnLayout {
+                    id: contentColumn
                     width: Math.min(scroll.availableWidth - 16, 1100)
                     spacing: 14
                     HudLabel { text: root.query ? 'Search: ' + root.query : root.categoryName(root.category); font.pixelSize: 20; Layout.fillWidth: true }
@@ -250,7 +251,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: 2
                             HudLabel { text: root.categoryName(modelData.category).toUpperCase() + ' · ' + (modelData.group || '').toUpperCase(); color: Tokens.gold; font.pixelSize: Tokens.caption; font.letterSpacing: 1.5 }
-                            SettingRow { row: modelData; ctx: root.ctx }
+                            SettingRow { row: modelData; ctx: root.ctx; available: contentColumn.width }
                         }
                     }
                     // The category's own top blocks.
@@ -281,7 +282,7 @@ Item {
                             }
                             Repeater {
                                 model: modelData.rows
-                                SettingRow { required property var modelData; row: modelData; ctx: root.ctx }
+                                SettingRow { required property var modelData; row: modelData; ctx: root.ctx; available: contentColumn.width }
                             }
                             // Offload: which GPU (automatic or pinned to the one in use).
                             RowLayout {

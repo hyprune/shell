@@ -19,10 +19,12 @@ ColumnLayout {
     readonly property var options: Model.options(row, ctx)
     readonly property var range: Model.range(row, ctx)
     readonly property string objectKey: row.key.replace('.', '-')
-    // Narrow (2x scale, small windows): the columns share the width instead of fixed sizes.
-    readonly property bool compact: width > 0 && width < 800
-    readonly property real labelWidth: compact ? width * .36 : 300
-    readonly property real controlWidth: compact ? width * .44 : 360
+    // The page's content width: narrow (2x scale, small windows), the columns share it
+    // instead of fixed sizes. Given by the page, not read from the row (a layout loop).
+    property real available: 1100
+    readonly property bool compact: available < 800
+    readonly property real labelWidth: compact ? available * .36 : 300
+    readonly property real controlWidth: compact ? available * .44 : 360
     function set(v) { ShellState.settingRequest(Model.setRequest(row, v, ctx)); }
     function reset() { ShellState.settingRequest(Model.resetRequest(row, ctx)); }
     function costText(ms) { return ms ? 'GPU ' + ms + '.' : ''; }
