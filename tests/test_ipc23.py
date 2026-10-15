@@ -561,7 +561,9 @@ class Presentation(unittest.TestCase):
         shell = self.read('shell.qml')
         self.assertRegex(shell, r"visible: ShellState\.active && !!ShellState\.npcChoice && !ShellState\.director[\s\S]{0,600}WlrKeyboardFocus\.Exclusive")
         choice = self.read('components/NpcChoice.qml')
-        self.assertIn('Keys.onEscapePressed: ShellState.chooseInteraction(null)', choice)
+        # Esc ends the interaction (from a 0.28 dance list it goes back to the list first).
+        self.assertIn('Keys.onEscapePressed: root.back()', choice)
+        self.assertIn('else ShellState.chooseInteraction(null);', choice)
 
     def test_state_routes_interactions(self):
         state = self.read('ShellState.qml')

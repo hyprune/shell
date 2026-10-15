@@ -342,6 +342,13 @@ QtObject {
         var params = Companion.paceParams(companionState, pace);
         if (params && companionPaceSupported && objectsCan('companion.mode')) objectAction('companion.mode', params);
     }
+    // IPC 0.28 (shared clip library): walk, run and idle styles, from the catalog's motion.
+    readonly property bool styleSupported: supportsProtocol(28)
+    function catalogMotion(ref) { var entry = Objects.entryFor(objectCatalog, ref || ''); return entry && entry.motion ? entry.motion : null; }
+    function companionStyle(role, style) {
+        var params = Companion.styleParams(companionState, role, style);
+        if (params && styleSupported && objectsCan('companion.mode')) objectAction('companion.mode', params);
+    }
 
     // ---- RFC-0015 phase 1: Director > Library over the hyprune CLI (no core IPC) ----
     // The command is $HYPRUNE_CLI (a command line split on spaces), else hyprune on PATH.
@@ -646,9 +653,17 @@ QtObject {
     // There is no paths.cancel: Cancel removes the path being drawn.
     function cancelDrawing() { if (npcDrawing) npcAction('paths.remove', {id: npcDrawing.pathId}); }
     function setNpcMotion(motion) { var r = Npcs.motionRequest(motion); if (r && available(r.method)) action(r.method, r.params); }
-    function chooseInteraction(choiceId) {
-        var params = Npcs.chooseParams(npcChoice || (npcsState ? npcsState.interaction : null), choiceId);
+    function chooseInteraction(choiceId, option) {
+        var params = Npcs.chooseParams(npcChoice || (npcsState ? npcsState.interaction : null), choiceId, styleSupported ? option : '');
         if (params) action('interaction.choose', params);
+    }
+    // IPC 0.28: a dance interaction's dances for the choice list, from the character last aimed at
+    // (the list is open while the player faces it); null without (Dance then picks any).
+    property var lastAimed: null
+    onNpcsStateChanged: { if (npcsState && npcsState.aimed) lastAimed = npcsState.aimed; }
+    function danceOptions(objectId, interactionId) {
+        if (!styleSupported || !lastAimed || lastAimed.objectId !== objectId) return null;
+        return Npcs.danceOptions(lastAimed.interactions, interactionId);
     }
     // A new npcs.interaction: panel opens the Director there (unknown ids just end it),
     // waypoint and guide show a toast. Choice lists come from the bridge (exclusive input);
