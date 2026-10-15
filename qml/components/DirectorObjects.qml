@@ -34,7 +34,7 @@ FocusScope {
     // Import… (RFC-0014): its panel replaces the views while it is open.
     readonly property bool importing: ShellState.importing
     // Data sources (sources.json and the source helper) are local: every session has them.
-    readonly property var views: ['catalog', 'placed'].concat(ShellState.npcsSupported ? ['characters'] : []).concat(['sources'])
+    readonly property var views: ['catalog'].concat(ShellState.shapesSupported ? ['shapes'] : [], ['placed']).concat(ShellState.npcsSupported ? ['characters'] : []).concat(['sources'])
     readonly property var selected: Objects.selectedInstance(instances, ShellState.selectedObject)
     readonly property bool hasUser: instances.some(i => i.source === 'user')
     readonly property bool hasAuthored: instances.some(i => i.source === 'authored')
@@ -51,6 +51,7 @@ FocusScope {
         else if (view === 'placed') placedList.forceActiveFocus();
         else if (view === 'characters') npcPanel.focusList();
         else if (view === 'sources') sourcesPanel.forceActiveFocus();
+        else if (view === 'shapes') shapesPanel.focusFirst();
         else grid.forceActiveFocus();
     }
     onSpawningChanged: Qt.callLater(focusView)
@@ -127,8 +128,8 @@ FocusScope {
             spacing: 16
             Segmented {
                 objectName: 'objectsView'
-                Layout.preferredWidth: ShellState.npcsSupported ? 600 : 450
-                model: [{id: 'catalog', label: 'Catalog'}, {id: 'placed', label: 'Placed  ·  ' + root.instances.length}]
+                Layout.preferredWidth: (ShellState.npcsSupported ? 600 : 450) + (ShellState.shapesSupported ? 140 : 0)
+                model: [{id: 'catalog', label: 'Catalog'}].concat(ShellState.shapesSupported ? [{id: 'shapes', label: 'Shapes'}] : [], [{id: 'placed', label: 'Placed  ·  ' + root.instances.length}])
                        .concat(ShellState.npcsSupported ? [{id: 'characters', label: 'Characters  ·  ' + ShellState.characterInstances.length}] : [])
                        .concat([{id: 'sources', label: 'Data sources'}])
                 current: root.view
@@ -324,6 +325,14 @@ FocusScope {
                     color: Tokens.muted; wrapMode: Text.Wrap; horizontalAlignment: Text.AlignHCenter
                 }
             }
+        }
+
+        // ---- Shapes (IPC 0.31): primitives and materials ----
+        ObjectShapes {
+            id: shapesPanel
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.view === 'shapes' && !root.spawning && !root.importing
         }
 
         // ---- Data sources ----

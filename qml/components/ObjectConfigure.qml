@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../Objects.js" as Objects
+import "../Shapes.js" as Shapes
 
 // Director > Objects > Placed: the configure panel of one instance (RFC-0011 P1). It is
 // built from per-trait sections in a fixed order (Objects.SECTIONS): Transform, Lock,
@@ -288,6 +289,59 @@ ColumnLayout {
                     section: dataLoader.sectionData
                 }
             }
+        }
+    }
+
+    // ---- IPC 0.31: a placement's key, and a generated shape's size and material ----
+    // Changing the size or material makes another shape folder and swaps the placement to it
+    // (objects.configure {ref}): its id, key and pose stay.
+    ColumnLayout {
+        id: shapeEdit
+        objectName: 'objectShapeEdit'
+        Layout.fillWidth: true
+        visible: !!panel.instance && panel.instance.source === 'user' && ShellState.shapesSupported && ShellState.available('objects.configure')
+        spacing: 10
+        property var draft: null
+        property string loadedFor: ''
+        readonly property bool isShape: !!(panel.entry && panel.entry.primitive)
+        function load() {
+            var key = panel.instance ? panel.instance.id + '|' + panel.instance.ref : '';
+            if (key === loadedFor) return;
+            loadedFor = key;
+            draft = Shapes.formFromEntry(panel.entry);
+            keyField.text = panel.instance && panel.instance.key ? panel.instance.key : '';
+        }
+        Connections { target: panel; function onInstanceChanged() { shapeEdit.load(); } function onEntryChanged() { shapeEdit.load(); } }
+        Component.onCompleted: load()
+        Rectangle { Layout.fillWidth: true; height: 1; color: Tokens.line }
+        HudLabel { text: 'NAME'; font.pixelSize: 11; color: Tokens.gold; font.letterSpacing: 2 }
+        HudLabel { Layout.fillWidth: true; text: 'A short name scripts and assistants use to find this placement (optional).'; font.pixelSize: 12; color: Tokens.muted; wrapMode: Text.Wrap }
+        RowLayout {
+            spacing: 10
+            Field { id: keyField; objectName: 'objectKey'; placeholderText: 'like cpu-tower'; font.family: Tokens.mono; inputMethodHints: Qt.ImhNone }
+            ActionButton {
+                objectName: 'object-key-set'
+                text: 'Set name'
+                enabled: !Shapes.keyError(keyField.text) && keyField.text.trim() !== ((panel.instance && panel.instance.key) || '')
+                onClicked: ShellState.shapesRename(panel.instance.id, keyField.text)
+            }
+        }
+        HudLabel { visible: Shapes.keyError(keyField.text) !== ''; text: Shapes.keyError(keyField.text); font.pixelSize: 12; color: Tokens.warning }
+        HudLabel { visible: shapeEdit.isShape; text: 'SHAPE'; font.pixelSize: 11; color: Tokens.gold; font.letterSpacing: 2 }
+        ShapeForm {
+            Layout.fillWidth: true
+            visible: shapeEdit.isShape && !!shapeEdit.draft
+            showShapes: false
+            prefix: 'shapeEdit'
+            value: shapeEdit.draft || Shapes.newForm('box')
+            onEdited: (v) => shapeEdit.draft = v
+        }
+        ActionButton {
+            objectName: 'shape-apply'
+            visible: shapeEdit.isShape
+            text: ShellState.shapesBusy && ShellState.shapesJob.kind === 'apply' ? 'Changing…' : 'Change size and material'
+            enabled: !ShellState.shapesBusy && !!shapeEdit.draft && Shapes.sizeErrors(shapeEdit.draft).length === 0 && !Shapes.sameShape(shapeEdit.draft, panel.entry) && !(panel.instance && panel.instance.locked)
+            onClicked: ShellState.shapesApply(panel.instance.id, shapeEdit.draft)
         }
     }
 }

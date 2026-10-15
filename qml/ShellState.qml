@@ -8,6 +8,7 @@ import "Blueprint.js" as Blueprint
 import "DirectorModel.js" as DirectorModel
 import "Quests.js" as Quests
 import "Objects.js" as Objects
+import "Shapes.js" as Shapes
 import "Npcs.js" as Npcs
 import "Companion.js" as Companion
 import "Library.js" as Library
@@ -257,7 +258,7 @@ QtObject {
     property bool objectCatalogLoaded: false
     property var libraries: null             // libraries.list result
     property string selectedObject: ''       // instance id (Director > Objects > Placed)
-    property string objectsView: 'catalog'   // Director > Objects view: catalog | placed | characters | sources
+    property string objectsView: 'catalog'   // Director > Objects view: catalog | shapes | placed | characters | sources
     property var objectFeedback: null        // {level, text, at}: last object result or refusal
     property Timer objectFeedbackTimer: Timer { interval: 8000; onTriggered: root.objectFeedback = null }
     property var objectPreview: null         // DEV ONLY: objects.catalog / libraries.list answers
@@ -695,6 +696,96 @@ QtObject {
     readonly property string builderKey: builderState ? builderState.projectId + ':' + builderState.revision : ''
     onBuilderKeyChanged: { if (!builderState) builderStatus = null; if (builderVisible || builderEditing) builderStatusTimer.restart(); }
     onBuilderVisibleChanged: { if (builderVisible) { builderRefresh(); if (builderEditing) builderLoadPresets(); } }
+    // ---- Shapes (RFC-0014 amendment: primitives and materials, IPC 0.31) ----
+    // `builder primitive|material|materials|rebuild <slug>` in a world folder, `object …` elsewhere;
+    // one at a time (JSON lines). A made shape is pocketed for tool 5; a changed size or material
+    // swaps the placement to the new folder (objects.configure {ref}); a saved material rebuilds
+    // the shapes made with it and swaps their placements.
+    readonly property bool shapesSupported: supportsProtocol(31) || dev
+    readonly property string shapesSlug: builderEditing ? builderState.projectId : ''
+    property var shapesJob: null            // {kind: make | apply | material | rebuild, phase, result, error, id?, key?}
+    property var shapesMaterials: []        // `materials`: the library of the folder (or the user's)
+    property var shapesPocket: null         // {ref, tries}: a made shape waiting for the catalog to list it
+    readonly property bool shapesBusy: !!shapesJob && shapesJob.phase === 'running'
+    function shapesRun(job, args) {
+        if (shapesBusy) return false;
+        shapesJob = Object.assign({phase: 'running', result: null, error: null}, job);
+        shapesProcess.command = libraryCli.concat(args);
+        shapesProcess.started = false;
+        shapesProcess.running = true;
+        return true;
+    }
+    function shapesMake(form) {
+        if (Shapes.sizeErrors(form).length) return false;
+        return shapesRun({kind: 'make'}, Shapes.primitiveArgs(shapesSlug, form));
+    }
+    function shapesApply(id, form) {
+        if (!id || Shapes.sizeErrors(form).length) return false;
+        return shapesRun({kind: 'apply', id: id}, Shapes.primitiveArgs(shapesSlug, form));
+    }
+    function shapesSaveMaterial(m) {
+        if (Shapes.materialErrors(m).length) return false;
+        return shapesRun({kind: 'material', key: m.key}, Shapes.materialArgs(shapesSlug, m));
+    }
+    function shapesRename(id, key) {
+        if (!id || Shapes.keyError(key)) return false;
+        objectAction('objects.configure', {id: id, patch: {key: String(key || '').trim() || null}});
+        return true;
+    }
+    function shapesLoadMaterials() {
+        if (shapesMaterialsProc.running) return;
+        shapesMaterialsProc.command = libraryCli.concat(Shapes.materialsArgs(shapesSlug));
+        shapesMaterialsProc.running = true;
+    }
+    function shapesEnded(code, errors) {
+        var job = Builder.jobFinished(shapesJob, code, errors);
+        shapesJob = job;
+        if (!job || job.phase !== 'done') { if (job && job.phase === 'failed') sayObjects(Shapes.errorText(job.error), 'warning'); return; }
+        var r = job.result || {};
+        if (job.kind === 'make') {
+            shapesPocket = {ref: r.ref, tries: 0};
+            pocketObject(r.ref);
+            sayObjects((r.created ? 'Made ' : 'Reused ') + r.name + ': place it with tool 5', 'info');
+        } else if (job.kind === 'apply') {
+            var inst = Objects.selectedInstance(objectsState ? objectsState.instances : [], job.id);
+            if (inst && inst.ref !== r.ref) objectAction('objects.configure', {id: job.id, patch: {ref: r.ref}});
+        } else if (job.kind === 'material') {
+            shapesLoadMaterials();
+            if (r.stale && r.stale.length) Qt.callLater(function () { root.shapesRun({kind: 'rebuild', key: job.key}, Shapes.rebuildArgs(root.shapesSlug, job.key)); });
+            else sayObjects('Saved the material ' + job.key, 'info');
+        } else if (job.kind === 'rebuild') {
+            var moves = Shapes.swapsFor(objectsState ? objectsState.instances : [], r.swaps);
+            moves.forEach(function (m) { root.objectAction('objects.configure', {id: m.id, patch: {ref: m.ref}}); });
+            sayObjects('Saved the material ' + job.key + (moves.length ? '; ' + moves.length + ' placed shape' + (moves.length === 1 ? '' : 's') + ' updated' : ''), 'info');
+        }
+        catalogRefresh.restart();
+    }
+    property Process shapesProcess: Process {
+        property bool started: false
+        stdout: SplitParser { onRead: (line) => root.shapesJob = Builder.jobEvent(root.shapesJob, line) }
+        stderr: StdioCollector { id: shapesErr }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.shapesEnded(code, shapesErr.text))
+        onRunningChanged: { if (!running && !started) root.shapesEnded(-1, ''); }
+    }
+    property Process shapesMaterialsProc: Process {
+        stdout: SplitParser {
+            onRead: (line) => {
+                var e = null;
+                try { e = JSON.parse(line); } catch (x) { return; }
+                if (e && e.event === 'done' && e.result && e.result.materials) root.shapesMaterials = e.result.materials;
+            }
+        }
+    }
+    // Outside a world folder the user folder is rescanned on its own clock: try the pocket again.
+    property Timer shapesPocketRetry: Timer { interval: 700; onTriggered: { if (root.shapesPocket) root.pocketObject(root.shapesPocket.ref); } }
+    onObjectActionFailed: (method, params, message) => {
+        if (method !== 'objects.pocket' || !shapesPocket || !params || params.ref !== shapesPocket.ref) return;
+        if (shapesPocket.tries >= 12) { shapesPocket = null; return; }
+        shapesPocket = {ref: shapesPocket.ref, tries: shapesPocket.tries + 1};
+        shapesPocketRetry.restart();
+    }
+    onObjectActionDone: (method, params, result) => { if (method === 'objects.pocket' && shapesPocket && params && params.ref === shapesPocket.ref) shapesPocket = null; }
     // ---- IPC 0.23 (RFC-0011 P2): characters, routes and character interactions ----
     readonly property var npcsState: state && state.npcs ? state.npcs : null
     readonly property bool npcsSupported: (supportsProtocol(23) || dev) && available('paths.list')

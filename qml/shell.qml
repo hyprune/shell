@@ -307,7 +307,23 @@ ShellRoot {
             ShellState.objectPreview = json ? JSON.parse(json) : null;
             if (ShellState.objectPreview) ShellState.refreshCatalog();
         }
-        function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'placed', 'characters', 'sources'].indexOf(view) >= 0) ShellState.objectsView = view; }
+        function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'shapes', 'placed', 'characters', 'sources'].indexOf(view) >= 0) ShellState.objectsView = view; }
+        // Objects > Shapes (IPC 0.31): the Make form as JSON (Shapes.newForm's shape), or the material editor's.
+        function shapeForm(json: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'objectShapes');
+            if (!page) return false;
+            page.form = JSON.parse(json);
+            return true;
+        }
+        function materialForm(json: string): bool {
+            if (!ShellState.dev || !ShellState.director) return false;
+            var page = Audit.find(root.directorViews.find(v => v.outputScreenName === ShellState.screenName), 'objectShapes');
+            if (!page) return false;
+            page.material = json ? JSON.parse(json) : null;
+            return true;
+        }
+        function selectObject(id: string): void { if (ShellState.dev) ShellState.selectedObject = id; }
         // IPC 0.23 preview (dev only): paths.list answer, spawn / rebind panel, characters, choice list.
         // json: {"paths": [...]} (qs ipc splits a top-level [list] argument).
         function pathPreview(json: string): void {
@@ -582,6 +598,12 @@ ShellRoot {
                             job: ShellState.builderJob, sky: ShellState.builderSky, identity: ShellState.builderIdentity,
                             wizard: ShellState.builderWizard, floor: ShellState.builderFloor, skies: ShellState.builderSkies.map(p => p.id), floors: ShellState.builderFloors.map(p => p.id),
                             feedback: feedback && feedback.visible ? feedback.text : null, pending: pending ? pending.text : null};
+                })(),
+                shapes: (function() {
+                    var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
+                    var page = ShellState.director ? Audit.find(view, 'objectShapes') : null;
+                    return {supported: ShellState.shapesSupported, job: ShellState.shapesJob, materials: ShellState.shapesMaterials.map(m => m.key),
+                            pocket: ShellState.shapesPocket, form: page ? page.form : null, material: page ? page.material : null};
                 })(),
                 npcs: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
