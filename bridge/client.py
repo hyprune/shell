@@ -1,5 +1,6 @@
 """Connection-scoped authority, snapshot ordering and lease lifecycle."""
 import asyncio
+import sys
 import contextlib
 import itertools
 import json
@@ -545,7 +546,10 @@ class Client:
         menu open and ignore every later hold."""
         try:
             await self.overlay(True, epoch)
-        except Exception:
+        except Exception as error:
+            # Say why the Director didn't open (it closes again below): a hold seen and shown with no
+            # Director was otherwise silent.
+            print(f'hyprune shell: the overview did not open: {error!r}', file=sys.stderr, flush=True)
             if self.lease and at_least(self.protocol, 2) and 'ui.close' in self.hello.get('methods', []):
                 with contextlib.suppress(Exception):
                     await self.call('ui.close', {'leaseId': self.lease, 'outputId': self.output})
