@@ -348,6 +348,14 @@ ColumnLayout {
         }
     }
 
+    // ---- RFC-0014 Managing objects: an import's fit, adjusted or simplified after the fact ----
+    ObjectModel {
+        Layout.fillWidth: true
+        visible: Objects.editable(panel.instance, panel.entry)
+        instance: panel.instance
+        entry: panel.entry
+    }
+
     // ---- IPC 0.31: data-driven behaviours (any user placement) ----
     ObjectBehaviours {
         Layout.fillWidth: true

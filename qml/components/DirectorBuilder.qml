@@ -421,6 +421,46 @@ Item {
                 Note { visible: !!(root.b && root.b.error); color: Tokens.warning; text: root.b && root.b.error ? root.b.error : '' }
                 Note { text: 'Place objects, your imports and workspace screens from Objects: each is copied into this world\'s folder, so the world keeps working wherever the folder goes.' }
 
+                Caption { text: 'CHECKLIST'; Layout.topMargin: 6 }
+                HudLabel {
+                    objectName: 'builderCheckSummary'
+                    text: Builder.checkSummary(ShellState.builderCheck)
+                    font.pixelSize: 13
+                    color: Builder.checkBlocking(ShellState.builderCheck).length ? Tokens.gold : Tokens.muted
+                }
+                Repeater {
+                    model: ShellState.builderCheck ? ShellState.builderCheck.items : []
+                    RowLayout {
+                        required property var modelData
+                        objectName: 'builderCheck:' + modelData.id + (modelData.target ? ':' + modelData.target : '')
+                        Layout.fillWidth: true
+                        spacing: 8
+                        HudLabel {
+                            Layout.alignment: Qt.AlignTop
+                            Layout.preferredWidth: 14
+                            text: Builder.checkMark(modelData)
+                            font.pixelSize: 13
+                            color: modelData.done && modelData.level !== 'warning' ? Tokens.positive : modelData.blocks ? Tokens.warning : Tokens.gold
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            HudLabel { text: modelData.label; font.pixelSize: 12; color: Tokens.text; Layout.fillWidth: true; elide: Text.ElideRight }
+                            HudLabel {
+                                visible: !modelData.done || modelData.level === 'warning'
+                                text: modelData.message + (modelData.hint ? ' ' + modelData.hint + '.' : '')
+                                font.pixelSize: 11; color: Tokens.muted; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        ActionButton {
+                            visible: !!modelData.show && (!modelData.done || modelData.level === 'warning')
+                            objectName: 'builder-show:' + modelData.id + (modelData.target ? ':' + modelData.target : '')
+                            text: 'Show me'
+                            onClicked: ShellState.builderShow(modelData)
+                        }
+                    }
+                }
+
                 Caption { text: 'SAVE'; Layout.topMargin: 6 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -462,6 +502,27 @@ Item {
                     }
                 }
                 Note { visible: !!root.status && root.status.pending.total > 0; text: 'Save first: a release is made from the saved world.' }
+                Note {
+                    visible: Builder.checkBlocking(ShellState.builderCheck).length > 0
+                    color: Tokens.gold
+                    text: 'Release waits for the checklist: ' + Builder.checkBlocking(ShellState.builderCheck).map(function (i) { return i.label; }).join('; ') + '.'
+                }
+                RowLayout {
+                    visible: Builder.releaseRefused(root.job)
+                    spacing: 10
+                    Note { Layout.fillWidth: true; text: 'The made world would strand players there. Fix the items above, or release it as it is.' }
+                    ActionButton {
+                        objectName: 'builder-release-anyway'
+                        text: 'Release anyway'
+                        enabled: !ShellState.builderBusy && !!root.job
+                        onClicked: ShellState.builderRelease(root.job.version || '', root.job.notes || '', true)
+                    }
+                }
+                Note {
+                    objectName: 'builderPublishing'
+                    visible: !!(root.job && root.job.kind === 'release' && root.job.phase === 'done' && root.job.result && root.job.result.publishing)
+                    text: visible ? Builder.publishingText(root.job.result) : ''
+                }
 
                 Caption { text: 'SKY'; Layout.topMargin: 6 }
                 RowLayout {

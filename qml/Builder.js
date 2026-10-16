@@ -8,7 +8,7 @@ var NAME_MAX = 64, MESSAGE_MAX = 500, NOTES_MAX = 4000;
 var SKY_FORMATS = ['png', 'jpg', 'jpeg', 'exr', 'hdr'];
 var FLOOR_FORMATS = ['png', 'jpg', 'jpeg'];
 var TILE_MIN = 0.25, TILE_MAX = 100;
-var STAGES = {version: 'Writing the version', build: 'Building the release files', push: 'Pushing to the remote', release: 'Creating the GitHub release'};
+var STAGES = {check: 'Checking the world', version: 'Writing the version', build: 'Building the release files', push: 'Pushing to the remote', release: 'Creating the GitHub release'};
 var CODES = {
     'git.missing': 'Building worlds needs git 2.30 or newer: install git, then try again.',
     'git.identity': 'git doesn\'t know who you are yet: give a name and an email for this world\'s saves.',
@@ -158,12 +158,31 @@ function saveArgs(slug, message) {
     if (m) a.push('-m', m);
     return a;
 }
-function releaseArgs(slug, version, notes) {
+function releaseArgs(slug, version, notes, skipCheck) {
     var a = ['builder', 'release', slug], v = String(version || '').trim(), n = String(notes || '').trim().slice(0, NOTES_MAX);
     if (v) a.push(v);
     a.push('--json');
     if (n) a.push('--notes', n);
+    if (skipCheck) a.push('--skip-check');
     return a;
+}
+// ---- the checklist (`builder check`): items with done, blocks, level, message, hint, show ----
+function checkArgs(slug) { return ['builder', 'check', slug, '--json']; }
+function checkMark(item) { return !item ? '' : item.done ? (item.level === 'warning' ? '!' : '✓') : item.blocks ? '✗' : '!'; }
+function checkOpen(result) { return result && result.items ? result.items.filter(function (i) { return !i.done || i.level === 'warning'; }) : []; }
+function checkBlocking(result) { return result && result.items ? result.items.filter(function (i) { return i.blocks && !i.done; }) : []; }
+function checkSummary(result) {
+    if (!result || !result.items) return 'Checking…';
+    var done = result.items.filter(function (i) { return i.done; }).length, blocking = checkBlocking(result).length;
+    return done + ' of ' + result.items.length + ' done' + (blocking ? ' · ' + blocking + ' to fix before Release' : ' · ready to release');
+}
+// The release refused by the checklist: its items, for "Release anyway".
+function releaseRefused(job) { return !!job && job.kind === 'release' && job.phase === 'failed' && !!job.error && job.error.code === 'release.check'; }
+function publishingText(result) {
+    if (!result || !result.publishing) return '';
+    if (result.publishing.officialEligible) return 'Every part meets the official bar (CC0-1.0 or CC-BY-4.0 with an author and a source).';
+    var n = result.publishing.notOfficial ? result.publishing.notOfficial.length : 0;
+    return n + ' part' + (n === 1 ? '' : 's') + ' would need another licence, author or source for the official hyprune org; a release of your own is fine.';
 }
 function skyArgs(slug, form) {
     if (form.preset) return ['builder', 'sky', slug, '--preset', form.preset, '--json'];

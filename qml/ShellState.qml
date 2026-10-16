@@ -591,11 +591,17 @@ QtObject {
         importStart(Import.newJob('inspecting', path), Import.inspectArgs(path));
         return true;
     }
+    // A .zip with several models: inspect the chosen one.
+    function importChoose(entry) {
+        if (!importJob || importJob.phase !== 'choose' || importJob.models.indexOf(entry) < 0) return false;
+        importStart(Import.newJob('inspecting', importJob.path, entry), Import.inspectArgs(importJob.path, entry));
+        return true;
+    }
     function importForm(patch) { if (importJob && importJob.phase === 'review') importJob = Object.assign({}, importJob, {form: Object.assign({}, importJob.form, patch)}); }
     function importRun() {
         var job = importJob;
         if (!job || job.phase !== 'review' || Import.formErrors(job.form).length) return false;
-        importStart(Object.assign({}, job, {phase: 'running', stage: '', stages: [], error: null}), Import.jobArgs(job.path, job.form));
+        importStart(Object.assign({}, job, {phase: 'running', stage: '', stages: [], error: null}), Import.jobArgs(job.path, job.form, job.entry));
         return true;
     }
     function importStart(job, args) {
@@ -634,6 +640,48 @@ QtObject {
         onStarted: started = true
         onExited: (code) => Qt.callLater(() => root.importEnded(code, importErr.text))
         onRunningChanged: { if (!running && !started) root.importEnded(-1, ''); }
+    }
+    // ---- Managing objects: `object fit|adjust|simplify|repair` on an import (user/ or world/) ----
+    property var objectEditJob: null        // {kind, ref, phase: running|done|failed, result, error}
+    property var objectFit: null            // `object fit` of the selected placement's entry
+    property var objectEditLast: null       // the last adjust, simplify or repair (done or failed)
+    readonly property bool objectEditBusy: !!objectEditJob && objectEditJob.phase === 'running'
+    function objectEditRun(kind, ref, opts) {
+        if (objectEditBusy || !ref) return false;
+        objectEditJob = {kind: kind, ref: ref, phase: 'running', result: null, error: null};
+        if (kind === 'fit') objectFit = null;
+        objectEditProc.command = libraryCli.concat(Objects.editArgs(kind, ref, builderEditing ? builderState.projectId : '', opts));
+        objectEditProc.started = false;
+        objectEditProc.running = true;
+        return true;
+    }
+    function objectEditEnded(code) {
+        var job = objectEditJob;
+        if (!job) return;
+        if (job.phase === 'running') job = Object.assign({}, job, {phase: 'failed', error: {message: code < 0 ? 'The hyprune command didn\'t run.' : 'It stopped (exit code ' + code + ').'}});
+        objectEditJob = job;
+        if (job.kind !== 'fit') objectEditLast = job;
+        if (job.phase === 'failed') { if (job.kind !== 'fit') sayObjects(job.error.message + (job.error.hint ? ' ' + job.error.hint + '.' : ''), 'warning'); return; }
+        if (job.kind === 'fit') { objectFit = job.result; return; }
+        sayObjects(Objects.editResultText(job.kind, job.result), 'info');
+        // A folder's copy shows once the folder reloads; the user folder's watch picks up the rest.
+        if (/^world\//.test(job.ref) && builderEditing) builderOpen(builderState.projectId); else refreshCatalog();
+        Qt.callLater(() => objectEditRun('fit', job.ref));
+    }
+    property Process objectEditProc: Process {
+        property bool started: false
+        stdout: SplitParser {
+            onRead: (line) => {
+                var e = null;
+                try { e = JSON.parse(line); } catch (x) { return; }
+                if (!e || !root.objectEditJob) return;
+                if (e.event === 'done') root.objectEditJob = Object.assign({}, root.objectEditJob, {phase: 'done', result: e.result});
+                else if (e.event === 'error') root.objectEditJob = Object.assign({}, root.objectEditJob, {phase: 'failed', error: e.error || {message: 'It failed.'}});
+            }
+        }
+        onStarted: started = true
+        onExited: (code) => Qt.callLater(() => root.objectEditEnded(code))
+        onRunningChanged: { if (!running && !started) root.objectEditEnded(-1); }
     }
     // ---- World folders (RFC-0014 as amended): Director > Builder over the hyprune CLI ----
     // `builder create|save|release|sky|remote --json` run one at a time (JSON lines); list and
@@ -710,9 +758,34 @@ QtObject {
         return builderRun(Builder.newJob('floor', builderState.projectId), Builder.floorArgs(builderState.projectId, f));
     }
     function builderSave(message) { return builderEditing && builderRun(Builder.newJob('save', builderState.projectId), Builder.saveArgs(builderState.projectId, message)); }
-    function builderRelease(version, notes) {
+    function builderRelease(version, notes, skipCheck) {
         if (!builderEditing || Builder.versionError(version)) return false;
-        return builderRun(Builder.newJob('release', builderState.projectId), Builder.releaseArgs(builderState.projectId, version, notes));
+        return builderRun(Builder.newJob('release', builderState.projectId, {version: version, notes: notes}), Builder.releaseArgs(builderState.projectId, version, notes, skipCheck));
+    }
+    // ---- the checklist: `builder check` after each change (cached by the folder's digest in the CLI) ----
+    property var builderCheck: null         // the last `builder check` result of the loaded folder
+    function builderCheckRun() {
+        if (!builderEditing) { builderCheck = null; return; }
+        if (builderCheckProc.running) { builderCheckAgain = true; return; }
+        builderCheckProc.command = libraryCli.concat(Builder.checkArgs(builderState.projectId));
+        builderCheckProc.running = true;
+    }
+    property bool builderCheckAgain: false
+    property Process builderCheckProc: Process {
+        stdout: SplitParser {
+            onRead: (line) => {
+                var e = null;
+                try { e = JSON.parse(line); } catch (x) { return; }
+                if (e && e.event === 'done' && e.result && e.result.items && root.builderEditing) root.builderCheck = e.result;
+            }
+        }
+        onRunningChanged: { if (!running && root.builderCheckAgain) { root.builderCheckAgain = false; Qt.callLater(root.builderCheckRun); } }
+    }
+    property Timer builderCheckTimer: Timer { interval: 1500; onTriggered: root.builderCheckRun() }
+    // Show me: a waypoint at the item's place (the standing spot, the spawn).
+    function builderShow(item) {
+        if (!item || !item.show) return;
+        waypoint({id: 'builder-check', position: item.show.position, name: item.label});
     }
     function builderSkyPick(path) { if (Builder.skyImage(path)) builderSky = {path: path, license: '', author: '', source: ''}; }
     function builderSkyForm(patch) { if (builderSky) builderSky = Object.assign({}, builderSky, patch); }
@@ -737,6 +810,7 @@ QtObject {
         if (job.kind === 'sky') { builderSky = null; builderOpen(job.slug); } // the panorama loads with the world
         if (job.kind === 'floor') { builderFloor = null; builderOpen(job.slug); }
         builderRefresh();
+        builderCheckRun();
     }
     function builderRefresh() {
         if (builderPoll.running) { builderPollAgain = true; return; }
@@ -767,8 +841,11 @@ QtObject {
     // Core counts its project writes: each is a pending change to show.
     property Timer builderStatusTimer: Timer { interval: 500; onTriggered: root.builderRefresh() }
     readonly property string builderKey: builderState ? builderState.projectId + ':' + builderState.revision : ''
-    onBuilderKeyChanged: { if (!builderState) builderStatus = null; if (builderVisible || builderEditing) builderStatusTimer.restart(); }
-    onBuilderVisibleChanged: { if (builderVisible) { builderRefresh(); if (builderEditing) builderLoadPresets(); } }
+    onBuilderKeyChanged: {
+        if (!builderState) { builderStatus = null; builderCheck = null; }
+        if (builderVisible || builderEditing) { builderStatusTimer.restart(); builderCheckTimer.restart(); }
+    }
+    onBuilderVisibleChanged: { if (builderVisible) { builderRefresh(); if (builderEditing) { builderLoadPresets(); builderCheckRun(); } } }
     // ---- Shapes (RFC-0014 amendment: primitives and materials, IPC 0.31) ----
     // `builder primitive|material|materials|rebuild <slug>` in a world folder, `object …` elsewhere;
     // one at a time (JSON lines). A made shape is pocketed for tool 5; a changed size or material

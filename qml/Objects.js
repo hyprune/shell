@@ -357,3 +357,41 @@ function pocketObjects(unplaced) {
     var list = unplaced && Array.isArray(unplaced.objects) ? unplaced.objects : [];
     return list.map(function (o) { return {itemId: o.itemId, ref: o.ref, name: o.name, selected: !!unplaced && unplaced.selectedId === o.itemId}; });
 }
+
+// ---- RFC-0014 Managing objects (as amended): an import re-fitted, simplified or repaired after
+// the fact with `object fit|adjust|simplify|repair` (absolute values, a backup each time). A
+// world folder's copy (world/<id>) names the folder; it shows after the folder reloads.
+var FIT_UNITS = [{id: 'm', label: 'm'}, {id: 'cm', label: 'cm'}, {id: 'mm', label: 'mm'}, {id: 'in', label: 'in'}, {id: 'ft', label: 'ft'}];
+function editArgs(kind, ref, projectSlug, opts) {
+    var a = ['object', kind, ref];
+    if (/^world\//.test(String(ref)) && projectSlug) a.push('--project', projectSlug);
+    var o = opts || {};
+    if (kind === 'adjust') {
+        if (o.units) a.push('--units', o.units);
+        if (o.up) a.push('--up', o.up);
+        if (o.yaw !== undefined && o.yaw !== null && o.yaw !== '') a.push('--yaw', String(o.yaw));
+        if (o.surface) a.push('--surface', o.surface);
+    }
+    if (kind === 'simplify') {
+        if (o.maxTriangles) a.push('--max-triangles', String(Math.round(Number(o.maxTriangles))));
+        if (o.maxTexture) a.push('--max-texture', String(o.maxTexture));
+    }
+    a.push('--json');
+    return a;
+}
+function editable(instance, entry) {
+    if (!instance || !entry || !entry.imported) return false;
+    return /^(user|world)\//.test(String(instance.ref));
+}
+function fitText(fit) {
+    if (!fit || !fit.fit) return '';
+    var f = fit.fit, units = f.units === 'custom' ? 'scale ×' + f.scale : f.units;
+    return 'Fitted as ' + units + ', ' + (f.up === 'z' ? 'Z up' : 'Y up') + ', turned ' + f.yaw + '°, on the ' + (f.surface === 'any' ? 'air (floats)' : f.surface) + '.';
+}
+function editResultText(kind, result) {
+    if (!result) return '';
+    if (kind === 'repair') return 'Repaired: ' + (result.fixed || []).join('; ') + '.';
+    var b = result.before || {}, a = result.after || {};
+    if (kind === 'simplify') return 'Simplified: ' + b.triangles + ' → ' + a.triangles + ' triangles; textures ' + b.maxTexture + ' → ' + a.maxTexture + ' px.';
+    return 'Adjusted: ' + (b.extent || []).map(function (v) { return Math.round(v * 100) / 100; }).join(' × ') + ' → ' + (a.extent || []).map(function (v) { return Math.round(v * 100) / 100; }).join(' × ') + ' m.';
+}

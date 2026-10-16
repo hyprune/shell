@@ -194,6 +194,11 @@ Rectangle {
                         Caption { text: 'LIGHTING' }
                         Segmented { objectName: 'importLighting'; Layout.preferredWidth: 330; model: Import.LIGHTING; current: panel.form.lighting; onPicked: (id) => panel.set('lighting', id) }
                         Caption { text: 'LICENCE, AUTHOR, SOURCE (RECORDED, NEVER REQUIRED)'; Layout.topMargin: 8 }
+                        Note { objectName: 'importArchive'; visible: text !== ''; text: Import.archiveNote(panel.inspection) }
+                        Repeater {
+                            model: Import.licenceHints(panel.inspection)
+                            delegate: Note { required property var modelData; text: 'Found in the archive (a suggestion): ' + modelData }
+                        }
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
@@ -218,6 +223,24 @@ Rectangle {
                     spacing: 8
                     ActionButton { objectName: 'import-run'; primary: true; text: 'Import'; enabled: !panel.errors.length; onClicked: ShellState.importRun() }
                     ActionButton { objectName: 'import-another'; text: 'Choose another file'; onClicked: ShellState.importOpen() }
+                }
+            }
+        }
+
+        // ---- A .zip with several models: choose one ----
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: panel.phase === 'choose'
+            spacing: 8
+            HudLabel { Layout.fillWidth: true; text: 'This archive holds more than one model. Which one?'; font.pixelSize: 15; wrapMode: Text.Wrap }
+            Repeater {
+                model: panel.phase === 'choose' && panel.job ? panel.job.models : []
+                delegate: ActionButton {
+                    required property var modelData
+                    objectName: 'import-entry:' + modelData
+                    Layout.fillWidth: true
+                    text: modelData
+                    onClicked: ShellState.importChoose(modelData)
                 }
             }
         }

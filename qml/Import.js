@@ -2,7 +2,7 @@
 // `object import` (no core IPC): --inspect first, a review form, then the import with JSON
 // lines. Pure helpers: tested with node in tests/test_import.py.
 
-var FORMATS = ['glb', 'gltf', 'obj', 'fbx', 'dae', '3ds', 'ply', 'stl'];
+var FORMATS = ['glb', 'gltf', 'obj', 'fbx', 'dae', '3ds', 'ply', 'stl', 'zip'];
 var CATEGORIES = ['furniture', 'lighting', 'plants', 'signage', 'machines', 'decor', 'characters', 'vehicles', 'other'];
 var SURFACES = [{id: 'floor', label: 'Floor'}, {id: 'wall', label: 'Wall'}, {id: 'ceiling', label: 'Ceiling'}, {id: 'any', label: 'Floats'}];
 var UNITS = [{id: 'auto', label: 'Auto'}, {id: 'm', label: 'Metres'}, {id: 'cm', label: 'Centimetres'}, {id: 'mm', label: 'Millimetres'},
@@ -26,15 +26,16 @@ var RULES = {
     'import.draco': 'The glTF is Draco-compressed: export it again without Draco.',
     'import.invalid': 'The file could not be read as a model.', 'import.empty': 'The model has nothing to draw.',
     'import.limit': 'The file is larger than 2 GiB.', 'import.source': 'That is not a regular file.',
+    'import.archive': 'The archive was refused.', 'import.entry': 'The archive holds more than one model: choose one.',
     'cli.missing': 'The hyprune command didn\'t run: set HYPRUNE_CLI or put hyprune on PATH.'};
 var TRIANGLES_MIN = 100, TRIANGLES_MAX = 2000000, TRIANGLES_DEFAULT = 50000, NAME_MAX = 64;
 
 function extension(path) { var m = /\.([a-z0-9]+)$/i.exec(String(path || '')); return m ? m[1].toLowerCase() : ''; }
 function importable(path) { return FORMATS.indexOf(extension(path)) >= 0; }
 
-function newJob(phase, path) { return {phase: phase, path: path || '', inspection: null, form: null, stage: '', stages: [], result: null, error: null, cancelled: false}; }
+function newJob(phase, path, entry) { return {phase: phase, path: path || '', entry: entry || '', models: [], inspection: null, form: null, stage: '', stages: [], result: null, error: null, cancelled: false}; }
 
-function inspectArgs(path) { return ['object', 'import', path, '--inspect', '--json']; }
+function inspectArgs(path, entry) { return ['object', 'import', path, '--inspect', '--json'].concat(entry ? ['--entry', entry] : []); }
 
 // 12544 -> "12,544" (no locale dependence).
 function count(n) { return typeof n === 'number' ? String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''; }
@@ -102,7 +103,7 @@ function formErrors(form) {
 }
 
 // The import command for a reviewed form.
-function jobArgs(path, form) {
+function jobArgs(path, form, entry) {
     var args = ['object', 'import', path, '--json', '--name', String(form.name).trim(), '--category', form.category, '--surface', form.surface,
                 '--units', form.units, '--up', form.up, '--yaw', String(form.yaw), '--max-triangles', String(Number(form.maxTriangles)),
                 '--max-texture', String(form.maxTexture), '--collision', form.collision, '--lighting', form.lighting];
@@ -110,7 +111,17 @@ function jobArgs(path, form) {
     if (licence) args.push('--license', licence);
     if (author) args.push('--author', author);
     if (source) args.push('--source', source);
+    if (entry) args.push('--entry', entry);
     return args;
+}
+// A .zip's licence or readme files, shown as suggestions (the user chooses; nothing is applied).
+function licenceHints(inspection) {
+    var files = inspection && inspection.archive ? inspection.archive.licenseFiles || [] : [];
+    return files.map(function (f) { return f.path + ': ' + String(f.text).replace(/\s+/g, ' ').trim().slice(0, 160); });
+}
+function archiveNote(inspection) {
+    var a = inspection && inspection.archive;
+    return a ? 'From ' + a.name + ': ' + a.entry + ' (' + a.files + ' files' + (a.models.length > 1 ? ', ' + a.models.length + ' models' : '') + ')' : '';
 }
 
 // One JSON line of the running import: {event: stage|done|error}.
@@ -122,6 +133,7 @@ function jobEvent(job, line) {
     if (e.event === 'stage') { next.stage = e.stage; next.stages = (job.stages || []).concat([e.stage]); if (e.message) next.message = e.message; }
     else if (e.event === 'done' && job.phase === 'inspecting') { next.phase = 'review'; next.inspection = e.result; next.form = defaultForm(e.result); }
     else if (e.event === 'done') { next.phase = 'done'; next.result = e.result; }
+    else if (e.event === 'error' && e.error && e.error.rule === 'import.entry' && e.error.models && job.phase === 'inspecting') { next.phase = 'choose'; next.models = e.error.models.slice(0, 64); }
     else if (e.event === 'error') { next.phase = 'failed'; next.error = e.error || {message: 'The import failed.', rule: ''}; }
     return next;
 }

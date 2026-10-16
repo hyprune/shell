@@ -162,6 +162,15 @@ Rectangle {
         }
 
         ActionButton {
+            objectName: 'objectRepair:' + (card.entry ? card.entry.ref : '')
+            visible: !!card.entry && card.entry.state === 'invalid' && /^(user|world)\//.test(card.entry.ref)
+            Layout.fillWidth: true
+            implicitHeight: card.compact ? 32 : 38
+            text: ShellState.objectEditBusy && ShellState.objectEditJob.kind === 'repair' ? 'Repairing…' : 'Repair'
+            enabled: !ShellState.objectEditBusy
+            onClicked: ShellState.objectEditRun('repair', card.entry.ref)
+        }
+        ActionButton {
             visible: !card.character
             objectName: 'objectAdd:' + (card.entry ? card.entry.ref : '')
             Accessible.name: card.entry ? 'Add ' + card.entry.name + ' to the pocket' : 'Add'
