@@ -274,7 +274,7 @@ def acceptance(client, children, args, shell_token, socketpath):
         assert press('libraryAct:' + ref)
         wait(lambda: job().get('phase') in ('confirm', 'failed'), 60)
         shot('core-install-confirm')
-        planned = (job().get('jobId') and (job().get('ipc') or {}).get('method') == 'content.install') if OVER_CORE else '--plan' in job().get('args', [])
+        planned = (job().get('jobId') and job().get('method') == 'content.install') if OVER_CORE else '--plan' in job().get('args', [])
         check('Install shows the plan for confirmation', job().get('phase') == 'confirm' and bool(planned), job())
         assert press('library-job-primary')
         wait(lambda: job().get('phase') in ('done', 'failed'), 120)
