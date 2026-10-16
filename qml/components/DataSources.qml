@@ -57,16 +57,17 @@ RowLayout {
         load(DS.draft(list && list.entries ? list.entries.find(e => e && e.id === id) : null));
     }
     // Behaviours' Data source… (ShellState.sourcesFocus): this entry, or a new command entry with
-    // that id once the list is in.
-    function focusSource() {
+    // that id. The page keeps its last list between visits, so an id it lacks (an entry proposed
+    // since) waits for a list asked for after the focus before a new entry is made.
+    property int focusSeq: 0
+    function focusSource(fresh) {
         var id = ShellState.sourcesFocus;
-        if (!id || !list || !list.entries) return;
-        ShellState.sourcesFocus = '';
-        if (list.entries.some(e => e && e.id === id)) open(id);
-        else { create('command'); idField.text = id; edited(); }
+        if (!id) return;
+        if (list && list.entries && list.entries.some(e => e && e.id === id)) { ShellState.sourcesFocus = ''; open(id); }
+        else if (fresh && list && list.entries) { ShellState.sourcesFocus = ''; create('command'); idField.text = id; edited(); }
+        else if (!focusSeq) { refresh(); focusSeq = listSeq; }
     }
-    Connections { target: ShellState; function onSourcesFocusChanged() { page.focusSource(); } }
-    onListChanged: focusSource()
+    Connections { target: ShellState; function onSourcesFocusChanged() { page.focusSeq = 0; page.focusSource(false); } }
     function create(k) {
         var id = DS.freeId(list, k);
         selected = id; fresh = k; previous = ''; test = null; feedback = null;
@@ -135,6 +136,7 @@ RowLayout {
         function onSourcesReply(reply) {
             if (reply.op === 'list' && reply.seq === page.listSeq) {
                 page.list = reply.ok ? reply : page.list;
+                if (reply.ok && ShellState.sourcesFocus) page.focusSource(!!page.focusSeq && reply.seq >= page.focusSeq);
                 if (!reply.ok) page.feedback = {level: 'warning', text: reply.error};
                 else if (!page.selected && page.rows.length) page.open(page.rows[0].id);
             } else if (reply.op === 'secrets' && reply.seq === page.secretsSeq && reply.ok) {
