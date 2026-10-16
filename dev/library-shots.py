@@ -121,7 +121,7 @@ for w, h, scale, suffix in sizes:
     assert ui('press', 'libraryAct:official/com.hyprune.starter') == 'false'    # system-managed
     assert ui('focusNamed', 'libraryBrowse') == 'true'
     call('wtype', '-k', 'Down'); wait(lambda: library()['cursor'] == 1)
-    call('wtype', '-k', 'Right'); wait(lambda: status()['tabName'] == 'places')  # Left/Right still change views
+    call('wtype', '-k', 'Right'); wait(lambda: status()['tabName'] == 'builder')  # Left/Right still change views (Builder follows Library)
     call('wtype', '-k', 'Left'); wait(lambda: status()['tabName'] == 'library')
     ui('theme', 'true'); shot('browse-paper'); ui('theme', 'false')
 

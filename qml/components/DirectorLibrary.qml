@@ -32,7 +32,10 @@ FocusScope {
     readonly property var entries: Library.mergeInstalls(ShellState.libraryEntries, ShellState.libraryInstalls)
     readonly property var shown: Library.filterEntries(entries, {source: source, type: type, query: query})
     readonly property var choices: Library.sourceChoices(ShellState.librarySources, entries)
-    readonly property var installs: ShellState.libraryInstalls
+    property bool updatesOnly: false     // Installed: only installs with an update
+    readonly property var updatesList: Library.updates(ShellState.libraryInstalls)
+    readonly property var installs: updatesOnly ? updatesList : ShellState.libraryInstalls
+    readonly property var extras: Library.officialExtras(entries)
     readonly property var install: installs.find(i => i.id === selected) || null
     readonly property var form: Library.sourceForm(formUrl, formLabel, formHash)
     readonly property bool jobPanel: !!ShellState.libraryJob && ShellState.libraryJob.panel
@@ -138,7 +141,7 @@ FocusScope {
             Segmented {
                 objectName: 'libraryView'
                 Layout.preferredWidth: 450
-                model: [{id: 'browse', label: 'Browse  ·  ' + root.entries.length}, {id: 'installed', label: 'Installed  ·  ' + root.installs.length},
+                model: [{id: 'browse', label: 'Browse  ·  ' + root.entries.length}, {id: 'installed', label: 'Installed  ·  ' + ShellState.libraryInstalls.length},
                         {id: 'sources', label: 'Sources  ·  ' + ShellState.librarySources.length}]
                 current: root.view
                 onPicked: (id) => root.setView(id)
@@ -219,6 +222,46 @@ FocusScope {
                 }
             }
 
+            // Official extras: optional official packages (never preinstalled), one click away.
+            Rectangle {
+                objectName: 'libraryExtras'
+                Layout.fillWidth: true
+                visible: root.extras.length > 0 && !root.query && root.source === 'all'
+                implicitHeight: extrasColumn.implicitHeight + 24
+                color: Tokens.panel
+                border.color: Tokens.line
+                radius: 3
+                ColumnLayout {
+                    id: extrasColumn
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+                    HudLabel { text: 'OFFICIAL EXTRAS  ·  NOT INSTALLED'; color: Tokens.gold; font.pixelSize: 11; font.letterSpacing: 2 }
+                    Repeater {
+                        model: root.extras.slice(0, 3)
+                        delegate: RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 12
+                            HudLabel { text: modelData.name; font.pixelSize: 15; Layout.maximumWidth: extrasColumn.width * .3; elide: Text.ElideRight }
+                            HudLabel {
+                                Layout.fillWidth: true
+                                text: Library.typeLabel(modelData.type) + (modelData.summary ? '  ·  ' + modelData.summary : '') +
+                                      (modelData.latest && modelData.latest.bytes ? '  ·  ' + Library.sizeText(modelData.latest.bytes) : '')
+                                color: Tokens.muted; font.pixelSize: 13; elide: Text.ElideRight
+                            }
+                            ActionButton {
+                                objectName: 'libraryExtra:' + modelData.id
+                                text: 'Install'
+                                primary: true
+                                enabled: !ShellState.libraryBusy
+                                onClicked: root.act(modelData)
+                            }
+                        }
+                    }
+                }
+            }
+
             GridView {
                 id: grid
                 objectName: 'libraryBrowse'
@@ -292,7 +335,25 @@ FocusScope {
                     anchors.fill: parent
                     anchors.margins: 16
                     spacing: 10
-                    HudLabel { Layout.fillWidth: true; text: 'INSTALLED  /  ' + root.installs.length; color: Tokens.gold; font.pixelSize: 11; font.letterSpacing: 2 }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Segmented {
+                            objectName: 'libraryInstalledFilter'
+                            Layout.fillWidth: true
+                            model: [{id: 'all', label: 'All  ·  ' + ShellState.libraryInstalls.length}, {id: 'updates', label: 'Updates  ·  ' + root.updatesList.length}]
+                            current: root.updatesOnly ? 'updates' : 'all'
+                            onPicked: (id) => { root.updatesOnly = id === 'updates'; if (!root.install && root.installs.length) root.selected = root.installs[0].id; }
+                        }
+                        ActionButton {
+                            objectName: 'library-update-all'
+                            visible: root.updatesList.length > 0
+                            text: 'Update all'
+                            primary: true
+                            enabled: !ShellState.libraryBusy
+                            onClicked: ShellState.libraryUpdateAll()
+                        }
+                    }
 
                     ListView {
                         id: installedList

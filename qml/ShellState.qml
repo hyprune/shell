@@ -531,6 +531,12 @@ QtObject {
         var next = Library.newJob(job.kind, job.target, Library.jobArgs(job.kind, job.target.id, job.kind === 'install' ? job.target.sourceId : '', 'yes', change));
         return libraryStart(Object.assign(next, {phase: 'running', plan: job.plan}));
     }
+    // Every install with a newer tag (not pinned): one plan, one confirmation.
+    function libraryUpdateAll() {
+        var target = {id: '--all', all: true, sourceId: '', type: '', name: 'every update'};
+        return libraryStart(Object.assign(Library.newJob('update', target, Library.jobArgs('update', '--all', '', 'plan')),
+                                          {ipc: {method: 'content.update', params: {all: true}}}));
+    }
     // rollback | pin | unpin | remove of an install (the page asks before removing).
     function libraryInstallAction(kind, install) {
         if (!install || ['rollback', 'pin', 'unpin', 'remove'].indexOf(kind) < 0) return false;

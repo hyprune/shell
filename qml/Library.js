@@ -137,6 +137,21 @@ function entryAction(entry) {
     return {kind: 'install', label: 'Install', enabled: true};
 }
 
+// Official extras: official entries that aren't installed and can be (the optional official
+// libraries such as the companions, never preinstalled; an official world the kit left out).
+// Takes mergeInstalls' entries, so system-installed ones are excluded too.
+function officialExtras(entries) {
+    return (entries || []).filter(function (e) {
+        return tierOf(e) === 'official' && !e.installed && entryAction(e).kind === 'install' &&
+               (!e.latest || !e.latest.status || e.latest.status === 'available');
+    });
+}
+
+// Installs with a newer tag at their source, not pinned and not system-managed.
+function updates(installs) {
+    return (installs || []).filter(function (i) { return i.newerTag && !i.pinned && i.managed !== 'system'; });
+}
+
 function entryFor(entries, id, sourceId) {
     return (entries || []).find(function (e) { return e.id === id && (!sourceId || e.sourceId === sourceId); }) || null;
 }

@@ -380,3 +380,23 @@ class OverCore(unittest.TestCase):
         self.assertEqual((cancelled['phase'], cancelled['cancelled'], cancelled['error']['message']), ('failed', True, 'Cancelled.'))
         self.assertTrue(js(f'ended(coreJob({job}, {record("done")}))'))
         self.assertFalse(js(f'ended(coreJob({job}, {record("confirm", plan=plan)}))'))
+
+
+class ExtrasAndUpdates(unittest.TestCase):
+    """Optional official packages with an Install button; the updates list."""
+
+    def test_official_extras(self):
+        version = {'tag': 'v0.1.0', 'version': '0.1.0', 'formatVersion': '0.10', 'loadable': True, 'status': 'available'}
+        entry = lambda i, tier, **extra: {'id': i, 'type': 'library', 'sourceId': tier, 'tier': tier, 'latest': version, 'versions': [version],
+                                          'installed': None, 'update': None, **extra}
+        entries = [entry('com.hyprune.companions', 'official'), entry('com.hyprune.starter', 'official', installed={'tag': 'v0.3.0', 'sourceId': 'official'}),
+                   entry('io.github.ada.tidepool', 'community'), entry('com.hyprune.old', 'official', latest={**version, 'loadable': False}, versions=[{**version, 'loadable': False}]),
+                   entry('com.hyprune.gone', 'official', latest={**version, 'status': 'unavailable'})]
+        self.assertEqual([e['id'] for e in js('officialExtras(%s)' % json.dumps(entries))], ['com.hyprune.companions'])
+        system = [{'id': 'com.hyprune.companions', 'type': 'library', 'managed': 'system', 'tag': 'v0.1.0'}]
+        self.assertEqual(js('officialExtras(mergeInstalls(%s, %s))' % (json.dumps(entries), json.dumps(system))), [])
+
+    def test_updates(self):
+        installs = [{'id': 'a.b', 'newerTag': 'v2', 'pinned': False, 'managed': 'user'}, {'id': 'c.d', 'newerTag': 'v2', 'pinned': True, 'managed': 'user'},
+                    {'id': 'e.f', 'newerTag': None, 'pinned': False, 'managed': 'user'}, {'id': 'g.h', 'newerTag': 'v2', 'pinned': False, 'managed': 'system'}]
+        self.assertEqual([i['id'] for i in js('updates(%s)' % json.dumps(installs))], ['a.b'])

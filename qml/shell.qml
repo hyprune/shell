@@ -409,6 +409,7 @@ ShellRoot {
             return install ? ShellState.libraryInstallAction(kind, install) : false;
         }
         function libraryAccept(change: bool): bool { return ShellState.dev && ShellState.libraryConfirm(change); }
+        function libraryUpdateAll(): bool { return ShellState.dev && ShellState.libraryUpdateAll(); }
         // Another CLI command line ('' restores $HYPRUNE_CLI / hyprune), e.g. a missing one.
         function libraryCommand(line: string): void { if (ShellState.dev) { ShellState.libraryCli = Library.cliCommand(line || Quickshell.env('HYPRUNE_CLI')); ShellState.refreshLibrary(); } }
         function libraryFilter(source: string, type: string, query: string): bool {
@@ -646,7 +647,9 @@ ShellRoot {
                     var page = ShellState.director ? Audit.find(view, 'directorLibrary') : null;
                     var job = ShellState.libraryJob;
                     return {view: ShellState.libraryView, ipc: ShellState.libraryIpc, cli: ShellState.libraryCli, loaded: ShellState.libraryLoaded, readError: ShellState.libraryReadError,
-                            sources: ShellState.librarySources.length, entries: ShellState.libraryEntries.length, installs: ShellState.libraryInstalls.map(i => i.id + '@' + (i.tag || i.version) + (i.pinned ? ':pinned' : '')),
+                            sources: ShellState.librarySources.length, entries: ShellState.libraryEntries.length,
+                            extras: Library.officialExtras(Library.mergeInstalls(ShellState.libraryEntries, ShellState.libraryInstalls)).map(e => e.id),
+                            updates: Library.updates(ShellState.libraryInstalls).map(i => i.id), installs: ShellState.libraryInstalls.map(i => i.id + '@' + (i.tag || i.version) + (i.pinned ? ':pinned' : '')),
                             shown: page ? page.shown.length : null, cursor: page ? page.cursor : null, confirm: page ? page.confirm : null,
                             form: page ? page.form : null, busy: ShellState.libraryBusy, feedback: ShellState.libraryFeedback,
                             job: job ? {kind: job.kind, phase: job.phase, stage: job.stage, stages: job.stages, args: job.args, progress: job.progress, jobId: job.jobId || '', awaiting: !!job.awaiting, method: job.ipc ? job.ipc.method : '',
