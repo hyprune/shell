@@ -12,7 +12,7 @@ import "../Import.js" as Import
 // before and after. Each keeps a backup; a world folder's copy shows after the folder reloads.
 ColumnLayout {
     id: panel
-    objectName: 'objectModel'
+    objectName: 'objectFitPanel'
     property var instance: null
     property var entry: null
     readonly property string ref: instance ? String(instance.ref) : ''

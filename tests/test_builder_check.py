@@ -78,7 +78,7 @@ class ModelSection(unittest.TestCase):
                          'Simplified: 900 → 400 triangles; textures 2048 → 1024 px.')
 
     def test_wiring(self):
-        self.assertIn('ObjectModel', (ROOT / 'qml/components/ObjectConfigure.qml').read_text())
+        self.assertIn('ObjectFitPanel', (ROOT / 'qml/components/ObjectConfigure.qml').read_text())
         self.assertIn("objectEditRun('repair'", (ROOT / 'qml/components/ObjectCard.qml').read_text())
         self.assertIn("builderOpen(builderState.projectId); else refreshCatalog()", (ROOT / 'qml/ShellState.qml').read_text())
 

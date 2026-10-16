@@ -349,7 +349,7 @@ ColumnLayout {
     }
 
     // ---- RFC-0014 Managing objects: an import's fit, adjusted or simplified after the fact ----
-    ObjectModel {
+    ObjectFitPanel {
         Layout.fillWidth: true
         visible: Objects.editable(panel.instance, panel.entry)
         instance: panel.instance
