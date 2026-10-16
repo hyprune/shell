@@ -32,7 +32,7 @@ function bannerText(pending) {
 function chipText(live) {
     if (!live || !live.length) return '';
     var a = live[0], changes = a.changes || 0;
-    var text = 'ASSISTANT · ' + agentLabel(a.agent).toUpperCase() + ' · ' + changes + (changes === 1 ? ' CHANGE' : ' CHANGES');
+    var text = 'ASSISTANT · ' + String(a.agent && a.agent.name || 'assistant').toUpperCase() + ' · ' + changes + (changes === 1 ? ' CHANGE' : ' CHANGES');
     if (a.paused) text += ' · PAUSED';
     if (live.length > 1) text += ' · +' + (live.length - 1);
     return text;

@@ -111,7 +111,7 @@ Item {
                 width: parent.width
                 visible: ShellState.connections.live.length > 0
                 spacing: 2
-                HudText { width: parent.width; horizontalAlignment: Text.AlignRight; text: Assistants.chipText(ShellState.connections.live); font.pixelSize: 12; font.letterSpacing: 1.5; color: Tokens.hudAccent; elide: Text.ElideLeft }
+                HudText { width: parent.width; horizontalAlignment: Text.AlignRight; text: Assistants.chipText(ShellState.connections.live); font.pixelSize: 12; font.letterSpacing: 1.5; color: Tokens.hudAccent; elide: Text.ElideRight }
                 HudText { width: parent.width; horizontalAlignment: Text.AlignRight; visible: text !== ''; text: Assistants.chipDetail(ShellState.connections.live); font.pixelSize: 11; color: Tokens.hudMuted; elide: Text.ElideRight }
             }
             QuestToast { width: parent.width; height: implicitHeight; toast: ShellState.toasts.length ? ShellState.toasts[0] : null }
