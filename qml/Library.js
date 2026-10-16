@@ -1,6 +1,7 @@
-// RFC-0015 phase 1: Director > Library (Browse, Installed, Sources) over the hyprune CLI's
-// JSON contract (no core IPC in phase 1). Pure helpers: tested with node in
-// tests/test_library.py. All index text is plain text; nothing here opens links.
+// RFC-0015: Director > Library (Browse, Installed, Sources). Over core's IPC 0.32 content,
+// sources and registry methods when the session has them, else over the hyprune CLI's JSON
+// contract (phase 1). Pure helpers: tested with node in tests/test_library.py. All index text is
+// plain text; nothing here opens links.
 
 var VIEWS = [{id: 'browse', label: 'Browse'}, {id: 'installed', label: 'Installed'}, {id: 'sources', label: 'Sources'}];
 var TYPES = [{id: 'all', label: 'All'}, {id: 'world', label: 'Worlds'}, {id: 'library', label: 'Libraries'}];
@@ -236,6 +237,59 @@ function jobArgs(kind, id, sourceId, mode, acceptSourceChange) {
     if (acceptSourceChange) args.push('--accept-source-change');
     return args.concat(['--json']);
 }
+
+// ---- Over core (IPC 0.32) ----
+
+// The IPC call for a job on an entry or an install. kind: install|update|rollback|pin|unpin|remove.
+function ipcCall(kind, target) {
+    var t = target || {};
+    if (kind === 'install') return {method: 'content.install', params: {source: {entry: {sourceId: t.sourceId, id: t.id}}}};
+    if (kind === 'update') return {method: 'content.update', params: {id: t.id}};
+    if (kind === 'rollback') return {method: 'content.rollback', params: {id: t.id}};
+    if (kind === 'pin' || kind === 'unpin') return {method: 'content.pin', params: {id: t.id, pinned: kind === 'pin'}};
+    if (kind === 'remove') return {method: 'content.remove', params: {id: t.id}};
+    return null;
+}
+
+// The IPC call for a source action. verb: refresh|enable|disable|remove|add (args: sourceForm's).
+function sourceCall(verb, id, args) {
+    if (verb === 'refresh') return {method: 'sources.refresh', params: id ? {ids: [id]} : {}};
+    if (verb === 'enable' || verb === 'disable') return {method: 'sources.set', params: {id: id, enabled: verb === 'enable'}};
+    if (verb === 'remove') return {method: 'sources.remove', params: {id: id}};
+    if (verb !== 'add' || !args || args.length < 3) return null;
+    var spec = String(args[2]), params = spec.indexOf('github:') === 0 ? {github: spec.slice(7)} : {url: spec};
+    for (var i = 3; i + 1 < args.length; i++) {
+        if (args[i] === '--label') params.label = args[i + 1];
+        if (args[i] === '--sha256') params.sha256 = args[i + 1];
+    }
+    return {method: 'sources.add', params: params};
+}
+
+// A page job updated from core's job record (state content.jobs). Stages only move forward; the
+// phase follows core's stage: confirm waits for the user, done/failed/cancelled end it.
+function coreJob(job, record) {
+    if (!job || !record) return job;
+    var next = Object.assign({}, job, {jobId: record.jobId});
+    var stage = String(record.stage || '');
+    if (stage && stage !== 'queued' && ['confirm', 'done', 'failed', 'cancelled'].indexOf(stage) < 0) {
+        next.stage = stage;
+        if (next.stages.indexOf(stage) < 0) next.stages = next.stages.concat([stage]);
+    }
+    next.progress = record.progress ? {bytes: Number(record.progress.bytes) || 0, total: record.progress.totalBytes ? Number(record.progress.totalBytes) : null}
+                                    : stage === 'downloading' ? job.progress : null;
+    if (record.plan) next.plan = record.plan;
+    next.result = record.result || null;
+    next.error = record.error ? {rule: String(record.error.rule || ''), message: String(record.error.message || '')} : null;
+    if (stage === 'confirm') next.phase = 'confirm';
+    else if (stage === 'done') { next.phase = 'done'; if (job.panel && !next.plan) next.nothing = true; }
+    else if (stage === 'failed') next.phase = 'failed';
+    else if (stage === 'cancelled') { next.phase = 'failed'; next.cancelled = true; next.error = next.error || {rule: '', message: 'Cancelled.'}; }
+    else if (job.phase === 'confirm') next.phase = 'running';
+    return next;
+}
+
+// True once a page job has an end (done or failed) that the page hasn't reported yet.
+function ended(job) { return !!job && (job.phase === 'done' || job.phase === 'failed'); }
 
 // A fresh job. panel: install and update go through plan, confirmation and progress.
 function newJob(kind, target, args) {

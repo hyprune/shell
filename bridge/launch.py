@@ -66,7 +66,8 @@ def shell_actions(protocol):
             (OBJECT_ACTIONS if at_least(protocol, 22) else []) +
             (NPC_ACTIONS if at_least(protocol, 23) else []) +
             (COMPANION_ACTIONS if at_least(protocol, 25) else []) +
-            (['settings.get', 'settings.set'] if at_least(protocol, 30) else []))
+            (['settings.get', 'settings.set'] if at_least(protocol, 30) else []) +
+            (CONTENT_ACTIONS if at_least(protocol, 32) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
@@ -87,8 +88,13 @@ NPC_ACTIONS = ['npcs.spawn', 'npcs.bind', 'npcs.disable', 'npcs.remove',
                'paths.list', 'paths.set', 'paths.remove', 'paths.draw', 'paths.finish', 'interaction.choose']
 # RFC-0010 companions amendment (IPC 0.25, draft): the companion. No new grant (objects.control).
 COMPANION_ACTIONS = ['companion.set', 'companion.clear', 'companion.mode']
+# RFC-0015 amendment (IPC 0.32, draft): Director > Library over core (content.control; reads
+# state.read). Results echo their params so a refused job or a registry page is matched.
+CONTENT_ACTIONS = ['content.install', 'content.confirm', 'content.cancel', 'content.update', 'content.rollback', 'content.pin',
+                   'content.remove', 'sources.list', 'sources.add', 'sources.set', 'sources.remove', 'sources.refresh',
+                   'registry.list', 'registry.entry']
 # Results and refusals that echo their params (a reply is matched to its quest, object or character).
-ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS + COMPANION_ACTIONS
+ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS + COMPANION_ACTIONS + CONTENT_ACTIONS
 
 
 def action_event(method, params, result):

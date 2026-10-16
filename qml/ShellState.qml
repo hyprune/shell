@@ -387,7 +387,9 @@ QtObject {
         if (params && styleSupported && objectsCan('companion.mode')) objectAction('companion.mode', params);
     }
 
-    // ---- RFC-0015 phase 1: Director > Library over the hyprune CLI (no core IPC) ----
+    // ---- RFC-0015: Director > Library over core (IPC 0.32) or the hyprune CLI (phase 1) ----
+    // With a session that has the content methods, listings come from state `content` and
+    // registry.list, and every action is a core job (state content.jobs). Otherwise:
     // The command is $HYPRUNE_CLI (a command line split on spaces), else hyprune on PATH.
     // Listings print one JSON document; jobs print JSON lines (stage, plan, progress, done,
     // error). Install and update run with --plan first; --yes (and --accept-source-change after
@@ -405,7 +407,48 @@ QtObject {
     readonly property bool libraryBusy: Library.running(libraryJob)
     readonly property bool libraryVisible: director && tab === tabLibrary
     onLibraryVisibleChanged: { if (libraryVisible) refreshLibrary(); }
+    readonly property bool libraryIpc: available('content.install') && available('registry.list') && available('sources.list')
+    readonly property var contentState: state && state.content ? state.content : null
+    property var libraryPages: []             // registry.list pages being collected
+    property string librarySignature: ''      // sources and installs at the last registry listing
+    onContentStateChanged: { if (libraryIpc) libraryFromState(); }
+    function libraryFromState() {
+        if (!contentState) return;
+        librarySources = contentState.sources || [];
+        libraryInstalls = contentState.installs || [];
+        libraryReadError = '';
+        var signature = JSON.stringify([librarySources, libraryInstalls]);
+        if (signature !== librarySignature && (libraryVisible || libraryLoaded)) { librarySignature = signature; libraryListEntries(); }
+        if (libraryJob && libraryJob.jobId) {
+            var record = (contentState.jobs || []).find(j => j.jobId === libraryJob.jobId);
+            if (record) {
+                var next = Library.coreJob(libraryJob, record);
+                if (!Library.ended(libraryJob) && Library.ended(next)) libraryFinish(next);
+                else libraryJob = next;
+            }
+        }
+    }
+    function libraryListEntries() { libraryPages = []; action('registry.list', {limit: 100}); }
+    function libraryResult(method, params, result) {
+        if (!result || !/^(content|sources|registry)\./.test(method)) return;
+        if (method === 'registry.list') {
+            libraryPages = libraryPages.concat(result.entries || []);
+            if (result.cursor) action('registry.list', {limit: 100, cursor: result.cursor});
+            else { libraryEntries = libraryPages; libraryLoaded = true; }
+            return;
+        }
+        if (result.jobId && libraryJob && libraryJob.awaiting) {
+            libraryJob = Object.assign({}, libraryJob, {jobId: result.jobId, awaiting: false});
+            libraryFromState();
+        }
+    }
+    // A refused content call (core's notice): the waiting page job fails with core's words.
+    function libraryRefused(method, message) {
+        if (!libraryJob || !libraryJob.awaiting || !/^(content|sources)\./.test(method || '')) return;
+        libraryFinish(Object.assign({}, libraryJob, {awaiting: false, phase: 'failed', error: {rule: '', message: String(message || '')}}));
+    }
     function refreshLibrary() {
+        if (libraryIpc) { libraryFromState(); librarySignature = JSON.stringify([librarySources, libraryInstalls]); libraryListEntries(); return; }
         libraryReadError = '';
         [libraryReadSources, libraryReadBrowse, libraryReadInstalls].forEach(p => { if (!p.running) { p.started = false; p.running = true; } });
     }
@@ -449,6 +492,12 @@ QtObject {
     function libraryStart(job) {
         if (libraryBusy) return false;
         libraryFeedback = null;
+        if (libraryIpc) {
+            if (!job.ipc) return false;
+            libraryJob = Object.assign(job, {awaiting: true});
+            action(job.ipc.method, job.ipc.params);
+            return true;
+        }
         libraryJob = job;
         libraryRun.command = libraryCli.concat(job.args);
         // A command that can't start drops running without started (and never exits).
@@ -464,7 +513,8 @@ QtObject {
     function libraryPlan(kind, item) {
         if (!item || (kind !== 'install' && kind !== 'update')) return false;
         var target = libraryTarget(item);
-        return libraryStart(Library.newJob(kind, target, Library.jobArgs(kind, target.id, kind === 'install' ? target.sourceId : '', 'plan')));
+        return libraryStart(Object.assign(Library.newJob(kind, target, Library.jobArgs(kind, target.id, kind === 'install' ? target.sourceId : '', 'plan')),
+                                          {ipc: Library.ipcCall(kind, target)}));
     }
     // The confirmed plan runs with --yes; a source change only with acceptChange (the second dialog).
     function libraryConfirm(acceptChange) {
@@ -472,6 +522,12 @@ QtObject {
         if (!job || job.phase !== 'confirm') return false;
         var change = !!Library.sourceChange(job.plan);
         if (change && !acceptChange) return false;
+        if (libraryIpc) {
+            if (!job.jobId) return false;
+            action('content.confirm', {jobId: job.jobId, accept: true});
+            libraryJob = Object.assign({}, job, {phase: 'running'});
+            return true;
+        }
         var next = Library.newJob(job.kind, job.target, Library.jobArgs(job.kind, job.target.id, job.kind === 'install' ? job.target.sourceId : '', 'yes', change));
         return libraryStart(Object.assign(next, {phase: 'running', plan: job.plan}));
     }
@@ -479,21 +535,32 @@ QtObject {
     function libraryInstallAction(kind, install) {
         if (!install || ['rollback', 'pin', 'unpin', 'remove'].indexOf(kind) < 0) return false;
         var target = libraryTarget(install);
-        return libraryStart(Library.newJob(kind, target, Library.jobArgs(kind, target.id, '', 'yes')));
+        return libraryStart(Object.assign(Library.newJob(kind, target, Library.jobArgs(kind, target.id, '', 'yes')), {ipc: Library.ipcCall(kind, target)}));
     }
     // Sources: refresh [id] | enable id | disable id | remove id | add (Library.sourceForm args).
     function librarySource(verb, id, args) {
         var source = librarySources.find(s => s.id === id) || null;
         var target = {id: id || '', sourceId: id || '', type: '', name: source ? Library.tierLabel(source) : id || ''};
         var argv = verb === 'add' ? args : ['source', verb].concat(id ? [id] : []).concat(['--json']);
-        return libraryStart(Library.newJob('source.' + verb, target, argv));
+        return libraryStart(Object.assign(Library.newJob('source.' + verb, target, argv), {ipc: Library.sourceCall(verb, id, args)}));
     }
-    function libraryCancel() { if (libraryBusy && libraryRun.running) { libraryJob = Object.assign({}, libraryJob, {cancelled: true}); libraryRun.signal(15); } }
-    function libraryClose() { if (!libraryBusy) libraryJob = null; }
+    function libraryCancel() {
+        // Over core only a queued job can be cancelled; a running one finishes.
+        if (libraryIpc) { if (libraryBusy && libraryJob.jobId) action('content.cancel', {jobId: libraryJob.jobId}); return; }
+        if (libraryBusy && libraryRun.running) { libraryJob = Object.assign({}, libraryJob, {cancelled: true}); libraryRun.signal(15); }
+    }
+    function libraryClose() {
+        if (libraryBusy) return;
+        if (libraryIpc && libraryJob && libraryJob.phase === 'confirm' && libraryJob.jobId) action('content.confirm', {jobId: libraryJob.jobId, accept: false});
+        libraryJob = null;
+    }
     function libraryEnded(code, errors) {
         if (!libraryJob) return;
         var job = Library.jobFinished(libraryJob, code, errors);
         if (job.cancelled && job.phase === 'failed') job.error = {rule: '', message: 'Cancelled.'};
+        libraryFinish(job);
+    }
+    function libraryFinish(job) {
         libraryJob = job.panel || job.phase === 'confirm' ? job : null;
         if (job.phase === 'confirm') return;
         var e = Library.errorText(job.error);
@@ -1341,6 +1408,7 @@ QtObject {
             questResult(msg.method, msg.params, msg.result);
             objectResult(msg.method, msg.params, msg.result);
             npcResult(msg.method, msg.params, msg.result);
+            libraryResult(msg.method, msg.params, msg.result);
             break;
         case 'sources':
             if (msg.op === 'status') { sourcesStatus = msg; if (msg.seq === sourcesStatusSeq) sourcesStatusSeq = 0; }
@@ -1375,6 +1443,7 @@ QtObject {
             if (msg.code === 'runtime.ready') {showReady(msg.message);break;}
             if (msg.code === 'shell.action' && msg.method === 'movement.set') { movementRefusal = String(msg.message).replace(/^-?\d+:\s*/, ''); movementRefusalTimer.restart(); }
             if (msg.code === 'shell.action' && (msg.method === 'surface.pocket' || msg.method === 'surface.unpocket')) pocketFeedback(msg.method, null, msg.message);
+            if (msg.code === 'shell.action' && /^(content|sources)\./.test(msg.method || '')) libraryRefused(msg.method, String(msg.message).replace(/^-?\d+:\s*/, ''));
             if (msg.code === 'shell.action' && /^(quests|focus|guidance)\./.test(msg.method || '')) {
                 questFeedback = Quests.errorText(msg.method, msg.message); questFeedbackTimer.restart();
                 questActionFailed(msg.method, msg.params || null, questFeedback);

@@ -400,6 +400,15 @@ ShellRoot {
         // RFC-0015 Library (dev only): view, Browse filters, the selected install, the Add source form.
         function libraryView(view: string): void { if (ShellState.dev && ['browse', 'installed', 'sources'].indexOf(view) >= 0) ShellState.libraryView = view; }
         function libraryRefresh(): void { if (ShellState.dev) ShellState.refreshLibrary(); }
+        // The page's own actions without its buttons (the Library logic, over core or the CLI).
+        function libraryDo(kind: string, id: string, sourceId: string): bool {
+            if (!ShellState.dev) return false;
+            if (kind === 'install' || kind === 'update') return ShellState.libraryPlan(kind, {id: id, sourceId: sourceId});
+            if (kind.indexOf('source.') === 0) return ShellState.librarySource(kind.slice(7), id, null);
+            var install = ShellState.libraryInstalls.find(i => i.id === id);
+            return install ? ShellState.libraryInstallAction(kind, install) : false;
+        }
+        function libraryAccept(change: bool): bool { return ShellState.dev && ShellState.libraryConfirm(change); }
         // Another CLI command line ('' restores $HYPRUNE_CLI / hyprune), e.g. a missing one.
         function libraryCommand(line: string): void { if (ShellState.dev) { ShellState.libraryCli = Library.cliCommand(line || Quickshell.env('HYPRUNE_CLI')); ShellState.refreshLibrary(); } }
         function libraryFilter(source: string, type: string, query: string): bool {
@@ -636,11 +645,11 @@ ShellRoot {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
                     var page = ShellState.director ? Audit.find(view, 'directorLibrary') : null;
                     var job = ShellState.libraryJob;
-                    return {view: ShellState.libraryView, cli: ShellState.libraryCli, loaded: ShellState.libraryLoaded, readError: ShellState.libraryReadError,
+                    return {view: ShellState.libraryView, ipc: ShellState.libraryIpc, cli: ShellState.libraryCli, loaded: ShellState.libraryLoaded, readError: ShellState.libraryReadError,
                             sources: ShellState.librarySources.length, entries: ShellState.libraryEntries.length, installs: ShellState.libraryInstalls.map(i => i.id + '@' + (i.tag || i.version) + (i.pinned ? ':pinned' : '')),
                             shown: page ? page.shown.length : null, cursor: page ? page.cursor : null, confirm: page ? page.confirm : null,
                             form: page ? page.form : null, busy: ShellState.libraryBusy, feedback: ShellState.libraryFeedback,
-                            job: job ? {kind: job.kind, phase: job.phase, stage: job.stage, stages: job.stages, args: job.args, progress: job.progress,
+                            job: job ? {kind: job.kind, phase: job.phase, stage: job.stage, stages: job.stages, args: job.args, progress: job.progress, jobId: job.jobId || '', awaiting: !!job.awaiting, method: job.ipc ? job.ipc.method : '',
                                         error: job.error, result: job.result, sourceChange: job.plan ? job.plan.sourceChange : null} : null};
                 })(),
                 holdProgress: root.hudViews.find(v => v.outputScreenName === ShellState.screenName)?.holdProgress || 0,

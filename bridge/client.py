@@ -38,7 +38,7 @@ class CoreError(RuntimeError):
 
 GRANTS = ['state.read', 'world.control', 'surface.control', 'movement.control', 'shell.control', 'runtime.control']
 # Grants that exist only from a protocol on: older cores reject unknown capabilities.
-VERSIONED_GRANTS = [(6, 'input.control'), (21, 'quest.control'), (22, 'objects.control')]
+VERSIONED_GRANTS = [(6, 'input.control'), (21, 'quest.control'), (22, 'objects.control'), (32, 'content.control')]
 # RFC-0012 presentation hints (IPC 0.21): forwarded to QML, never replayed.
 QUEST_EVENTS = ['quest.progress', 'focus.phase']
 

@@ -341,3 +341,42 @@ class Page(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class OverCore(unittest.TestCase):
+    """IPC 0.32: the page's calls and core's job records (state content.jobs)."""
+
+    def test_calls(self):
+        target = {'id': 'com.hyprune.companions', 'sourceId': 'official'}
+        self.assertEqual(js('ipcCall("install", %s)' % json.dumps(target)),
+                         {'method': 'content.install', 'params': {'source': {'entry': {'sourceId': 'official', 'id': 'com.hyprune.companions'}}}})
+        self.assertEqual(js('ipcCall("update", {id: "a.b"})'), {'method': 'content.update', 'params': {'id': 'a.b'}})
+        self.assertEqual(js('ipcCall("unpin", {id: "a.b"})'), {'method': 'content.pin', 'params': {'id': 'a.b', 'pinned': False}})
+        self.assertEqual(js('ipcCall("remove", {id: "a.b"})')['method'], 'content.remove')
+        self.assertIsNone(js('ipcCall("pack", {id: "a.b"})'))
+        self.assertEqual(js('sourceCall("refresh", "")'), {'method': 'sources.refresh', 'params': {}})
+        self.assertEqual(js('sourceCall("disable", "community")'), {'method': 'sources.set', 'params': {'id': 'community', 'enabled': False}})
+        add = js('sourceCall("add", "", sourceForm("https://example.org/x.tar.zst", "Frank", "%s").args)' % ('a' * 64))
+        self.assertEqual(add, {'method': 'sources.add', 'params': {'url': 'https://example.org/x.tar.zst', 'label': 'Frank', 'sha256': 'a' * 64}})
+        self.assertEqual(js('sourceCall("add", "", sourceForm("github:ada/tide", "").args)'), {'method': 'sources.add', 'params': {'github': 'ada/tide'}})
+
+    def test_core_job_phases(self):
+        record = lambda stage, **extra: json.dumps({'jobId': 'j-1', 'stage': stage, 'plan': None, 'progress': None, 'error': None,
+                                                    'result': None, **extra})
+        job = 'newJob("install", {id: "a.b", sourceId: "official"}, [])'
+        plan = {'packages': [{'id': 'a.b', 'action': 'install'}], 'sourceChange': None, 'override': False}
+        self.assertEqual(js(f'coreJob({job}, {record("resolving")}).phase'), 'planning')
+        waiting = js(f'coreJob({job}, {record("confirm", plan=plan)})')
+        self.assertEqual((waiting['phase'], waiting['jobId'], waiting['plan']), ('confirm', 'j-1', plan))
+        confirmed = f'Object.assign(coreJob({job}, {record("confirm", plan=plan)}), {{phase: "confirm"}})'
+        moving = js(f'coreJob({confirmed}, {record("downloading", plan=plan, progress={"bytes": 5, "totalBytes": 10})})')
+        self.assertEqual((moving['phase'], moving['stages'], moving['progress']), ('running', ['downloading'], {'bytes': 5, 'total': 10}))
+        done = js(f'coreJob({confirmed}, {record("done", plan=plan, result={"action": "install"})})')
+        self.assertEqual((done['phase'], done.get('nothing')), ('done', None))
+        self.assertTrue(js(f'coreJob({job}, {record("done", result={"action": "update"})}).nothing'))
+        failed = js(f'coreJob({job}, {record("failed", error={"rule": "hash.mismatch", "message": "x"})})')
+        self.assertEqual((failed['phase'], failed['error']['rule']), ('failed', 'hash.mismatch'))
+        cancelled = js(f'coreJob({job}, {record("cancelled")})')
+        self.assertEqual((cancelled['phase'], cancelled['cancelled'], cancelled['error']['message']), ('failed', True, 'Cancelled.'))
+        self.assertTrue(js(f'ended(coreJob({job}, {record("done")}))'))
+        self.assertFalse(js(f'ended(coreJob({job}, {record("confirm", plan=plan)}))'))
