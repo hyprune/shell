@@ -197,6 +197,26 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         await p.drain()
         await self.until(lambda:self.snapshot_requests==1 and self.client.state['movement']['position']==[4,2,-3])
         self.assertEqual(self.client.revision,self.revision)
+    async def test_state_revisions_ahead_of_the_reply_keep_the_director(self):
+        # hypruned counts its own state changes (quests, content jobs, connections) on top of the
+        # compositor's: deltas run ahead of the revision a forwarded reply carries. A delta from
+        # before the grab must not close the Director it opened (the layer opened and closed at once).
+        ahead=self.revision+10
+        self.peers[-1].write(frame(self.delta(self.revision,ahead,{'movement':self.state['movement']})))
+        await self.until(lambda:self.client.revision==ahead)
+        self.hold_overlay_delta=True
+        await self.client.overlay(True)
+        self.assertGreater(self.client.revision,self.client.overlay_revision)
+        await self.client.reconcile()
+        self.assertTrue(self.client.director,'a delta from before the grab cannot end it')
+        # Once a state has shown the grab, its loss (a lock, an exit) still closes the Director.
+        held=copy.deepcopy(self.state['shell'])
+        self.peers[-1].write(frame(self.delta(ahead,ahead+1,{'shell':held})))
+        await self.until(lambda:self.client.revision==ahead+1)
+        self.assertTrue(self.client.director)
+        held['leases'][0]['overlays'][0]['exclusiveInput']=False
+        self.peers[-1].write(frame(self.delta(ahead+1,ahead+2,{'shell':held})))
+        await self.until(lambda:not self.client.director)
     async def test_disconnect_new_token_fresh_lease_no_mutation_replay(self):
         await self.client.call('surface.focus',{'surfaceId':'a','intent':'keyboard'})
         await self.client.overlay(True)

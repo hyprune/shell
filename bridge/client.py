@@ -90,6 +90,7 @@ class Client:
         self.choice_key = None
         self.choice_grab = False
         self.overlay_revision = -1
+        self.grab_seen = False  # a state since the last exclusive grab showed it
         self.ui_epoch = 0
         self.ready = False
         self.stopping = False
@@ -433,12 +434,18 @@ class Client:
                 self.claim_blocked = False
                 self.publish()
                 return
-            # A cleared exclusive flag means lock/exit/lease loss: unmap immediately.
-            if self.note_id and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
+            # A cleared exclusive flag means lock/exit/lease loss: unmap immediately. Only once a
+            # state has shown this grab: a reply's revision (core's compositor side) and a state
+            # delta's (its daemon, which also counts its own changes) are counted apart, so a delta
+            # from before the grab can look newer and closed the Director as it opened.
+            held = own and any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays'])
+            if held: self.grab_seen = True
+            lost = own and not held and self.grab_seen and self.revision >= self.overlay_revision
+            if self.note_id and lost:
                 self.end_note('lost')
-            if self.choice_grab and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
+            if self.choice_grab and lost:
                 self.end_choice()  # lock, exit or core's own close: the list goes, the key stays
-            if self.director and self.revision >= self.overlay_revision and own and not any(v['outputId'] == self.output and v['exclusiveInput'] for v in own['overlays']):
+            if self.director and lost:
                 self.director = False
                 self.emit({'type': 'director', 'open': False})
             target = next((v for v in runtime['outputs'] if self.bindings.get(v) in self.screens), None)
@@ -498,6 +505,7 @@ class Client:
             result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
                                                        'visible': True, 'exclusiveInput': True})
             self.overlay_revision = max(self.overlay_revision, result['revision'])
+            self.grab_seen = False
             if self.choice_key != key: return  # ended meanwhile
             self.choice_grab = True
         self.emit({'type': 'interaction.prompt', 'value': want})
@@ -581,6 +589,7 @@ class Client:
                 if not visible and self.writer: self.writer.close()
                 raise
             self.overlay_revision = max(self.overlay_revision, result['revision'])
+            if visible: self.grab_seen = False
             # State may lag a committed reply; only a later authoritative delta can revoke.
             if visible and epoch == self.ui_epoch and self.lease and self.state['runtime']['active']:
                 self.director = True
@@ -617,6 +626,7 @@ class Client:
                     result = await self.call('shell.overlay', {'leaseId': self.lease, 'outputId': self.output,
                                                                'visible': True, 'exclusiveInput': True})
                     self.overlay_revision = max(self.overlay_revision, result['revision'])
+                    self.grab_seen = False
                 except Exception:
                     self.note_id = None
                     raise
@@ -714,6 +724,7 @@ class Client:
                 self.choice_key = None
                 self.resyncing = False
                 self.overlay_revision = -1
+                self.grab_seen = False
                 self.ui_epoch += 1
                 self.state = None
                 self.lease = self.output = self.subscription = self.session = None
