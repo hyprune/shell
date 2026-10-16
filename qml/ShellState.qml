@@ -782,6 +782,12 @@ QtObject {
         onRunningChanged: { if (!running && root.builderCheckAgain) { root.builderCheckAgain = false; Qt.callLater(root.builderCheckRun); } }
     }
     property Timer builderCheckTimer: Timer { interval: 1500; onTriggered: root.builderCheckRun() }
+    // Changes from outside the shell (the CLI, an assistant through `hyprune mcp`): poll while the page shows a folder.
+    property Timer builderOutsidePoll: Timer {
+        interval: 4000; repeat: true
+        running: root.builderVisible && root.builderEditing && !root.builderBusy
+        onTriggered: { root.builderRefresh(); root.builderCheckRun(); }
+    }
     // Show me: a waypoint at the item's place (the standing spot, the spawn).
     function builderShow(item) {
         if (!item || !item.show) return;
