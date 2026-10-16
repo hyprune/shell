@@ -40,6 +40,19 @@ class Assistants(unittest.TestCase):
         self.assertEqual(call('approvalRow', {'clientId': 'com.hyprune.mcp', 'agent': 'Tool X', 'profile': 'assistant', 'approvedAt': '2026-10-16T03:00:00Z'})['line'],
                          'Always allowed since 2026-10-16')
 
+    def test_release_drafts_and_proposals(self):
+        draft = call('releaseDraftFor', [dict(LIVE, releaseDraft={'projectId': 'garden', 'version': '0.2.0', 'notes': 'The garden'})], 'garden')
+        self.assertEqual(draft, {'agent': 'Example Chat', 'version': '0.2.0', 'notes': 'The garden'})
+        self.assertIsNone(call('releaseDraftFor', [dict(LIVE, releaseDraft=None)], 'garden'))
+        self.assertEqual(call('draftText', draft), 'Example Chat prepared a release v0.2.0: The garden. Check it, then Release.')
+        ds = (ROOT / 'qml/DataSources.js').read_text()
+        run = lambda name, *args: json.loads(subprocess.check_output(['node', '-e', ds + '\nconsole.log(JSON.stringify(' + name + '(' + ', '.join(json.dumps(a) for a in args) + ')));'], text=True))
+        entry = {'id': 'cpu', 'kind': 'command', 'argv': ['hyprune-system-gauges', 'cpu'], 'confirm': 'pending'}
+        self.assertEqual(run('rows', {'entries': [entry]})[0]['state'], 'pending')
+        self.assertNotIn('confirm', run('testSource', entry))
+        self.assertEqual(run('allowEntry', entry), {'id': 'cpu', 'kind': 'command', 'argv': ['hyprune-system-gauges', 'cpu'], 'confirm': None})
+        self.assertIn('hyprune-system-gauges cpu', run('proposalText', entry))
+
     def test_wiring(self):
         launch = (ROOT / 'bridge/launch.py').read_text()
         self.assertIn("CONNECTION_ACTIONS if at_least(protocol, 33)", launch)

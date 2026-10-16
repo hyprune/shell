@@ -42,8 +42,10 @@ function rows(list) {
     var running = list && list.status && list.status.ok && list.status.sources ? list.status.sources : {};
     return entries.filter(function (e) { return e && typeof e.id === 'string'; }).map(function (e) {
         var s = running[e.id], kind = e.kind || 'command';
-        var state = e.enabled === false ? 'disabled' : !s ? 'idle' : s.lastRun ? (s.lastRun.ok ? 'ok' : 'error') : 'waiting';
-        return {id: e.id, kind: kind, kindLabel: kind === 'http' ? 'HTTP' : kind === 'command' ? 'Command' : kind,
+        // RFC-0016: a command an assistant proposed waits for Allow ("confirm": "pending").
+        var pending = e.confirm === 'pending';
+        var state = pending ? 'pending' : e.enabled === false ? 'disabled' : !s ? 'idle' : s.lastRun ? (s.lastRun.ok ? 'ok' : 'error') : 'waiting';
+        return {id: e.id, kind: kind, kindLabel: kind === 'http' ? 'HTTP' : kind === 'command' ? 'Command' : kind, pending: pending,
                 target: target(e), state: state, editable: kind === 'http' || kind === 'command',
                 error: s && s.lastRun && !s.lastRun.ok ? str(s.lastRun.error) : '',
                 values: s && s.lastRun ? s.lastRun.values || {} : {}};
@@ -214,7 +216,8 @@ function entryFrom(d) {
 // The definition a test runs: the entry without nulls (the helper takes it as written).
 function testSource(entry) {
     var out = {};
-    Object.keys(entry || {}).forEach(function (k) { if (entry[k] !== null && k !== 'id' && k !== 'enabled') out[k] = entry[k]; });
+    // The user's Test runs a proposed command once (their consent); confirm stays until Allow.
+    Object.keys(entry || {}).forEach(function (k) { if (entry[k] !== null && k !== 'id' && k !== 'enabled' && k !== 'confirm') out[k] = entry[k]; });
     return out;
 }
 
@@ -266,3 +269,12 @@ function testView(result) {
                       display: values.display !== undefined ? str(values.display) : value !== null ? valueText(values.value) : '',
                       label: str(values.label)}};
 }
+
+// RFC-0016: Allow a proposed command: the whole entry without its confirm key (the helper then runs it).
+function allowEntry(entry) {
+    var out = {};
+    Object.keys(entry || {}).forEach(function (k) { if (k !== 'confirm') out[k] = entry[k]; });
+    out.confirm = null;
+    return out;
+}
+function proposalText(entry) { return entry && entry.confirm === 'pending' ? 'An assistant proposed this command. It runs only after you allow it: ' + (entry.argv || []).join(' ') : ''; }

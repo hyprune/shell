@@ -268,6 +268,19 @@ RowLayout {
             spacing: 6
 
             Heading { text: 'SOURCE' }
+            // RFC-0016: an assistant's proposed command, shown with the exact argument vector.
+            RowLayout {
+                objectName: 'source-proposal'
+                Layout.fillWidth: true; spacing: 10
+                visible: !!page.entry && page.entry.confirm === 'pending'
+                HudLabel { Layout.fillWidth: true; text: DS.proposalText(page.entry); wrapMode: Text.Wrap; font.pixelSize: 12; color: Tokens.gold }
+                ActionButton {
+                    objectName: 'source-allow'
+                    text: 'Allow'
+                    enabled: !page.busy
+                    onClicked: { page.actionSeq = ShellState.sourcesRequest('sources.put', {entry: DS.allowEntry(page.entry), previous: page.previous || null}); if (page.actionSeq) { page.busy = 'save'; busyTimer.restart(); } }
+                }
+            }
             RowLayout {
                 Layout.fillWidth: true; spacing: 10
                 HudLabel { text: 'Id'; Layout.preferredWidth: 90 }

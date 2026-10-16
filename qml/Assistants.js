@@ -44,3 +44,13 @@ function liveRow(a) {
             action: a.action || '', paused: !!a.paused};
 }
 function approvalRow(a) { return {clientId: a.clientId, agent: a.agent, title: a.agent, line: 'Always allowed since ' + String(a.approvedAt || '').slice(0, 10)}; }
+
+// RFC-0016 release_prepare: a release an assistant filled in for the open folder (the user presses Release).
+function releaseDraftFor(live, projectId) {
+    var a = (live || []).filter(function (x) { return x.releaseDraft && x.releaseDraft.projectId === projectId; })[0];
+    return a ? {agent: agentLabel(a.agent), version: a.releaseDraft.version || '', notes: a.releaseDraft.notes || ''} : null;
+}
+function draftText(draft) {
+    if (!draft) return '';
+    return draft.agent + ' prepared a release' + (draft.version ? ' v' + draft.version : '') + (draft.notes ? ': ' + draft.notes : '') + '. Check it, then Release.';
+}

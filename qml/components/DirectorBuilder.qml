@@ -485,6 +485,19 @@ Item {
                 Caption { text: 'RELEASE'; Layout.topMargin: 6 }
                 Note { text: Builder.versionText(root.status) + '. ' + Builder.remoteText(root.status) }
                 RowLayout {
+                    objectName: 'builderReleaseDraft'
+                    readonly property var draft: root.b ? Assistants.releaseDraftFor(ShellState.connections.live, root.b.projectId) : null
+                    visible: !!draft
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Note { Layout.fillWidth: true; color: Tokens.gold; text: Assistants.draftText(parent.draft) }
+                    ActionButton {
+                        objectName: 'builder-release-draft'
+                        text: 'Use it'
+                        onClicked: { versionField.text = parent.draft.version; notesField.text = parent.draft.notes; }
+                    }
+                }
+                RowLayout {
                     Layout.fillWidth: true
                     spacing: 10
                     Field {
