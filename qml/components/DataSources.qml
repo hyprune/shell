@@ -62,6 +62,7 @@ RowLayout {
     property int focusSeq: 0
     function focusSource(fresh) {
         var id = ShellState.sourcesFocus;
+        if (ShellState.dev) console.log('data sources: focus', JSON.stringify(id), fresh, list && list.entries ? list.entries.length : -1);
         if (!id) return;
         if (list && list.entries && list.entries.some(e => e && e.id === id)) { ShellState.sourcesFocus = ''; open(id); }
         else if (fresh && list && list.entries) { ShellState.sourcesFocus = ''; create('command'); idField.text = id; edited(); }

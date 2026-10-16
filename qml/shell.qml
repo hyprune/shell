@@ -599,7 +599,8 @@ ShellRoot {
                     if (!page) return null;
                     return {visible: page.visible, selected: page.selected, fresh: page.fresh, dirty: page.dirty, busy: page.busy,
                             rows: page.rows.map(r => ({id: r.id, kind: r.kind, state: r.state})), names: page.names,
-                            secrets: page.secretsFound, feedback: page.feedback, test: page.test};
+                            secrets: page.secretsFound, feedback: page.feedback, test: page.test,
+                            focus: ShellState.sourcesFocus, focusSeq: page.focusSeq, listSeq: page.listSeq, entries: page.list && page.list.entries ? page.list.entries.length : -1};
                 })(),
                 builder: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
