@@ -587,6 +587,10 @@ class Client:
                 self.emit({'type': 'director', 'open': True, 'revision': result['revision']})
             elif visible and epoch != self.ui_epoch:
                 self.spawn(self.overlay(False))
+            elif visible:
+                # Core shows the overlay but the shell has no Director: say why (a stuck hold).
+                print(f'hyprune shell: the overview opened without a Director: lease={bool(self.lease)} '
+                      f'active={self.state["runtime"]["active"]} revision={self.revision}', file=sys.stderr, flush=True)
 
     def end_note(self, reason):
         """Close the note prompt (no note is written here)."""
