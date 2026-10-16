@@ -110,7 +110,7 @@ def acceptance(client,children,args,shell_token,socketpath):
         keys('-k','Return');time.sleep(.35)
     choose('quality',['End'])
     wait(lambda:client.call('graphics.get',{})['config']['quality']=='ultra')
-    choose('bloom',['Home','Down'])
+    choose('bloom',['Home'])  # Off is the first choice (no inherited entry since the Settings categories)
     changed = wait(lambda:(g if (g:=client.call('graphics.get',{}))['effective']['quality']=='ultra' and g['effective']['bloom']=='off' else None))
     shot('graphics-'+PROTOCOL+'-settings-ultra-bloom-off')
     closed();shot('graphics-'+PROTOCOL+'-after-f3')
