@@ -12,6 +12,7 @@ import shutil
 import socket
 import signal
 import stat
+import sys
 import tempfile
 from client import Client, CoreError, OutgoingInvalid
 from preferences import Preferences
@@ -205,6 +206,7 @@ async def main(args):
         line = (json.dumps(event, ensure_ascii=False, allow_nan=False) + '\n').encode()
         for writer in tuple(peers):
             if writer.transport.get_write_buffer_size() > 4 * 1024 * 1024:
+                print('hyprune shell: presentation connection closed: over 4 MiB unread (the presentation stalled)', file=sys.stderr, flush=True)
                 writer.close()
                 peers.discard(writer)
             elif not writer.is_closing(): writer.write(line)
@@ -295,6 +297,8 @@ async def main(args):
             return
         # Quickshell's crash supervisor may retain the old socket FD. A verified
         # replacement child supersedes it; the core connection/grant stays here.
+        if peers:
+            print(f'hyprune shell: presentation connection replaced by a new one (pid {pid})', file=sys.stderr, flush=True)
         for old in tuple(peers): old.close()
         with contextlib.suppress(Exception): await client.overlay(False)
         current_peer = writer
@@ -314,8 +318,10 @@ async def main(args):
                 commands.add(task)
                 task.add_done_callback(commands.discard)
                 await writer.drain()
-        except (ConnectionError, asyncio.IncompleteReadError):
-            pass
+        except (ConnectionError, asyncio.IncompleteReadError) as error:
+            if str(error): print(f'hyprune shell: presentation connection closed: {error}', file=sys.stderr, flush=True)
+        except Exception as error:
+            print(f'hyprune shell: presentation connection closed: {error!r}', file=sys.stderr, flush=True)
         finally:
             for task in tuple(commands): task.cancel()
             await asyncio.gather(*commands, return_exceptions=True)
