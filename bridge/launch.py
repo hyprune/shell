@@ -67,7 +67,8 @@ def shell_actions(protocol):
             (NPC_ACTIONS if at_least(protocol, 23) else []) +
             (COMPANION_ACTIONS if at_least(protocol, 25) else []) +
             (['settings.get', 'settings.set'] if at_least(protocol, 30) else []) +
-            (CONTENT_ACTIONS if at_least(protocol, 32) else []))
+            (CONTENT_ACTIONS if at_least(protocol, 32) else []) +
+            (CONNECTION_ACTIONS if at_least(protocol, 33) else []))
 
 
 # RFC-0012 (IPC 0.21): markers, guidance settings, quests and focus sessions.
@@ -93,6 +94,8 @@ COMPANION_ACTIONS = ['companion.set', 'companion.clear', 'companion.mode']
 CONTENT_ACTIONS = ['content.install', 'content.confirm', 'content.cancel', 'content.update', 'content.rollback', 'content.pin',
                    'content.remove', 'sources.list', 'sources.add', 'sources.set', 'sources.remove', 'sources.refresh',
                    'registry.list', 'registry.entry']
+# RFC-0016 (IPC 0.33): answering an assistant's pairing request and managing its connection.
+CONNECTION_ACTIONS = ['connections.answer', 'connections.revoke', 'connections.disconnect', 'connections.pause']
 # Results and refusals that echo their params (a reply is matched to its quest, object or character).
 ECHO_ACTIONS = QUEST_ACTIONS + OBJECT_ACTIONS + NPC_ACTIONS + COMPANION_ACTIONS + CONTENT_ACTIONS
 

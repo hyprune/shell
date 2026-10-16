@@ -2,6 +2,7 @@ import ".."
 import "../theme"
 import QtQuick
 import "../Quests.js" as Quests
+import "../Assistants.js" as Assistants
 Item {
     id: root
     readonly property real holdProgress: holdRing.progress
@@ -104,6 +105,15 @@ Item {
             spacing: 10
             QuestTracker { width: parent.width; height: implicitHeight }
             FocusChip { anchors.right: parent.right; width: Math.min(parent.width, implicitWidth); height: implicitHeight; visible: Quests.chipVisible(ShellState.focusState, true, null) }
+            // RFC-0016: the Assistant chip while an assistant is connected (who, changes, its last action).
+            Column {
+                objectName: 'hudAssistantChip'
+                width: parent.width
+                visible: ShellState.connections.live.length > 0
+                spacing: 2
+                HudText { width: parent.width; horizontalAlignment: Text.AlignRight; text: Assistants.chipText(ShellState.connections.live); font.pixelSize: 12; font.letterSpacing: 1.5; color: Tokens.hudAccent; elide: Text.ElideLeft }
+                HudText { width: parent.width; horizontalAlignment: Text.AlignRight; visible: text !== ''; text: Assistants.chipDetail(ShellState.connections.live); font.pixelSize: 11; color: Tokens.hudMuted; elide: Text.ElideRight }
+            }
             QuestToast { width: parent.width; height: implicitHeight; toast: ShellState.toasts.length ? ShellState.toasts[0] : null }
         }
     }
@@ -145,6 +155,14 @@ Item {
         Rectangle { anchors.fill:parent; color:'#5808121a'; border.width:1; border.color:Tokens.hudAccent }
         Rectangle { anchors.horizontalCenter:parent.horizontalCenter; width:80;y:-3;height:2;color:Tokens.hudAccent }
         HudText { anchors.fill:parent; anchors.margins:12; text:ShellState.banner; horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter;font.pixelSize:13;font.letterSpacing:3;color:Tokens.hudAccent }
+    }
+    // RFC-0016: an assistant asks to build; the Director answers.
+    Item {
+        objectName: 'hudAssistantBanner'
+        anchors.horizontalCenter:parent.horizontalCenter; y:(root.compact ? 110 : root.height*.29) + 60; width:Math.min(620,root.width*.8);height:49
+        visible: !!ShellState.pairRequest
+        Rectangle { anchors.fill:parent; color:'#5808121a'; border.width:1; border.color:Tokens.hudAccent }
+        HudText { anchors.fill:parent; anchors.margins:12; text:Assistants.bannerText(ShellState.connections.pending); horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter;font.pixelSize:13;font.letterSpacing:2;color:Tokens.hudAccent; elide:Text.ElideRight }
     }
     HudCluster {
         anchors.right:parent.right; anchors.rightMargin:root.inset; y:root.height-height-root.inset-54;width:Math.min(340,root.width*.28);height:noticeColumn.height;edgeX:1;edgeY:1;shown:ShellState.notices.length>0

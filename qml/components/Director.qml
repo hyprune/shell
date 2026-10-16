@@ -189,6 +189,9 @@ Item {
             color: Tokens.line
         }
 
+        // RFC-0016: an assistant's pairing request waits on top of every page.
+        AssistantPrompt { Layout.fillWidth: true; Layout.preferredHeight: implicitHeight }
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true

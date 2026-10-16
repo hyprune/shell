@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import ".."
 import "../theme"
 import "../Builder.js" as Builder
+import "../Assistants.js" as Assistants
 
 // Director > Builder (RFC-0014 phase 1 and the world wizard as amended): New world walks through
 // a name (and the Open Plain starter), a sky (a built-in one or the user's panorama), a floor (a
@@ -626,6 +627,51 @@ Item {
                     Field { id: remoteField; objectName: 'builderRemote'; placeholderText: root.status && root.status.remote ? root.status.remote.url : 'git@github.com:you/hyprune-world-name.git' }
                     ActionButton { objectName: 'builder-remote-set'; text: 'Set'; enabled: !ShellState.builderBusy && remoteField.text.trim() !== '' && !Builder.remoteError(remoteField.text); onClicked: { if (ShellState.builderRemote(remoteField.text)) remoteField.text = ''; } }
                     ActionButton { objectName: 'builder-remote-clear'; text: 'Clear'; enabled: !ShellState.builderBusy && !!root.status && !!root.status.remote; onClicked: ShellState.builderRemote('') }
+                }
+            }
+
+            // RFC-0016: Connected assistants (MCP clients running `hyprune mcp`): live ones with Pause
+            // and Disconnect, remembered approvals with Revoke.
+            ColumnLayout {
+                objectName: 'builderAssistants'
+                Layout.fillWidth: true
+                visible: ShellState.supportsProtocol(33)
+                spacing: 8
+                Caption { text: 'CONNECTED ASSISTANTS'; Layout.topMargin: 10 }
+                Note { text: 'An AI assistant can build here through the hyprune MCP server (the command "hyprune mcp" in the assistant\'s settings). It asks first, sees no windows, and its changes stay unsaved until saved; Release stays yours.' }
+                Note { visible: !ShellState.connections.live.length && !ShellState.connections.approvals.length; text: 'No assistant is connected or always allowed.' }
+                Repeater {
+                    model: ShellState.connections.live.map(Assistants.liveRow)
+                    RowLayout {
+                        required property var modelData
+                        objectName: 'assistantLive:' + modelData.title
+                        Layout.fillWidth: true
+                        spacing: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            HudLabel { text: modelData.title; font.pixelSize: 13; color: Tokens.text }
+                            HudLabel { text: modelData.line + (modelData.action ? ' · ' + modelData.action : ''); font.pixelSize: 11; color: Tokens.muted; elide: Text.ElideRight; Layout.fillWidth: true }
+                        }
+                        ActionButton { objectName: 'assistant-pause'; text: modelData.paused ? 'Resume' : 'Pause'; onClicked: ShellState.assistantPause(modelData.actor, !modelData.paused) }
+                        ActionButton { objectName: 'assistant-disconnect'; text: 'Disconnect'; onClicked: ShellState.assistantDisconnect(modelData.actor) }
+                    }
+                }
+                Repeater {
+                    model: ShellState.connections.approvals.map(Assistants.approvalRow)
+                    RowLayout {
+                        required property var modelData
+                        objectName: 'assistantApproval:' + modelData.agent
+                        Layout.fillWidth: true
+                        spacing: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            HudLabel { text: modelData.title; font.pixelSize: 13; color: Tokens.text }
+                            HudLabel { text: modelData.line; font.pixelSize: 11; color: Tokens.muted }
+                        }
+                        ActionButton { objectName: 'assistant-revoke'; text: 'Revoke'; onClicked: ShellState.assistantRevoke(modelData.clientId, modelData.agent) }
+                    }
                 }
             }
         }

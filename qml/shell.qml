@@ -612,6 +612,8 @@ ShellRoot {
                                                               items: ShellState.builderCheck.items.map(i => ({id: i.id, target: i.target || null, done: i.done, blocks: i.blocks, message: i.message}))} : null,
                             edit: {job: ShellState.objectEditJob, last: ShellState.objectEditLast, fit: ShellState.objectFit}};
                 })(),
+                assistants: {pending: ShellState.connections.pending.length, live: ShellState.connections.live, approvals: ShellState.connections.approvals.length,
+                             prompt: !!ShellState.pairRequest},
                 shapes: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
                     var page = ShellState.director ? Audit.find(view, 'objectShapes') : null;

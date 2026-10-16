@@ -15,6 +15,7 @@ import "Library.js" as Library
 import "Sources.js" as Sources
 import "Import.js" as Import
 import "Builder.js" as Builder
+import "Assistants.js" as Assistants
 pragma Singleton
 
 QtObject {
@@ -683,6 +684,13 @@ QtObject {
         onExited: (code) => Qt.callLater(() => root.objectEditEnded(code))
         onRunningChanged: { if (!running && !started) root.objectEditEnded(-1); }
     }
+    // ---- Assistants (RFC-0016, IPC 0.33): pairing requests, the Assistant chip, connections ----
+    readonly property var connections: Assistants.connectionsOf(state)
+    readonly property var pairRequest: connections.pending.length ? connections.pending[0] : null
+    function assistantAnswer(decision) { if (pairRequest && available('connections.answer')) action('connections.answer', Assistants.answerParams(pairRequest, decision)); }
+    function assistantPause(actor, paused) { if (available('connections.pause')) action('connections.pause', {actor: actor, paused: paused}); }
+    function assistantDisconnect(actor) { if (available('connections.disconnect')) action('connections.disconnect', {actor: actor}); }
+    function assistantRevoke(clientId, agent) { if (available('connections.revoke')) action('connections.revoke', {clientId: clientId, agent: agent}); }
     // ---- World folders (RFC-0014 as amended): Director > Builder over the hyprune CLI ----
     // `builder create|save|release|sky|remote --json` run one at a time (JSON lines); list and
     // status refresh on their own process. A folder opens with world.load local.<slug>: core
