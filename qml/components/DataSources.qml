@@ -59,11 +59,18 @@ RowLayout {
     // Behaviours' Data source… (ShellState.sourcesFocus): this entry, or a new command entry with
     // that id. The page keeps its last list between visits, so an id it lacks (an entry proposed
     // since) waits for a list asked for after the focus before a new entry is made.
+    // Every screen has a Director (and this page); only the shown one on the current screen takes
+    // the focus (another taking it first left the shown page on its first row).
     property int focusSeq: 0
+    function shown() {
+        if (!visible) return false;
+        for (var p = parent; p; p = p.parent)
+            if (p.outputScreenName !== undefined) return p.outputScreenName === ShellState.screenName;
+        return true;
+    }
     function focusSource(fresh) {
         var id = ShellState.sourcesFocus;
-        if (ShellState.dev) console.log('data sources: focus', JSON.stringify(id), fresh, list && list.entries ? list.entries.length : -1);
-        if (!id) return;
+        if (!id || !shown()) return;
         if (list && list.entries && list.entries.some(e => e && e.id === id)) { ShellState.sourcesFocus = ''; open(id); }
         else if (fresh && list && list.entries) { ShellState.sourcesFocus = ''; create('command'); idField.text = id; edited(); }
         else if (!focusSeq) { refresh(); focusSeq = listSeq; }
