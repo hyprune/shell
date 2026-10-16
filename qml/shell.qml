@@ -307,6 +307,7 @@ ShellRoot {
             ShellState.objectPreview = json ? JSON.parse(json) : null;
             if (ShellState.objectPreview) ShellState.refreshCatalog();
         }
+        function sourceFocus(id: string): void { if (ShellState.dev) ShellState.openSourceFor(id); }
         function objectsView(view: string): void { if (ShellState.dev && ['catalog', 'shapes', 'placed', 'characters', 'sources'].indexOf(view) >= 0) ShellState.objectsView = view; }
         // Objects > Shapes (IPC 0.31): the Make form as JSON (Shapes.newForm's shape), or the material editor's.
         function shapeForm(json: string): bool {
