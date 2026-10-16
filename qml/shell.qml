@@ -607,7 +607,10 @@ ShellRoot {
                     return {state: ShellState.builderState, status: ShellState.builderStatus, projects: ShellState.builderProjects.map(p => p.projectId),
                             job: ShellState.builderJob, sky: ShellState.builderSky, identity: ShellState.builderIdentity,
                             wizard: ShellState.builderWizard, floor: ShellState.builderFloor, skies: ShellState.builderSkies.map(p => p.id), floors: ShellState.builderFloors.map(p => p.id),
-                            feedback: feedback && feedback.visible ? feedback.text : null, pending: pending ? pending.text : null};
+                            feedback: feedback && feedback.visible ? feedback.text : null, pending: pending ? pending.text : null,
+                            check: ShellState.builderCheck ? {ready: ShellState.builderCheck.ready, digest: ShellState.builderCheck.digest,
+                                                              items: ShellState.builderCheck.items.map(i => ({id: i.id, target: i.target || null, done: i.done, blocks: i.blocks, message: i.message}))} : null,
+                            edit: {job: ShellState.objectEditJob, last: ShellState.objectEditLast, fit: ShellState.objectFit}};
                 })(),
                 shapes: (function() {
                     var view = root.directorViews.find(v => v.outputScreenName === ShellState.screenName);
