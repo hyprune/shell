@@ -10,6 +10,7 @@ var FLOOR_FORMATS = ['png', 'jpg', 'jpeg'];
 var TILE_MIN = 0.25, TILE_MAX = 100;
 var STAGES = {check: 'Checking the world', version: 'Writing the version', build: 'Building the release files', push: 'Pushing to the remote', release: 'Creating the GitHub release'};
 var CODES = {
+    'release.check': 'Release waits for the checklist: fix the items marked ✗ above, or release anyway.',
     'git.missing': 'Building worlds needs git 2.30 or newer: install git, then try again.',
     'git.identity': 'git doesn\'t know who you are yet: give a name and an email for this world\'s saves.',
     'git.failed': 'git failed.',

@@ -35,6 +35,7 @@ class Checklist(unittest.TestCase):
         refused = {'kind': 'release', 'phase': 'failed', 'error': {'code': 'release.check', 'message': '1 checklist item is open'}}
         self.assertTrue(run('qml/Builder.js', 'releaseRefused', refused))
         self.assertFalse(run('qml/Builder.js', 'releaseRefused', dict(refused, error={'code': 'release.unsaved'})))
+        self.assertIn('release anyway', run('qml/Builder.js', 'errorText', refused['error']))
         self.assertIn('official bar', run('qml/Builder.js', 'publishingText', {'publishing': {'officialEligible': True}}))
         self.assertIn('2 parts', run('qml/Builder.js', 'publishingText', {'publishing': {'officialEligible': False, 'notOfficial': [{}, {}]}}))
 
