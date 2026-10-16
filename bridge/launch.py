@@ -90,7 +90,7 @@ NPC_ACTIONS = ['npcs.spawn', 'npcs.bind', 'npcs.disable', 'npcs.remove',
                'paths.list', 'paths.set', 'paths.remove', 'paths.draw', 'paths.finish', 'interaction.choose']
 # RFC-0010 companions amendment (IPC 0.25, draft): the companion. No new grant (objects.control).
 COMPANION_ACTIONS = ['companion.set', 'companion.clear', 'companion.mode']
-# RFC-0015 amendment (IPC 0.32, draft): Director > Library over core (content.control; reads
+# RFC-0015 amendment (IPC 0.32): Director > Library over core (content.control; reads
 # state.read). Results echo their params so a refused job or a registry page is matched.
 CONTENT_ACTIONS = ['content.install', 'content.confirm', 'content.cancel', 'content.update', 'content.rollback', 'content.pin',
                    'content.remove', 'sources.list', 'sources.add', 'sources.set', 'sources.remove', 'sources.refresh',
